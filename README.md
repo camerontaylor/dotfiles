@@ -1,3 +1,6 @@
+     Cameron's alterations:
+     update-repo function/completion updates just one apt repository
+     Themes: paradox, giddie, superlinh
      _     _           _
     | |   | |         | |
     | |___| |_____  __| | ____
