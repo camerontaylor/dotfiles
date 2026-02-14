@@ -15,3 +15,4 @@ for envfile in $ZDOTDIR/env.d/*; do
     source $envfile
 done
 unset envfile homezshenv
+. "$HOME/.cargo/env"

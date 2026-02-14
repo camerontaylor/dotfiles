@@ -1,1 +1,1 @@
-vim.treesitter.start()
+pcall(vim.treesitter.start)
