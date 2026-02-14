@@ -1,3 +1,3 @@
 vim.wo.spell = true
 
-vim.treesitter.start()
+pcall(vim.treesitter.start)

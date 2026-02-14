@@ -463,3 +463,9 @@
 [submodule "zsh/plugins/z"]
 	path = zsh/plugins/z
 	url = https://github.com/agkozak/zsh-z.git
+[submodule "zsh/plugins/docker-zsh-completion"]
+	path = zsh/plugins/docker-zsh-completion
+	url = https://github.com/greymd/docker-zsh-completion.git
+[submodule "zsh/plugins/pnpm-shell-completion"]
+	path = zsh/plugins/pnpm-shell-completion
+	url = https://github.com/g-plane/pnpm-shell-completion.git

@@ -21,6 +21,8 @@ vim.o.foldtext = ''
 vim.o.spelloptions = 'camel'
 vim.o.formatlistpat = [[^\s*[0-9\-\+\*]\+[\.\)]*\s\+]]
 vim.o.iskeyword = '@,48-57,_,192-255,-'
+vim.o.ttimeoutlen = 0
+
 
 vim.opt.backupdir:remove('.')
 
