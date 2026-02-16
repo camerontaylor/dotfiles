@@ -1,15 +1,27 @@
 # z via fzf selector
 
 emulate -L zsh
+local preview_cmd
+if (( $+commands[eza] )); then
+    preview_cmd='eza -l --all --group-directories-first --icons --git --color=always {}'
+else
+    preview_cmd='LC_COLLATE=C ls -l -v --almost-all --group-directories-first --classify --color=always --human-readable {}'
+fi
+
+local dir_list
+if (( $+commands[zoxide] )); then
+    dir_list=$(zoxide query -l $*)
+else
+    dir_list=$(z -l "$*" | sed 's/^[0-9. ]*//')
+fi
 
 local destination=$(
-    z -l "$*" |
-    sed 's/^[0-9. ]*//' |
-    fzf --no-sort --tac --filepath-word --scheme=path --query="$*" --preview='LC_COLLATE=C ls -l -v --almost-all --group-directories-first --classify --color=always --human-readable {}'
+    echo $dir_list |
+    fzf --no-sort --tac --filepath-word --scheme=path --query="$*" --preview="$preview_cmd"
 )
-
-if [[ $destination != "" ]]; then
+if [[ -n $destination ]]; then
     cd $destination
 fi
+
 
 # vim: ft=zsh
