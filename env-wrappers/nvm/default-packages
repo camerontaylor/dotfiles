@@ -1,0 +1,8 @@
+# Global npm packages to auto-install with each new Node version
+# These are installed automatically when running `nvm install <version>`
+
+# Claude Code CLI - AI assistant for terminal
+@anthropic-ai/claude-code
+
+# Happy Coder - Mobile client bridge for Claude Code
+happy-coder

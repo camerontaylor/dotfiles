@@ -36,3 +36,5 @@ MANPATH=$XDG_DATA_HOME/man:$MANPATH
 
 # Add go binaries to paths
 path=($GOPATH/bin $path)
+
+export PNPM_STORE_DIR="$XDG_DATA_HOME/pnpm/store"

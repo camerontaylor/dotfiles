@@ -67,7 +67,7 @@ print "  ...done"
 print "Syncing submodules..."
 git submodule sync > /dev/null
 git submodule update --init --recursive > /dev/null
-git clean -ffd
+git submodule foreach --recursive git clean -ffd
 print "  ...done"
 
 print "Compiling zsh plugins..."
@@ -120,6 +120,27 @@ if (( ${+commands[perl]} )); then
     print "  ...done"
 fi
 
+# Install wtp if not present
+if (( ! ${+commands[wtp]} )); then
+    print "Installing wtp..."
+    local wtp_arch=$(uname -m)
+    local wtp_os=$(uname -s)
+    if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
+        [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
+        local wtp_tmp=$(mktemp -d)
+        if curl -fsSL "https://github.com/satococoa/wtp/releases/latest/download/wtp_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
+            zf_mv $wtp_tmp/wtp $HOME/.local/bin/wtp
+            chmod +x $HOME/.local/bin/wtp
+            print "  ...done"
+        else
+            print "  ...failed to download wtp, skipping"
+        fi
+        rm -rf $wtp_tmp
+    else
+        print "  ...unsupported platform for wtp auto-install, skipping"
+    fi
+fi
+
 if (( ${+commands[vim]} )); then
     # Generate vim help tags
     print "Generating vim helptags..."
@@ -154,6 +175,7 @@ print "Linking env-wrappers' plugins..."
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/jenv/jenv/available-plugins/export $XDG_DATA_HOME/jenv/plugins/export
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/pyenv/default-packages $XDG_DATA_HOME/pyenv/default-packages
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/rbenv/default-gems $XDG_DATA_HOME/rbenv/default-gems
+    zf_ln -sfn $SCRIPT_DIR/env-wrappers/nvm/default-packages $XDG_DATA_HOME/nvm/default-packages
 print "  ...done"
 
 # Trigger zsh run with powerlevel10k prompt to download gitstatusd

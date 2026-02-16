@@ -6,6 +6,7 @@
 	followTags = true
 [branch]
 	autoSetupRebase = always
+	sort = -committerdate
 [merge]
 	ff = only
 	conflictStyle = zdiff3
