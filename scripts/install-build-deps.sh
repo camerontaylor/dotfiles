@@ -16,7 +16,7 @@ if [[ "${1:-}" == "--check" ]]; then
     for pkg in "${PACKAGES[@]}"; do
         if ! dpkg -l "$pkg" &>/dev/null || ! dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
             echo "  MISSING: $pkg"
-            ((missing++))
+            ((missing++)) || true
         fi
     done
     if [[ $missing -eq 0 ]]; then
