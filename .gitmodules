@@ -451,9 +451,6 @@
 [submodule "zsh/plugins/git-completion"]
 	path = zsh/plugins/git-completion
 	url = https://github.com/felipec/git-completion.git
-[submodule "zsh/plugins/iterm2-shell-integration"]
-	path = zsh/plugins/iterm2-shell-integration
-	url = https://github.com/gnachman/iTerm2-shell-integration.git
 [submodule "zsh/plugins/powerlevel10k"]
 	path = zsh/plugins/powerlevel10k
 	url = https://github.com/romkatv/powerlevel10k.git
@@ -475,3 +472,9 @@
 [submodule "zsh/plugins/claude-code-zsh-completion"]
 	path = zsh/plugins/claude-code-zsh-completion
 	url = https://github.com/1160054/claude-code-zsh-completion
+[submodule "zsh/plugins/you-should-use"]
+	path = zsh/plugins/you-should-use
+	url = https://github.com/MichaelAquilina/zsh-you-should-use.git
+[submodule "zsh/plugins/history-substring-search"]
+	path = zsh/plugins/history-substring-search
+	url = https://github.com/zsh-users/zsh-history-substring-search.git

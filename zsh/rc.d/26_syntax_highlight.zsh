@@ -1,5 +1,5 @@
-# Highlighting plugin
-source $ZDOTDIR/plugins/syntax-highlighting/zsh-syntax-highlighting.zsh
+# Highlighting plugin (deferred - not needed until user types)
+zsh-defer source $ZDOTDIR/plugins/syntax-highlighting/zsh-syntax-highlighting.zsh
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets regexp cursor)
 # Highlight known abbreviations
 typeset -A ZSH_HIGHLIGHT_REGEXP
