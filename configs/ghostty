@@ -1,5 +1,5 @@
 theme = iTerm2 Solarized Dark
-shell-integration = detect
+shell-integration = none
 confirm-close-surface = false
 keybind = alt+left=unbind
 keybind = alt+right=unbind
@@ -10,3 +10,10 @@ bell-features = no-attention
 link-previews = true
 
 config-file = ?config-local
+
+
+window-save-state = always
+#cursor-style = bar
+#cursor-style-blink = false
+scrollback-limit = 50000
+keybind = global:ctrl+grave_accent=toggle_quick_terminal

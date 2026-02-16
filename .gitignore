@@ -14,3 +14,4 @@ zsh/.zlogout
 
 configs/ranger-plugins/__init__.py
 configs/ranger-plugins/__pycache__
+.omc
