@@ -18,10 +18,15 @@ alias clear=" clear-screen-soft-bottom"
 (( ${+commands[quilt]} )) && alias quilt="quilt --quiltrc $DOTFILES/configs/quiltrc"
 (( ${+commands[tmux]} )) && alias stmux="tmux new-session 'sudo --login'"
 (( ${+commands[wget]} )) && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
-(( ${+commands[ls]} )) && {
+# Prefer eza over ls when available
+if (( ${+commands[eza]} )); then
+    alias ls="eza --group-directories-first --color=auto --hyperlink"
+    alias ll="eza -l --git --almost-all --group-directories-first"
+    alias tree="eza --tree --git-ignore"
+else
     alias ls="ls --group-directories-first --color=auto --hyperlink=auto --classify"
     alias ll="LC_COLLATE=C ls -l -v --almost-all --human-readable"
-}
+fi
 (( ${+commands[diff]} )) && alias diff="diff --color=auto --new-file --text --recursive --unified"
 
 # History suppression

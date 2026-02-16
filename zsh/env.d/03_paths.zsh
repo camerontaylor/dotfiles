@@ -31,7 +31,7 @@ if [[ $OSTYPE = darwin* ]]; then
 fi
 
 # Enable local binaries and man pages
-path=($HOME/.local/bin $path)
+path=($HOME/.local/bin $HOME/.cargo/bin $path)
 MANPATH=$XDG_DATA_HOME/man:$MANPATH
 
 # Add go binaries to paths
