@@ -154,7 +154,7 @@ fi
 
 # Install Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find)
+    local -a rust_tools=(git-delta bat eza fd-find zoxide)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg
