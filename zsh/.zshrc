@@ -12,10 +12,4 @@ done
 unset conffile
 
 # To customize prompt, run `p10k configure` or edit ~/.local/dotfiles/zsh/.p10k.zsh.
-#[[ ! -f ~/.local/dotfiles/zsh/.p10k.zsh ]] || source ~/.local/dotfiles/zsh/.p10k.zsh
-
-# echo "DEBUG: rc.d loop done, about to source p10k" >&2
-
 [[ ! -f ~/.local/dotfiles/zsh/.p10k.zsh ]] || source ~/.local/dotfiles/zsh/.p10k.zsh || echo "Warning: p10k failed" >&2
-
-# echo "DEBUG: zshrc complete" >&2
