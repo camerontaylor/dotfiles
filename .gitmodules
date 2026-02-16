@@ -469,3 +469,9 @@
 [submodule "zsh/plugins/pnpm-shell-completion"]
 	path = zsh/plugins/pnpm-shell-completion
 	url = https://github.com/g-plane/pnpm-shell-completion.git
+[submodule "zsh/plugins/claude-bash-completion"]
+	path = zsh/plugins/claude-bash-completion
+	url = https://github.com/cldotdev/claude-bash-completion
+[submodule "zsh/plugins/claude-code-zsh-completion"]
+	path = zsh/plugins/claude-code-zsh-completion
+	url = https://github.com/1160054/claude-code-zsh-completion
