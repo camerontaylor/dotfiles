@@ -141,6 +141,38 @@ if (( ! ${+commands[wtp]} )); then
     fi
 fi
 
+# Install rustup/cargo if not present
+if (( ! ${+commands[cargo]} )); then
+    print "Installing rustup and cargo..."
+    if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path > /dev/null 2>&1; then
+        export PATH=$HOME/.cargo/bin:$PATH
+        print "  ...done"
+    else
+        print "  ...failed to install rustup, skipping"
+    fi
+fi
+
+# Install Rust CLI tools if cargo is available
+if (( ${+commands[cargo]} )); then
+    local -a rust_tools=(git-delta bat eza fd-find)
+    for tool_pkg in $rust_tools[@]; do
+        # Map package name to binary name
+        local tool_bin=$tool_pkg
+        case $tool_pkg in
+            git-delta) tool_bin=delta ;;
+            fd-find) tool_bin=fd ;;
+        esac
+        if (( ! ${+commands[$tool_bin]} )); then
+            print "Installing $tool_pkg via cargo..."
+            if cargo install $tool_pkg > /dev/null 2>&1; then
+                print "  ...done"
+            else
+                print "  ...failed to install $tool_pkg"
+            fi
+        fi
+    done
+fi
+
 if (( ${+commands[vim]} )); then
     # Generate vim help tags
     print "Generating vim helptags..."

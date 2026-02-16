@@ -32,8 +32,7 @@
 	autocrlf = input
 	whitespace = cr-at-eol
 	untrackedCache = true
-[pager]
-	diff = which delta &>/dev/null && delta || which diff-so-fancy &>/dev/null && diff-so-fancy | less --quit-if-one-screen || less --quit-if-one-screen
+	pager = delta
 [submodule]
 	fetchJobs = 0
 	recurse = true
@@ -58,6 +57,8 @@
 	navigate = true
 	hyperlinks = true
 	dark = true
+	side-by-side = true
+	line-numbers = true
 
 # vi: ft=gitconfig
 [user]
