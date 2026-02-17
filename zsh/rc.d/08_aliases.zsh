@@ -30,7 +30,7 @@ fi
 (( ${+commands[diff]} )) && alias diff="diff --color=auto --new-file --text --recursive --unified"
 
 # Claude Code
-(( ${+commands[happy]} )) && alias yolo="happy yolo --dangerously-skip-permissions"
+alias yolo="happy yolo --dangerously-skip-permissions"
 
 # History suppression
 alias pwd=" pwd"
