@@ -22,8 +22,6 @@ venv/
 ### *env ###
 # pyenv
 .python-version
-# rbenv
-.ruby-version
 # nodenv
 .node-version
 # luaenv
@@ -33,8 +31,8 @@ venv/
 
 ### Vim ###
 # swap
-[._]*.s[a-w][a-z]
-[._]s[a-w][a-z]
+*.sw?
+.*.sw?
 # session
 Session.vim
 # temporary
