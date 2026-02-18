@@ -21,6 +21,11 @@ while (( $# )); do
     esac
 done
 
+# Resolve command to full path so sudo can find it outside its secure_path
+if (( $# )) && (( ${+commands[$1]} )); then
+    1=${commands[$1]}
+fi
+
 if (( glob )); then
     $run $~==*
 else
