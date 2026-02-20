@@ -32,6 +32,6 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-apt update
+apt update || true
 apt install -y "${PACKAGES[@]}"
 echo "Build dependencies installed successfully."
