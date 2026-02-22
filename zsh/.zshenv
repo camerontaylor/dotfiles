@@ -1,8 +1,17 @@
+# Add this as the VERY FIRST line of ~/.zshenv (before the ZDOTDIR block):
+echo "zshenv depth: ${_ZSHENV_DEPTH:-0}" >> /tmp/zshenv-debug.log
+(( _ZSHENV_DEPTH = ${_ZSHENV_DEPTH:-0} + 1 ))
+(( _ZSHENV_DEPTH > 3 )) && return
+
+
+
  # Determine own path if ZDOTDIR isn't set or home symlink exists
  if [[ -z $ZDOTDIR || -L $HOME/.zshenv ]]; then
      local homezshenv=$HOME/.zshenv
      ZDOTDIR=${homezshenv:A:h}
  fi
+ 
+ typeset -U path PATH
  # DOTFILES dir is parent to ZDOTDIR
  export DOTFILES=${ZDOTDIR:h}
 

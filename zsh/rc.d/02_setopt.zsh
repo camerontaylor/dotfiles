@@ -1,10 +1,11 @@
-setopt HIST_IGNORE_ALL_DUPS # remove all earlier duplicate lines
+setopt HIST_IGNORE_DUPS # skip consecutive duplicates
+setopt HIST_EXPIRE_DUPS_FIRST # expire duplicates first when trimming
 setopt APPEND_HISTORY # history appends to existing file
 setopt INC_APPEND_HISTORY # write after each command, not on exit
-setopt SHARE_HISTORY # share between sessions (implies inc_append)
-setopt EXTENDED_HISTORY # save each commands beginning timestamp and the duration to the history file
+setopt EXTENDED_HISTORY # save timestamp and duration per command
 setopt HIST_REDUCE_BLANKS # trim multiple insignificant blanks in history
 setopt HIST_IGNORE_SPACE # don’t store lines starting with space
+setopt HIST_VERIFY # show expanded history command before executing
 setopt EXTENDED_GLOB # treat special characters as part of patterns
 setopt CORRECT # try to correct the spelling of commands only
 unsetopt FLOW_CONTROL # disable stupid annoying keys
