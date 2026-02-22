@@ -64,3 +64,5 @@
 [user]
 	email = camerontaylor@gmail.com
 	name = Cameron Taylor
+[merge "ours"]
+	driver = true
