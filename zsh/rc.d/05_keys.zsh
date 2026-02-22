@@ -29,8 +29,8 @@ key[CtrlRight]=${terminfo[kRIT5]}
 [[ -n ${key[Delete]}    ]] && bindkey ${key[Delete]}    delete-char
 [[ -n ${key[Left]}      ]] && bindkey ${key[Left]}      backward-char
 [[ -n ${key[Right]}     ]] && bindkey ${key[Right]}     forward-char
-[[ -n ${key[Up]}        ]] && bindkey ${key[Up]}        up-line-or-beginning-search
-[[ -n ${key[Down]}      ]] && bindkey ${key[Down]}      down-line-or-beginning-search
+[[ -n ${key[Up]}        ]] && bindkey ${key[Up]}        up-line-or-history
+[[ -n ${key[Down]}      ]] && bindkey ${key[Down]}      down-line-or-history
 [[ -n ${key[PageUp]}    ]] && bindkey ${key[PageUp]}    beginning-of-buffer-or-history
 [[ -n ${key[PageDown]}  ]] && bindkey ${key[PageDown]}  end-of-buffer-or-history
 [[ -n ${key[Backspace]} ]] && bindkey ${key[Backspace]} backward-delete-char
@@ -68,8 +68,8 @@ bindkey ${csi[base]}${csi[special-Insert]}${csi[special-suffix]}                
 bindkey ${csi[base]}${csi[special-Delete]}${csi[special-suffix]}                        delete-char
 bindkey ${csi[base]}${csi[special-Left]}${csi[special-suffix]}                          backward-char
 bindkey ${csi[base]}${csi[special-Right]}${csi[special-suffix]}                         forward-char
-bindkey ${csi[base]}${csi[special-Up]}${csi[special-suffix]}                            up-line-or-beginning-search
-bindkey ${csi[base]}${csi[special-Down]}${csi[special-suffix]}                          down-line-or-beginning-search
+bindkey ${csi[base]}${csi[special-Up]}${csi[special-suffix]}                            up-line-or-history
+bindkey ${csi[base]}${csi[special-Down]}${csi[special-suffix]}                          down-line-or-history
 bindkey ${csi[base]}${csi[special-PageUp]}${csi[special-suffix]}                        beginning-of-buffer-or-history
 bindkey ${csi[base]}${csi[special-PageDown]}${csi[special-suffix]}                      end-of-buffer-or-history
 bindkey ${csi[base]}${csi[exception-ShiftTab]}                                          reverse-menu-complete
