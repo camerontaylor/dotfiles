@@ -1,0 +1,279 @@
+# ============================================================================
+# starship.toml — Prompt config for dev environment
+# ============================================================================
+# Place at: ~/.config/starship.toml
+#
+# Tailored for: Node/React/TypeScript, Docker, Git, WSL2, PostgreSQL
+# Docs: https://starship.rs/config/
+# ============================================================================
+
+# Prompt structure: newline before each prompt for breathing room
+add_newline = true
+
+# Timeout for commands that starship runs (ms)
+command_timeout = 1000
+
+# Overall format — controls which modules appear and in what order
+format = """
+$username\
+$hostname\
+$directory\
+$git_branch\
+$git_status\
+$git_state\
+$docker_context\
+$nodejs\
+$package\
+$python\
+$rust\
+$golang\
+$fill\
+$cmd_duration\
+$line_break\
+$character"""
+
+# Right-side prompt (shows time, keeps left side clean)
+right_format = """$time"""
+
+# ---------------------------------------------------------------------------
+# Character (the prompt symbol)
+# ---------------------------------------------------------------------------
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold purple)"
+
+# ---------------------------------------------------------------------------
+# Directory
+# ---------------------------------------------------------------------------
+[directory]
+truncation_length = 4
+truncation_symbol = "…/"
+truncate_to_repo = true
+style = "bold cyan"
+
+# Shorten known paths for cleaner display
+[directory.substitutions]
+"~/projects" = "proj"
+"~/work" = "work"
+
+# ---------------------------------------------------------------------------
+# Git Branch
+# ---------------------------------------------------------------------------
+[git_branch]
+format = "on [$symbol$branch(:$remote_branch)]($style) "
+symbol = " "
+style = "bold purple"
+truncation_length = 30
+truncation_symbol = "…"
+
+# ---------------------------------------------------------------------------
+# Git Status — compact indicators
+# ---------------------------------------------------------------------------
+[git_status]
+format = '([$all_status$ahead_behind]($style) )'
+style = "bold red"
+conflicted = "=${count} "
+ahead = "⇡${count} "
+behind = "⇣${count} "
+diverged = "⇕⇡${ahead_count}⇣${behind_count} "
+untracked = "?${count} "
+stashed = "*${count} "
+modified = "!${count} "
+staged = "+${count} "
+renamed = "»${count} "
+deleted = "✘${count} "
+
+# ---------------------------------------------------------------------------
+# Git State (rebase, merge, cherry-pick in progress)
+# ---------------------------------------------------------------------------
+[git_state]
+format = '\([$state( $progress_current/$progress_total)]($style)\) '
+style = "bold yellow"
+rebase = "REBASING"
+merge = "MERGING"
+revert = "REVERTING"
+cherry_pick = "CHERRY-PICKING"
+bisect = "BISECTING"
+
+# ---------------------------------------------------------------------------
+# Docker Context
+# ---------------------------------------------------------------------------
+[docker_context]
+format = "via [$symbol$context]($style) "
+symbol = " "
+style = "bold blue"
+only_with_files = true
+detect_files = ["docker-compose.yml", "docker-compose.yaml", "Dockerfile", "compose.yml", "compose.yaml"]
+
+# ---------------------------------------------------------------------------
+# Node.js
+# ---------------------------------------------------------------------------
+[nodejs]
+format = "via [$symbol($version)]($style) "
+symbol = " "
+style = "bold green"
+detect_files = ["package.json", ".node-version", ".nvmrc"]
+detect_folders = ["node_modules"]
+# Only show major.minor to reduce noise
+version_format = "v${major}.${minor}"
+
+# ---------------------------------------------------------------------------
+# Package version (from package.json)
+# ---------------------------------------------------------------------------
+[package]
+format = "is [$symbol$version]($style) "
+symbol = "📦 "
+style = "208"
+display_private = true
+
+# ---------------------------------------------------------------------------
+# Python (for scripts, tools, pgcli, etc.)
+# ---------------------------------------------------------------------------
+[python]
+format = 'via [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\))]($style) '
+symbol = " "
+style = "bold yellow"
+detect_files = [".python-version", "Pipfile", "pyproject.toml", "requirements.txt", "setup.py", "tox.ini"]
+python_binary = ["python3", "python"]
+
+# ---------------------------------------------------------------------------
+# Rust (for tools like starship, ripgrep, etc.)
+# ---------------------------------------------------------------------------
+[rust]
+format = "via [$symbol($version)]($style) "
+symbol = "🦀 "
+style = "bold red"
+
+# ---------------------------------------------------------------------------
+# Go
+# ---------------------------------------------------------------------------
+[golang]
+format = "via [$symbol($version)]($style) "
+symbol = " "
+style = "bold cyan"
+
+# ---------------------------------------------------------------------------
+# Command Duration — show for slow commands
+# ---------------------------------------------------------------------------
+[cmd_duration]
+min_time = 3_000                # Show if command took > 3 seconds
+format = "took [$duration]($style) "
+style = "bold yellow"
+show_milliseconds = false
+show_notifications = false
+
+# ---------------------------------------------------------------------------
+# Fill (pushes right-aligned content to the right)
+# ---------------------------------------------------------------------------
+[fill]
+symbol = " "
+
+# ---------------------------------------------------------------------------
+# Time (right prompt, subtle)
+# ---------------------------------------------------------------------------
+[time]
+disabled = false
+format = "[$time]($style)"
+style = "dimmed white"
+time_format = "%H:%M"
+
+# ---------------------------------------------------------------------------
+# Username & Hostname (only show in SSH or when not default user)
+# ---------------------------------------------------------------------------
+[username]
+show_always = false
+format = "[$user]($style)@"
+style_user = "bold yellow"
+
+[hostname]
+ssh_only = true
+format = "[$hostname]($style) in "
+style = "bold green"
+
+# ---------------------------------------------------------------------------
+# Disabled modules (reduce clutter)
+# ---------------------------------------------------------------------------
+[aws]
+disabled = true
+
+[gcloud]
+disabled = true
+
+[azure]
+disabled = true
+
+[terraform]
+disabled = true
+
+[vagrant]
+disabled = true
+
+[kotlin]
+disabled = true
+
+[java]
+disabled = true
+
+[ruby]
+disabled = true
+
+[php]
+disabled = true
+
+[perl]
+disabled = true
+
+[lua]
+disabled = true
+
+[swift]
+disabled = true
+
+[dart]
+disabled = true
+
+[elixir]
+disabled = true
+
+[elm]
+disabled = true
+
+[erlang]
+disabled = true
+
+[haskell]
+disabled = true
+
+[julia]
+disabled = true
+
+[nim]
+disabled = true
+
+[ocaml]
+disabled = true
+
+[zig]
+disabled = true
+
+[vlang]
+disabled = true
+
+[scala]
+disabled = true
+
+[crystal]
+disabled = true
+
+[spack]
+disabled = true
+
+[nix_shell]
+disabled = true
+
+[conda]
+disabled = true
+
+[buf]
+disabled = true
