@@ -142,6 +142,32 @@ if (( ! ${+commands[wtp]} )); then
     fi
 fi
 
+if (( ! ${+commands[glab]} )); then
+    print "Installing glab..."
+    local glab_arch=$(uname -m)
+    local glab_os=$(uname -s)
+    if [[ $glab_os == Linux && ($glab_arch == x86_64 || $glab_arch == aarch64) ]]; then
+        [[ $glab_arch == aarch64 ]] && glab_arch=arm64
+        local glab_version
+        glab_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/gitlab-org/cli/releases/latest | sed 's|.*/tag/v||')
+        if [[ -n $glab_version ]]; then
+            local glab_tmp=$(mktemp -d)
+            if curl -fsSL "https://github.com/gitlab-org/cli/releases/download/v${glab_version}/glab_${glab_version}_${glab_os}_${glab_arch}.tar.gz" | tar xz -C $glab_tmp; then
+                zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
+                chmod +x $HOME/.local/bin/glab
+                print "  ...done"
+            else
+                print "  ...failed to download glab, skipping"
+            fi
+            rm -rf $glab_tmp
+        else
+            print "  ...failed to determine latest glab version, skipping"
+        fi
+    else
+        print "  ...unsupported platform for glab auto-install, skipping"
+    fi
+fi
+
 # Install rustup/cargo if not present
 if (( ! ${+commands[cargo]} )); then
     print "Installing rustup and cargo..."
