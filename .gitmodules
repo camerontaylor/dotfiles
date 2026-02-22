@@ -427,9 +427,6 @@
 [submodule "zsh/plugins/archive"]
 	path = zsh/plugins/archive
 	url = https://github.com/romkatv/archive.git
-[submodule "zsh/plugins/autoenv"]
-	path = zsh/plugins/autoenv
-	url = https://github.com/Tarrasch/zsh-autoenv.git
 [submodule "zsh/plugins/autopair"]
 	path = zsh/plugins/autopair
 	url = https://github.com/hlissner/zsh-autopair.git
