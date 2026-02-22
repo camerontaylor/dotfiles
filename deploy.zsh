@@ -168,6 +168,24 @@ if (( ! ${+commands[glab]} )); then
     fi
 fi
 
+if (( ! ${+commands[direnv]} )); then
+    print "Installing direnv..."
+    local direnv_arch=$(uname -m)
+    local direnv_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    if [[ $direnv_os == linux && ($direnv_arch == x86_64 || $direnv_arch == aarch64) ]]; then
+        [[ $direnv_arch == x86_64 ]] && direnv_arch=amd64
+        [[ $direnv_arch == aarch64 ]] && direnv_arch=arm64
+        if curl -fsSL "https://github.com/direnv/direnv/releases/latest/download/direnv.${direnv_os}-${direnv_arch}" -o $HOME/.local/bin/direnv; then
+            chmod +x $HOME/.local/bin/direnv
+            print "  ...done"
+        else
+            print "  ...failed to download direnv, skipping"
+        fi
+    else
+        print "  ...unsupported platform for direnv auto-install, skipping"
+    fi
+fi
+
 # Install rustup/cargo if not present
 if (( ! ${+commands[cargo]} )); then
     print "Installing rustup and cargo..."
