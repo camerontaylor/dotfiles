@@ -34,4 +34,10 @@ fi
 
 apt update || true
 apt install -y "${PACKAGES[@]}"
+
+
+if ! command -v moor &>/dev/null; then
+  ./install-moor.sh
+fi
+
 echo "Build dependencies installed successfully."
