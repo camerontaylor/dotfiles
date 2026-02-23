@@ -11,3 +11,4 @@ else
 
     source $ZDOTDIR/plugins/z/zsh-z.plugin.zsh
 fi
+true

@@ -24,3 +24,6 @@ done
 
  unset envfile homezshenv
 #  [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env" 2>&1 || true
+
+# opencode
+export PATH=/home/ctaylor/.opencode/bin:$PATH
