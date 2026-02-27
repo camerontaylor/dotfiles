@@ -1,0 +1,15 @@
+[tools]
+node = "lts"
+bun = "latest"
+ruby = "latest"
+# npm global packages (migrated from nvm's default-packages)
+"npm:@anthropic-ai/claude-code" = "latest"
+"npm:happy-coder" = "latest"
+
+[settings]
+# Respect version files: .node-version, .ruby-version, .tool-versions
+idiomatic_version_file = true
+
+[settings.ruby]
+# Use precompiled ruby binaries (faster installs; set to false to compile from source)
+compile = false
