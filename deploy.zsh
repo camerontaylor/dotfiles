@@ -22,7 +22,8 @@ XDG_STATE_HOME=$HOME/.local/state
 print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
-zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,nvm,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
+zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
+zf_mkdir -p $XDG_CONFIG_HOME/mise
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
@@ -55,6 +56,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/ranger $XDG_CONFIG_HOME/ranger/rc.conf
 zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
+zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
 zf_ln -sfn $SCRIPT_DIR/yazi/init.lua $XDG_CONFIG_HOME/yazi/init.lua
 zf_ln -sfn $SCRIPT_DIR/yazi/keymap.toml $XDG_CONFIG_HOME/yazi/keymap.toml
 zf_ln -sfn $SCRIPT_DIR/yazi/theme.toml $XDG_CONFIG_HOME/yazi/theme.toml
@@ -168,21 +170,37 @@ if (( ! ${+commands[glab]} )); then
     fi
 fi
 
-if (( ! ${+commands[direnv]} )); then
-    print "Installing direnv..."
-    local direnv_arch=$(uname -m)
-    local direnv_os=$(uname -s | tr '[:upper:]' '[:lower:]')
-    if [[ $direnv_os == linux && ($direnv_arch == x86_64 || $direnv_arch == aarch64) ]]; then
-        [[ $direnv_arch == x86_64 ]] && direnv_arch=amd64
-        [[ $direnv_arch == aarch64 ]] && direnv_arch=arm64
-        if curl -fsSL "https://github.com/direnv/direnv/releases/latest/download/direnv.${direnv_os}-${direnv_arch}" -o $HOME/.local/bin/direnv; then
-            chmod +x $HOME/.local/bin/direnv
-            print "  ...done"
+if (( ! ${+commands[mise]} )); then
+    print "Installing mise..."
+    local mise_arch=$(uname -m)
+    local mise_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    if [[ $mise_os == linux && ($mise_arch == x86_64 || $mise_arch == aarch64) ]]; then
+        [[ $mise_arch == x86_64 ]] && mise_arch=x64
+        [[ $mise_arch == aarch64 ]] && mise_arch=arm64
+        local mise_version
+        mise_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/jdx/mise/releases/latest | sed 's|.*/tag/v||')
+        if [[ -n $mise_version ]]; then
+            if curl -fsSL "https://github.com/jdx/mise/releases/download/v${mise_version}/mise-v${mise_version}-${mise_os}-${mise_arch}" -o $HOME/.local/bin/mise; then
+                chmod +x $HOME/.local/bin/mise
+                export PATH=$HOME/.local/bin:$PATH
+                print "  ...done"
+            else
+                print "  ...failed to download mise, skipping"
+            fi
         else
-            print "  ...failed to download direnv, skipping"
+            print "  ...failed to determine latest mise version, skipping"
         fi
     else
-        print "  ...unsupported platform for direnv auto-install, skipping"
+        print "  ...unsupported platform for mise auto-install, skipping"
+    fi
+fi
+
+if (( ${+commands[mise]} )); then
+    print "Installing mise tools (node, bun, ruby)..."
+    if mise install > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install some mise tools, run 'mise install' manually"
     fi
 fi
 
@@ -251,8 +269,6 @@ print "Linking env-wrappers' plugins..."
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/goenv/goenv/plugins/go-build $XDG_DATA_HOME/goenv/plugins/go-build
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/jenv/jenv/available-plugins/export $XDG_DATA_HOME/jenv/plugins/export
     zf_ln -sfn $SCRIPT_DIR/env-wrappers/pyenv/default-packages $XDG_DATA_HOME/pyenv/default-packages
-    zf_ln -sfn $SCRIPT_DIR/env-wrappers/rbenv/default-gems $XDG_DATA_HOME/rbenv/default-gems
-    zf_ln -sfn $SCRIPT_DIR/env-wrappers/nvm/default-packages $XDG_DATA_HOME/nvm/default-packages
 print "  ...done"
 
 # Trigger zsh run with powerlevel10k prompt to download gitstatusd

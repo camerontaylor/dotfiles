@@ -5,7 +5,7 @@ export VIRTUAL_ENV_DISABLE_PROMPT=1
 # Lazy init wrapper on first call
 () {
     local wrapper
-    local wrappers=(goenv jenv luaenv nodenv phpenv plenv pyenv rbenv)
+    local wrappers=(goenv jenv luaenv nodenv phpenv plenv pyenv)
     for wrapper in $wrappers[@]; do
         eval "$wrapper () {
             unset -f $wrapper
