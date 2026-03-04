@@ -32,6 +32,9 @@ fi
 # Claude Code
 alias yolo="happy yolo --dangerously-skip-permissions"
 
+# OpenClaw
+alias openclaw='docker compose -f ~/repos/deploy/openclaw/docker-compose.yml exec openclaw-gateway openclaw'
+
 # History suppression
 alias pwd=" pwd"
 alias exit=" exit"
