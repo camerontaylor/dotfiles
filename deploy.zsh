@@ -204,6 +204,16 @@ if (( ${+commands[mise]} )); then
     fi
 fi
 
+# Install Claude Code via official installer
+if (( ! ${+commands[claude]} )); then
+    print "Installing Claude Code..."
+    if curl -fsSL https://claude.ai/install.sh | bash > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install Claude Code"
+    fi
+fi
+
 # Install rustup/cargo if not present
 if (( ! ${+commands[cargo]} )); then
     print "Installing rustup and cargo..."
