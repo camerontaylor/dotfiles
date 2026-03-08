@@ -2,7 +2,7 @@ vim.loader.enable()
 
 vim.o.title = true
 vim.o.titlelen = 0
-vim.o.titlestring = 'nvim: %{expand("%:p")}'
+vim.o.titlestring = 'nvim: %{substitute(expand("%:p"), $HOME, "~", "")}'
 vim.o.colorcolumn = '+1'
 vim.o.laststatus = 3
 vim.o.expandtab = true
@@ -45,6 +45,7 @@ vim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
 vim.lsp.log.set_level(vim.log.levels.OFF)
+
 vim.diagnostic.config({
   severity_sort = true,
   virtual_text = { source = 'if_many' },
