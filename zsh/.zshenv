@@ -55,6 +55,7 @@ _zshenv_dbg "DOTFILES=$DOTFILES"
 # Source local env files — skip if dir is empty/missing
 if [[ -d $ZDOTDIR/env.d ]]; then
     for envfile in $ZDOTDIR/env.d/*(N); do
+        [[ $envfile == *.enc ]] && continue
         _zshenv_dbg "sourcing $envfile"
         if ! source "$envfile" 2>&1; then
             echo "Warning: error in $envfile" >&2

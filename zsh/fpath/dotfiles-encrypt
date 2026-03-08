@@ -1,0 +1,41 @@
+# Encrypt a gitignored secrets file with age+sops
+# Usage: dotfiles-encrypt zsh/env.d/90_secrets.zsh [more files...]
+# Creates/updates the .enc file alongside each original
+
+local dotfiles_dir=${${(%):-%x}:A:h:h:h}
+local age_key=$XDG_CONFIG_HOME/sops/age/keys.txt
+
+if (( ! ${+commands[sops]} )); then
+    print "Error: sops not found. Run 'mise install' first." >&2
+    return 1
+fi
+if [[ ! -f $age_key ]]; then
+    print "Error: age key not found at $age_key. Run deploy.zsh first." >&2
+    return 1
+fi
+
+if (( $# == 0 )); then
+    print "Usage: dotfiles-encrypt <file> [file...]" >&2
+    print "Example: dotfiles-encrypt zsh/env.d/90_secrets.zsh" >&2
+    return 1
+fi
+
+local pubkey
+pubkey=$(grep 'public key:' $age_key | awk '{print $NF}')
+if [[ -z $pubkey ]]; then
+    print "Error: could not extract public key from $age_key" >&2
+    return 1
+fi
+
+local file
+for file in "$@"; do
+    # Resolve relative to dotfiles root
+    local src=$dotfiles_dir/$file
+    [[ -f $src ]] || { print "Error: $file not found" >&2; continue }
+    local enc=${src}.enc
+    if sops --encrypt --age $pubkey $src > $enc; then
+        print "Encrypted $file -> ${file}.enc"
+    else
+        print "Error: failed to encrypt $file" >&2
+    fi
+done

@@ -5,6 +5,8 @@ ruby = "latest"
 # npm global packages (migrated from nvm's default-packages)
 "npm:happy-coder" = "latest"
 python = "latest"
+sops = "latest"
+age = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

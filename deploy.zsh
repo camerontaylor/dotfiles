@@ -204,6 +204,36 @@ if (( ${+commands[mise]} )); then
     fi
 fi
 
+# Ensure age key exists for secrets encryption/decryption
+local age_key_dir=$XDG_CONFIG_HOME/sops/age
+if [[ ! -f $age_key_dir/keys.txt ]]; then
+    if (( ${+commands[age-keygen]} )); then
+        print "Generating age key for secrets..."
+        zf_mkdir -p $age_key_dir
+        age-keygen -o $age_key_dir/keys.txt 2>/dev/null
+        chmod 600 $age_key_dir/keys.txt
+        print "  ...done"
+        print "  IMPORTANT: Back up $age_key_dir/keys.txt to your password manager!"
+    fi
+fi
+
+# Decrypt secrets — find all .enc files in gitignored ranges and decrypt
+if (( ${+commands[sops]} )); then
+    local enc_file
+    for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
+        local target=${enc_file%.enc}
+        if [[ ! -f $target || $enc_file -nt $target ]]; then
+            print "Decrypting ${enc_file}..."
+            if sops --decrypt $enc_file > $target 2>/dev/null; then
+                chmod 600 $target
+                print "  ...done"
+            else
+                print "  ...failed to decrypt $enc_file (missing age key?)"
+            fi
+        fi
+    done
+fi
+
 # Install Claude Code via official installer
 if (( ! ${+commands[claude]} )); then
     print "Installing Claude Code..."

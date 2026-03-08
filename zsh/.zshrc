@@ -17,6 +17,7 @@ fi
 
 # Include interactive rc files
 for conffile in $ZDOTDIR/rc.d/*(N); do
+  [[ $conffile == *.enc ]] && continue
   _zshrc_dbg "sourcing $conffile"
   if ! source "$conffile" 2>&1; then
     echo "Warning: error in $conffile" >&2
