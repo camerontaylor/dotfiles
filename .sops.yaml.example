@@ -1,0 +1,11 @@
+# SOPS configuration for secrets encryption
+# This is an example - deploy.zsh generates .sops.yaml with your actual age public key
+#
+# To set up secrets encryption:
+#   1. Run ./deploy.zsh (generates age key if needed and creates .sops.yaml)
+#   2. Back up ~/.config/sops/age/keys.txt to your password manager
+#
+# The generated .sops.yaml will look like:
+creation_rules:
+  - path_regex: \.enc$
+    age: age1yourpublickeyhere
