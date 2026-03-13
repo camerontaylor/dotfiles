@@ -35,6 +35,9 @@ alias yolo="happy yolo --dangerously-skip-permissions"
 # OpenClaw
 alias openclaw='docker compose -f ~/repos/deploy/openclaw/docker-compose.yml exec openclaw-gateway openclaw'
 
+# GTK portal file dialogs
+export GTK_USE_PORTAL=1
+
 # History suppression
 alias pwd=" pwd"
 alias exit=" exit"

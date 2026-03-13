@@ -27,7 +27,8 @@
 	lg = log --graph --pretty=fuller --decorate --color --show-signature
 	ls = log --oneline --abbrev-commit --color
 	df = diff --color
-	de = diff --color
+	dc = diff --color
+	dw = diff --color --word-diff
 	amend = commit --amend
 [credential]
 	helper = cache --socket ~/.cache/git-credential-cache/socket
@@ -46,8 +47,9 @@
 	pager = less --quit-if-one-screen
 [pager]
 	diff = git-diff-pager
-	df = diff-so-fancy | less --quit-if-one-screen --pattern '^(Date|added|deleted|modified): '
-	de = delta
+	df = delta
+	dc = delta --side-by-side=false --line-numbers=false
+	dw = delta --side-by-side=false --word-diff-regex=.
 [submodule]
 	fetchJobs = 0
 	recurse = true

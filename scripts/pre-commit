@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+# Auto-encrypt secrets before commit
+# Runs on: git commit (pre-commit hook)
+
+setopt extended_glob
+
+SCRIPT_DIR=${0:A:h}
+
+# Secret paths (plaintext gitignored, *.enc tracked)
+local -a secret_patterns=(
+    "zsh/env.d/9[0-9]_*"
+    "zsh/rc.d/9[0-9]_*"
+    "nvim/init/9[0-9]_*"
+)
+
+# Check if sops is available
+if (( ! ${+commands[sops]} )); then
+    print "warning: sops not found, skipping secret encryption"
+    exit 0
+fi
+
+local encrypted=false
+
+for pattern in $secret_patterns[@]; do
+    # Find plaintext files (excluding .enc files)
+    for plaintext in $pattern~*.enc(N); do
+        local enc_file="${plaintext}.enc"
+
+        # Check if plaintext is newer than encrypted or encrypted doesn't exist
+        if [[ ! -f $enc_file || $plaintext -nt $enc_file ]]; then
+            print "Encrypting $plaintext -> $enc_file..."
+
+            if sops --encrypt --input-type binary --output-type binary $plaintext > $enc_file 2>/dev/null; then
+                git add $enc_file
+                encrypted=true
+                print "  ...done"
+            else
+                print "  ...failed to encrypt $plaintext"
+                exit 1
+            fi
+        fi
+    done
+done
+
+exit 0

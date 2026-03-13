@@ -1,4 +1,9 @@
-export PAGER=less
+# Pager configuration (prefer moor, fallback to less)
+if (( ${+commands[moor]} )); then
+    export PAGER=moor
+else
+    export PAGER=less
+fi
 export LESS="--RAW-CONTROL-CHARS --ignore-case --hilite-unread --LONG-PROMPT --window=-4 --tabs=4 --mouse --wheel-lines=3"
 export READNULLCMD=$PAGER
 

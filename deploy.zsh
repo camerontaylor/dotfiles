@@ -58,6 +58,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+zf_ln -sfn $SCRIPT_DIR/configs/gtk-3.0-bookmarks $XDG_CONFIG_HOME/gtk-3.0/bookmarks
 zf_ln -sfn $SCRIPT_DIR/yazi/init.lua $XDG_CONFIG_HOME/yazi/init.lua
 zf_ln -sfn $SCRIPT_DIR/yazi/keymap.toml $XDG_CONFIG_HOME/yazi/keymap.toml
 zf_ln -sfn $SCRIPT_DIR/yazi/theme.toml $XDG_CONFIG_HOME/yazi/theme.toml
@@ -87,6 +88,7 @@ print "Installing git hooks..."
 zf_mkdir -p .git/hooks
 zf_ln -sfn ../../deploy.zsh .git/hooks/post-merge
 zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
+zf_ln -sfn $SCRIPT_DIR/scripts/pre-commit .git/hooks/pre-commit
 print "  ...done"
 
 if (( ${+commands[make]} )); then
@@ -174,6 +176,16 @@ if (( ! ${+commands[glab]} )); then
     fi
 fi
 
+# Install moor (modern terminal pager) if not present
+if (( ! ${+commands[moor]} )); then
+    print "Installing moor..."
+    if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install moor, skipping"
+    fi
+fi
+
 if (( ! ${+commands[mise]} )); then
     print "Installing mise..."
     local mise_arch=$(uname -m)
@@ -200,16 +212,18 @@ if (( ! ${+commands[mise]} )); then
 fi
 
 if (( ${+commands[mise]} )); then
-    print "Installing mise tools (node, bun, ruby)..."
-    if mise install > /dev/null 2>&1; then
+    print "Installing/upgrading mise tools (node, bun, ruby, etc.)..."
+    mise install > /dev/null 2>&1
+    if mise upgrade > /dev/null 2>&1; then
         print "  ...done"
     else
-        print "  ...failed to install some mise tools, run 'mise install' manually"
+        print "  ...some mise tools may need manual attention, run 'mise upgrade' to check"
     fi
 fi
 
 # Ensure age key exists for secrets encryption/decryption
 local age_key_dir=$XDG_CONFIG_HOME/sops/age
+local age_public_key
 if [[ ! -f $age_key_dir/keys.txt ]]; then
     if (( ${+commands[age-keygen]} )); then
         print "Generating age key for secrets..."
@@ -221,9 +235,47 @@ if [[ ! -f $age_key_dir/keys.txt ]]; then
     fi
 fi
 
+# Configure .sops.yaml with age public key
+if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
+    age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
+    if [[ -n $age_public_key ]]; then
+        print "Configuring .sops.yaml..."
+        cat > $SCRIPT_DIR/.sops.yaml << EOF
+creation_rules:
+  - path_regex: \.enc$
+    age: $age_public_key
+EOF
+        print "  ...done"
+    fi
+fi
+
 # Decrypt secrets — find all .enc files in gitignored ranges and decrypt
 if (( ${+commands[sops]} )); then
-    local enc_file
+    # Safety check: warn if plaintext is newer than .enc (uncommitted changes)
+    local has_uncommitted_secrets=false
+    local enc_file plaintext
+    for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
+        plaintext=${enc_file%.enc}
+        if [[ -f $plaintext && $plaintext -nt $enc_file ]]; then
+            has_uncommitted_secrets=true
+            print "WARNING: $plaintext has uncommitted changes (newer than .enc)"
+        fi
+    done
+
+    if $has_uncommitted_secrets; then
+        print ""
+        print "ERROR: Uncommitted secret changes detected!"
+        print "  Your plaintext changes would be overwritten by decryption."
+        print ""
+        print "To fix:"
+        print "  1. Commit your changes: git commit -am 'update secrets'"
+        print "     (pre-commit hook will encrypt them automatically)"
+        print "  2. Or discard changes: rm zsh/*/9[0-9]_* nvim/init/9[0-9]_*"
+        print "  3. Then re-run: ./deploy.zsh"
+        print ""
+        exit 1
+    fi
+
     for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
         local target=${enc_file%.enc}
         if [[ ! -f $target || $enc_file -nt $target ]]; then
@@ -259,7 +311,7 @@ if (( ! ${+commands[cargo]} )); then
     fi
 fi
 
-# Install Rust CLI tools if cargo is available
+# Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
     local -a rust_tools=(git-delta bat eza fd-find zoxide)
     for tool_pkg in $rust_tools[@]; do
@@ -276,8 +328,47 @@ if (( ${+commands[cargo]} )); then
             else
                 print "  ...failed to install $tool_pkg"
             fi
+        else
+            print "Upgrading $tool_pkg via cargo..."
+            if cargo install $tool_pkg --force > /dev/null 2>&1; then
+                print "  ...done"
+            else
+                print "  ...failed to upgrade $tool_pkg"
+            fi
         fi
     done
+fi
+
+# Update/upgrade Homebrew packages if brew is available
+if (( ${+commands[brew]} )); then
+    print "Updating Homebrew..."
+    if brew update > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...brew update failed"
+    fi
+    print "Upgrading Homebrew packages..."
+    if brew upgrade > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...brew upgrade had issues (may be normal if no updates)"
+    fi
+    # Install/upgrade engram
+    if (( ! ${+commands[engram]} )); then
+        print "Installing engram via brew..."
+        if brew install gentleman-programming/tap/engram > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install engram"
+        fi
+    else
+        print "Upgrading engram via brew..."
+        if brew upgrade gentleman-programming/tap/engram > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...engram already at latest or upgrade failed"
+        fi
+    fi
 fi
 
 if (( ${+commands[vim]} )); then
