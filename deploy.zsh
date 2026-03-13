@@ -2,6 +2,16 @@
 
 setopt extended_glob err_exit
 
+# Parse arguments
+local upgrade_mode=false
+for arg in "$@"; do
+    case $arg in
+        --upgrade|-u)
+            upgrade_mode=true
+            ;;
+    esac
+done
+
 zmodload -m -F zsh/files b:zf_\*
 
 SCRIPT_DIR=${0:A:h}
@@ -212,12 +222,12 @@ if (( ! ${+commands[mise]} )); then
 fi
 
 if (( ${+commands[mise]} )); then
-    print "Installing/upgrading mise tools (node, bun, ruby, etc.)..."
+    print "Installing mise tools (node, bun, ruby, etc.)..."
     mise install > /dev/null 2>&1
-    if mise upgrade > /dev/null 2>&1; then
+    if $upgrade_mode && mise upgrade > /dev/null 2>&1; then
         print "  ...done"
     else
-        print "  ...some mise tools may need manual attention, run 'mise upgrade' to check"
+        print "  ...done (run with --upgrade to also upgrade existing tools)"
     fi
 fi
 
@@ -280,10 +290,20 @@ if (( ${+commands[sops]} )); then
         local target=${enc_file%.enc}
         if [[ ! -f $target || $enc_file -nt $target ]]; then
             print "Decrypting ${enc_file}..."
-            if sops --decrypt $enc_file > $target 2>/dev/null; then
-                chmod 600 $target
+            local temp_file=$(mktemp)
+            if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+                chmod 600 $temp_file
+                # Only update if content differs (preserves mtime if identical)
+                if [[ ! -f $target ]] || ! cmp -s $temp_file $target; then
+                    mv $temp_file $target
+                else
+                    rm $temp_file
+                    # Touch target to match .enc mtime
+                    touch -r $enc_file $target
+                fi
                 print "  ...done"
             else
+                rm -f $temp_file
                 print "  ...failed to decrypt $enc_file (missing age key?)"
             fi
         fi
@@ -328,7 +348,7 @@ if (( ${+commands[cargo]} )); then
             else
                 print "  ...failed to install $tool_pkg"
             fi
-        else
+        elif $upgrade_mode; then
             print "Upgrading $tool_pkg via cargo..."
             if cargo install $tool_pkg --force > /dev/null 2>&1; then
                 print "  ...done"
@@ -339,8 +359,8 @@ if (( ${+commands[cargo]} )); then
     done
 fi
 
-# Update/upgrade Homebrew packages if brew is available
-if (( ${+commands[brew]} )); then
+# Update/upgrade Homebrew packages if brew is available (upgrade mode only)
+if (( ${+commands[brew]} )) && $upgrade_mode; then
     print "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
         print "  ...done"
@@ -353,21 +373,22 @@ if (( ${+commands[brew]} )); then
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
     fi
-    # Install/upgrade engram
-    if (( ! ${+commands[engram]} )); then
-        print "Installing engram via brew..."
-        if brew install gentleman-programming/tap/engram > /dev/null 2>&1; then
-            print "  ...done"
-        else
-            print "  ...failed to install engram"
-        fi
+fi
+
+# Install engram via brew if not present
+if (( ${+commands[brew]} )) && (( ! ${+commands[engram]} )); then
+    print "Installing engram via brew..."
+    if brew install gentleman-programming/tap/engram > /dev/null 2>&1; then
+        print "  ...done"
     else
-        print "Upgrading engram via brew..."
-        if brew upgrade gentleman-programming/tap/engram > /dev/null 2>&1; then
-            print "  ...done"
-        else
-            print "  ...engram already at latest or upgrade failed"
-        fi
+        print "  ...failed to install engram"
+    fi
+elif (( ${+commands[brew]} )) && $upgrade_mode; then
+    print "Upgrading engram via brew..."
+    if brew upgrade gentleman-programming/tap/engram > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...engram already at latest or upgrade failed"
     fi
 fi
 
