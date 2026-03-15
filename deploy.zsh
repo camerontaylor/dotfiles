@@ -33,7 +33,7 @@ print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
-zf_mkdir -p $XDG_CONFIG_HOME/mise
+zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
@@ -68,6 +68,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+zf_ln -sfn $SCRIPT_DIR/configs/litellm/config.yaml $XDG_CONFIG_HOME/litellm/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/gtk-3.0-bookmarks $XDG_CONFIG_HOME/gtk-3.0/bookmarks
 zf_ln -sfn $SCRIPT_DIR/yazi/init.lua $XDG_CONFIG_HOME/yazi/init.lua
 zf_ln -sfn $SCRIPT_DIR/yazi/keymap.toml $XDG_CONFIG_HOME/yazi/keymap.toml
@@ -308,6 +309,23 @@ if (( ${+commands[sops]} )); then
             fi
         fi
     done
+fi
+
+# Install LiteLLM proxy via uv tool
+if (( ${+commands[uv]} )) && (( ! ${+commands[litellm]} )); then
+    print "Installing litellm proxy..."
+    if uv tool install 'litellm[proxy]' > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install litellm, skipping"
+    fi
+elif (( ${+commands[uv]} )) && $upgrade_mode; then
+    print "Upgrading litellm proxy..."
+    if uv tool upgrade litellm > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...litellm already at latest or upgrade failed"
+    fi
 fi
 
 # Install Claude Code via official installer
