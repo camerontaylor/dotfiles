@@ -4,9 +4,14 @@ bun = "latest"
 ruby = "latest"
 # npm global packages (migrated from nvm's default-packages)
 "npm:happy-coder" = "latest"
+"npm:@biomejs/biome" = "latest"
+"npm:@openai/codex" = "latest"
 python = "latest"
 sops = "latest"
 age = "latest"
+"npm:oh-my-codex" = "latest"
+"npm:@google/gemini-cli" = "latest"
+"npm:oh-my-claude-sisyphus" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

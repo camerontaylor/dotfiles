@@ -14,7 +14,7 @@
 	sort = version:refname
 [merge]
 	ff = only
-	conflictStyle = zdiff3
+	conflictstyle = diff3
 [fetch]
 	prune = true
 	pruneTags = true

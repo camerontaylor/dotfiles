@@ -17,3 +17,6 @@ window-save-state = always
 #cursor-style-blink = false
 scrollback-limit = 50000
 keybind = global:ctrl+grave_accent=toggle_quick_terminal
+
+
+linux-cgroup = single-instance

@@ -1,30 +1,22 @@
 model_list:
-  # Claude models — no api_key; OAuth forwarded via client headers (Max subscription)
-  - model_name: claude-sonnet-4-6
-    litellm_params:
-      model: anthropic/claude-sonnet-4-6
-
+  # Opus — pass through to Anthropic (OAuth forwarded via client headers)
   - model_name: claude-opus-4-6
     litellm_params:
       model: anthropic/claude-opus-4-6
 
-  - model_name: claude-haiku-4-5-20241022
+  # Subagent models — route to MiniMax Anthropic-compatible endpoint
+  - model_name: claude-sonnet-4-6
     litellm_params:
-      model: anthropic/claude-haiku-4-5-20241022
-
-  # MiniMax via LiteLLM native provider (10x cheaper than Claude)
-  - model_name: minimax-m2
-    litellm_params:
-      model: minimax/MiniMax-M2.5
+      model: anthropic/MiniMax-M2.5
       api_key: os.environ/MINIMAX_API_KEY
-      api_base: https://api.minimax.io/v1
+      api_base: https://api.minimax.io/anthropic
+
+  - model_name: claude-haiku-4-5-20251001
+    litellm_params:
+      model: anthropic/MiniMax-M2.5
+      api_key: os.environ/MINIMAX_API_KEY
+      api_base: https://api.minimax.io/anthropic
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   forward_client_headers_to_llm_api: true
-
-router_settings:
-  model_group_alias:
-    # Route haiku + sonnet subagent calls to MiniMax
-    "claude-haiku-4-5-20241022": "minimax-m2"
-    "claude-sonnet-4-6": "minimax-m2"
