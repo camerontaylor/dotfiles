@@ -71,6 +71,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/litellm/config.yaml $XDG_CONFIG_HOME/litellm/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/litellm/litellm-proxy.service $XDG_CONFIG_HOME/systemd/user/litellm-proxy.service
 zf_ln -sfn $SCRIPT_DIR/configs/litellm/proxy_wrapper.py $XDG_CONFIG_HOME/litellm/proxy_wrapper.py
+zf_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
 zf_ln -sfn $SCRIPT_DIR/configs/gtk-3.0-bookmarks $XDG_CONFIG_HOME/gtk-3.0/bookmarks
 zf_ln -sfn $SCRIPT_DIR/yazi/init.lua $XDG_CONFIG_HOME/yazi/init.lua
 zf_ln -sfn $SCRIPT_DIR/yazi/keymap.toml $XDG_CONFIG_HOME/yazi/keymap.toml
