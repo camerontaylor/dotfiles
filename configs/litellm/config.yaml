@@ -1,22 +1,25 @@
 model_list:
-  # Opus — pass through to Anthropic (OAuth forwarded via client headers)
+  # Opus → Anthropic (OAuth forwarded from Claude Max subscription)
   - model_name: claude-opus-4-6
     litellm_params:
       model: anthropic/claude-opus-4-6
+      # No api_key — OAuth token forwarded via forward_client_headers_to_llm_api
 
-  # Subagent models — route to MiniMax Anthropic-compatible endpoint
+  # Sonnet → MiniMax M2.5
   - model_name: claude-sonnet-4-6
     litellm_params:
-      model: anthropic/MiniMax-M2.5
+      model: minimax/MiniMax-M2.5
       api_key: os.environ/MINIMAX_API_KEY
-      api_base: https://api.minimax.io/anthropic
+      api_base: https://api.minimax.io/anthropic/v1/messages
 
+  # Haiku → MiniMax M2.5
   - model_name: claude-haiku-4-5-20251001
     litellm_params:
-      model: anthropic/MiniMax-M2.5
+      model: minimax/MiniMax-M2.5
       api_key: os.environ/MINIMAX_API_KEY
-      api_base: https://api.minimax.io/anthropic
+      api_base: https://api.minimax.io/anthropic/v1/messages
 
 general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY
+  # No master_key — proxy is localhost-only, no auth needed.
+  # This lets Claude Code's OAuth token flow through untouched.
   forward_client_headers_to_llm_api: true

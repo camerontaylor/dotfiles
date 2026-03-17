@@ -1,0 +1,18 @@
+[Unit]
+Description=LiteLLM proxy for Claude Code model routing
+After=network-online.target
+
+[Service]
+Type=exec
+EnvironmentFile=%S/litellm/env
+Environment=PYTHONUNBUFFERED=1
+UnsetEnvironment=DATABASE_URL
+ExecStart=%h/.local/share/uv/tools/litellm/bin/python %h/.config/litellm/proxy_wrapper.py --config %h/.config/litellm/config.yaml --port 4199
+Restart=on-failure
+RestartSec=5
+StateDirectory=litellm
+StandardOutput=append:%S/litellm/proxy.log
+StandardError=append:%S/litellm/proxy.log
+
+[Install]
+WantedBy=default.target
