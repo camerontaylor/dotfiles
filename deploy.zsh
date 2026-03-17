@@ -150,8 +150,10 @@ if (( ! ${+commands[wtp]} )); then
     local wtp_os=$(uname -s)
     if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
         [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
+        local wtp_version
+        wtp_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/satococoa/wtp/releases/latest | sed 's|.*/tag/v||')
         local wtp_tmp=$(mktemp -d)
-        if curl -fsSL "https://github.com/satococoa/wtp/releases/latest/download/wtp_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
+        if [[ -n $wtp_version ]] && curl -fsSL "https://github.com/satococoa/wtp/releases/download/v${wtp_version}/wtp_${wtp_version}_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
             zf_mv $wtp_tmp/wtp $HOME/.local/bin/wtp
             chmod +x $HOME/.local/bin/wtp
             print "  ...done"
@@ -170,11 +172,13 @@ if (( ! ${+commands[glab]} )); then
     local glab_os=$(uname -s)
     if [[ $glab_os == Linux && ($glab_arch == x86_64 || $glab_arch == aarch64) ]]; then
         [[ $glab_arch == aarch64 ]] && glab_arch=arm64
+        [[ $glab_arch == x86_64 ]] && glab_arch=amd64
         local glab_version
-        glab_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/gitlab-org/cli/releases/latest | sed 's|.*/tag/v||')
+        glab_version=$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['tag_name'].lstrip('v'))" 2>/dev/null)
         if [[ -n $glab_version ]]; then
             local glab_tmp=$(mktemp -d)
-            if curl -fsSL "https://github.com/gitlab-org/cli/releases/download/v${glab_version}/glab_${glab_version}_${glab_os}_${glab_arch}.tar.gz" | tar xz -C $glab_tmp; then
+            local glab_os_lower=${glab_os:l}
+            if curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_version}/downloads/glab_${glab_version}_${glab_os_lower}_${glab_arch}.tar.gz" | tar xz -C $glab_tmp; then
                 zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
                 chmod +x $HOME/.local/bin/glab
                 print "  ...done"
