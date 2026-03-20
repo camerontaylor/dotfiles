@@ -1,1 +1,1 @@
-(( ${+commands[ghostty]} )) && ghostty +ssh-cache --remove=app@localhost > /dev/null
+(( ${+commands[ghostty]} )) && ghostty +ssh-cache --remove=app@localhost > /dev/null || true
