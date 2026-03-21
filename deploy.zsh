@@ -97,14 +97,6 @@ for zsh_plugin_file in $SCRIPT_DIR/zsh/plugins/**/*.zsh{-theme,}(#q.); do
 done
 print "  ...done"
 
-# Install hook to call deploy script after successful pull
-print "Installing git hooks..."
-zf_mkdir -p .git/hooks
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-merge
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
-zf_ln -sfn $SCRIPT_DIR/scripts/pre-commit .git/hooks/pre-commit
-print "  ...done"
-
 if (( ${+commands[make]} )); then
     # Make install git-extras
     print "Installing git-extras..."
@@ -238,6 +230,14 @@ if (( ${+commands[mise]} )); then
         print "  ...done (run with --upgrade to also upgrade existing tools)"
     fi
 fi
+
+# Install hook to call deploy script after successful pull
+print "Installing git hooks..."
+zf_mkdir -p .git/hooks
+zf_ln -sfn ../../deploy.zsh .git/hooks/post-merge
+zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
+zf_ln -sfn ../../scripts/pre-commit .git/hooks/pre-commit
+print "  ...done"
 
 # Ensure age key exists for secrets encryption/decryption
 local age_key_dir=$XDG_CONFIG_HOME/sops/age

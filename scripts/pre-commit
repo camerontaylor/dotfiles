@@ -30,7 +30,7 @@ for pattern in $secret_patterns[@]; do
         if [[ ! -f $enc_file || $plaintext -nt $enc_file ]]; then
             print "Encrypting $plaintext -> $enc_file..."
 
-            if sops --encrypt --input-type binary --output-type binary --output $enc_file $enc_file $plaintext 2>/dev/null; then
+            if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
                 git add $enc_file
                 encrypted=true
                 print "  ...done"
