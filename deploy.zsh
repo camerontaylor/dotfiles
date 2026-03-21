@@ -350,6 +350,16 @@ if (( ! ${+commands[claude]} )); then
     fi
 fi
 
+# Install vite-plus (vp) if not present
+if (( ! ${+commands[vp]} )); then
+    print "Installing vite-plus..."
+    if curl -fsSL https://vite.plus | bash > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install vite-plus"
+    fi
+fi
+
 # Install rustup/cargo if not present
 if (( ! ${+commands[cargo]} )); then
     print "Installing rustup and cargo..."

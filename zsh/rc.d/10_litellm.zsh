@@ -12,8 +12,18 @@ if (( ${+commands[litellm]} )); then
 
     [[ -d $statedir ]] || { mkdir -p "$statedir" && chmod 700 "$statedir" }
 
-    # Write env file for systemd (refreshes MINIMAX_API_KEY each start)
-    print "MINIMAX_API_KEY=$MINIMAX_API_KEY" > "$envfile"
+    # Generate stable master key if missing
+    local keyfile="$statedir/master-key"
+    if [[ ! -f $keyfile ]]; then
+      print "sk-litellm-$(head -c 16 /dev/urandom | xxd -p)" > "$keyfile"
+      chmod 600 "$keyfile"
+    fi
+
+    # Write env file for systemd (refreshes keys each start)
+    {
+      print "MINIMAX_API_KEY=$MINIMAX_API_KEY"
+      print "LITELLM_MASTER_KEY=$(<"$keyfile")"
+    } > "$envfile"
     chmod 600 "$envfile"
 
     # Start service if not already active
@@ -40,14 +50,19 @@ if (( ${+commands[litellm]} )); then
   ccl() {
     emulate -L zsh
     _litellm_ensure_service || return 1
+    local master_key=$(<"$_LITELLM_STATE/master-key")
+    # Proxy auth via x-litellm-api-key; Claude Code's x-api-key (OAuth) passes through to Anthropic
     ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
       claude "$@"
   }
 
   ccl-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
+    local master_key=$(<"$_LITELLM_STATE/master-key")
     ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
       happy yolo --dangerously-skip-permissions "$@"
   }
 

@@ -12,7 +12,6 @@
 [tag]
 	sort = version:refname
 [merge]
-	ff = only
 	conflictstyle = diff3
 [fetch]
 	prune = true

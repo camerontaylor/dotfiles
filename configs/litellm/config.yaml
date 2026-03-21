@@ -3,7 +3,7 @@ model_list:
   - model_name: claude-opus-4-6
     litellm_params:
       model: anthropic/claude-opus-4-6
-      # No api_key — OAuth token forwarded via forward_client_headers_to_llm_api
+      # No api_key — client's x-api-key (OAuth token) forwarded via clean_headers
 
   # Sonnet → MiniMax M2.5
   - model_name: claude-sonnet-4-6
@@ -20,6 +20,8 @@ model_list:
       api_base: https://api.minimax.io/anthropic/v1/messages
 
 general_settings:
-  # No master_key — proxy is localhost-only, no auth needed.
-  # This lets Claude Code's OAuth token flow through untouched.
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Proxy auth via custom header — keeps x-api-key free for OAuth passthrough
+  litellm_key_header_name: "x-litellm-api-key"
   forward_client_headers_to_llm_api: true
+  forward_llm_provider_auth_headers: true
