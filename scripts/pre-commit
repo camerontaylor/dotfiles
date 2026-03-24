@@ -21,6 +21,13 @@ fi
 
 local encrypted=false
 
+# Extract age public key from .sops.yaml (once, before loop)
+local age_key=$(awk '/age:/{print $2}' $SCRIPT_DIR/../.sops.yaml 2>/dev/null)
+if [[ -z $age_key ]]; then
+    print "warning: no age key in .sops.yaml, run deploy.zsh first"
+    exit 0
+fi
+
 for pattern in $secret_patterns[@]; do
     # Find plaintext files (excluding .enc files)
     for plaintext in $pattern~*.enc(N); do
@@ -30,7 +37,7 @@ for pattern in $secret_patterns[@]; do
         if [[ ! -f $enc_file || $plaintext -nt $enc_file ]]; then
             print "Encrypting $plaintext -> $enc_file..."
 
-            if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
+            if sops --encrypt --age $age_key --input-type binary --output-type binary --config /dev/null --output $enc_file $plaintext 2>/dev/null; then
                 git add $enc_file
                 encrypted=true
                 print "  ...done"

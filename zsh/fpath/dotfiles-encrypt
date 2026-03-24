@@ -33,7 +33,7 @@ for file in "$@"; do
     local src=$dotfiles_dir/$file
     [[ -f $src ]] || { print "Error: $file not found" >&2; continue }
     local enc=${src}.enc
-    if sops --encrypt --age $pubkey $src > $enc; then
+    if sops --encrypt --age $pubkey --input-type binary --output-type binary --config /dev/null --output $enc $src; then
         print "Encrypted $file -> ${file}.enc"
     else
         print "Error: failed to encrypt $file" >&2

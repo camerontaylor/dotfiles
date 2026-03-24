@@ -44,3 +44,6 @@ fi
 # Enable bash completions too
 autoload -Uz bashcompinit
 bashcompinit
+
+# wrap-sudo (aliased from sudo in 08_aliases.zsh) needs sudo's completion
+compdef wrap-sudo=sudo
