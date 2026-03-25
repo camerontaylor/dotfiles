@@ -1,3 +1,30 @@
+# Restore terminal state after TUI apps that use kitty keyboard protocol
+_reset_terminal_proto() {
+    printf '\e[<u'      # pop kitty keyboard protocol stack
+    printf '\e[?2004l'  # disable bracketed paste mode
+}
+
+# Wrap claude/happy to restore terminal settings on exit
+claude() {
+    local saved_stty
+    saved_stty=$(command stty -g 2>/dev/null)
+    command claude "$@"
+    local ret=$?
+    command stty "$saved_stty" 2>/dev/null
+    _reset_terminal_proto
+    return $ret
+}
+
+happy() {
+    local saved_stty
+    saved_stty=$(command stty -g 2>/dev/null)
+    command happy "$@"
+    local ret=$?
+    command stty "$saved_stty" 2>/dev/null
+    _reset_terminal_proto
+    return $ret
+}
+
 # Normal Max plan Claude - explicitly unset any CCR vars
 alias ccc='unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY && claude'
 
