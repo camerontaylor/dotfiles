@@ -12,6 +12,11 @@ age = "latest"
 "npm:oh-my-codex" = "latest"
 "npm:@google/gemini-cli" = "latest"
 "npm:oh-my-claude-sisyphus" = "latest"
+pnpm = "latest"
+"npm:vite-plus" = "latest"
+"npm:tsx" = "latest"
+"npm:portless" = "latest"
+"npm:agent-browser" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

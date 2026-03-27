@@ -92,6 +92,15 @@ bindkey . _zsh-dot
 zle -N clear-screen-soft-bottom
 bindkey '^L' clear-screen-soft-bottom
 
+autoload -Uz add-zsh-hook
+
+_zsh_restore_terminal_input_modes_precmd() {
+    if typeset -f _restore_terminal_input_modes >/dev/null; then
+        _restore_terminal_input_modes
+    fi
+}
+add-zsh-hook -Uz precmd _zsh_restore_terminal_input_modes_precmd
+
 # Make sure that the terminal is in application mode when zle is active, since
 # only then values from $terminfo are valid
 if (( ${+terminfo[smkx]} && ${+terminfo[rmkx]} )); then

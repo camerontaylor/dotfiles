@@ -4,6 +4,6 @@ vim.opt_local.sidescrolloff = 0
 
 vim.b.ministatusline_disable = true
 
-pcall(vim.treesitter.start)
+DotfilesTreesitter.attach()
 
 vim.cmd('startinsert')

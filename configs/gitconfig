@@ -13,6 +13,10 @@
 	sort = version:refname
 [merge]
 	conflictstyle = diff3
+	tool = nvimdiff
+[mergetool]
+	prompt = false
+	keepBackup = false
 [fetch]
 	prune = true
 	pruneTags = true

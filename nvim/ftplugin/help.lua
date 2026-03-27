@@ -4,4 +4,4 @@ vim.wo.sidescrolloff = 0
 vim.cmd.wincmd('L')
 vim.cmd('vertical resize 79')
 
-pcall(vim.treesitter.start)
+DotfilesTreesitter.attach()

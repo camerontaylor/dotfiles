@@ -373,13 +373,14 @@ fi
 
 # Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find zoxide)
+    local -a rust_tools=(git-delta bat eza fd-find zoxide tree-sitter-cli)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg
         case $tool_pkg in
             git-delta) tool_bin=delta ;;
             fd-find) tool_bin=fd ;;
+            tree-sitter-cli) tool_bin=tree-sitter ;;
         esac
         if (( ! ${+commands[$tool_bin]} )); then
             print "Installing $tool_pkg via cargo..."

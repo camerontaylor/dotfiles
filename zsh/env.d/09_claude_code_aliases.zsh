@@ -1,28 +1,41 @@
-# Restore terminal state after TUI apps that use kitty keyboard protocol
-_reset_terminal_proto() {
-    printf '\e[<u'      # pop kitty keyboard protocol stack
+# Restore terminal state after TUIs that leave enhanced keyboard modes enabled.
+_restore_terminal_input_modes() {
+    [[ -t 1 ]] || return 0
+
+    printf '\e[=0u'     # kitty/Ghostty: disable all progressive enhancement flags
+    printf '\e[<u'      # kitty/Ghostty: pop one saved keyboard mode from the stack
+    printf '\e[>4;0m'   # xterm/tmux/Ghostty: disable modifyOtherKeys
+    printf '\e[>4n'     # xterm: fully disable modifyOtherKeys resource state
     printf '\e[?2004l'  # disable bracketed paste mode
 }
 
-# Wrap claude/happy to restore terminal settings on exit
-claude() {
-    local saved_stty
-    saved_stty=$(command stty -g 2>/dev/null)
-    command claude "$@"
-    local ret=$?
-    command stty "$saved_stty" 2>/dev/null
-    _reset_terminal_proto
+_run_with_terminal_restore() {
+    local saved_stty="" ret=0
+
+    if [[ -t 0 ]]; then
+        saved_stty=$(command stty -g 2>/dev/null)
+    fi
+
+    {
+        command "$@"
+        ret=$?
+    } always {
+        if [[ -n $saved_stty ]]; then
+            command stty "$saved_stty" 2>/dev/null
+        fi
+        _restore_terminal_input_modes
+    }
+
     return $ret
 }
 
+# Wrap claude/happy to restore terminal settings on exit.
+claude() {
+    _run_with_terminal_restore claude "$@"
+}
+
 happy() {
-    local saved_stty
-    saved_stty=$(command stty -g 2>/dev/null)
-    command happy "$@"
-    local ret=$?
-    command stty "$saved_stty" 2>/dev/null
-    _reset_terminal_proto
-    return $ret
+    _run_with_terminal_restore happy "$@"
 }
 
 # Normal Max plan Claude - explicitly unset any CCR vars
