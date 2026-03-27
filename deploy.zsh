@@ -239,7 +239,7 @@ zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
 zf_ln -sfn ../../scripts/pre-commit .git/hooks/pre-commit
 print "  ...done"
 
-# Ensure age key exists for secrets encryption/decryption
+# Ensure age key exists for secrets encryption
 local age_key_dir=$XDG_CONFIG_HOME/sops/age
 local age_public_key
 if [[ ! -f $age_key_dir/keys.txt ]]; then
@@ -265,57 +265,6 @@ creation_rules:
 EOF
         print "  ...done"
     fi
-fi
-
-# Decrypt secrets — find all .enc files in gitignored ranges and decrypt
-if (( ${+commands[sops]} )); then
-    # Safety check: warn if plaintext is newer than .enc (uncommitted changes)
-    local has_uncommitted_secrets=false
-    local enc_file plaintext
-    for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
-        plaintext=${enc_file%.enc}
-        if [[ -f $plaintext && $plaintext -nt $enc_file ]]; then
-            has_uncommitted_secrets=true
-            print "WARNING: $plaintext has uncommitted changes (newer than .enc)"
-        fi
-    done
-
-    if $has_uncommitted_secrets; then
-        print ""
-        print "ERROR: Uncommitted secret changes detected!"
-        print "  Your plaintext changes would be overwritten by decryption."
-        print ""
-        print "To fix:"
-        print "  1. Commit your changes: git commit -am 'update secrets'"
-        print "     (pre-commit hook will encrypt them automatically)"
-        print "  2. Or discard changes: rm zsh/*/9[0-9]_* nvim/init/9[0-9]_*"
-        print "  3. Then re-run: ./deploy.zsh"
-        print ""
-        exit 1
-    fi
-
-    for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
-        local target=${enc_file%.enc}
-        if [[ ! -f $target || $enc_file -nt $target ]]; then
-            print "Decrypting ${enc_file}..."
-            local temp_file=$(mktemp)
-            if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
-                chmod 600 $temp_file
-                # Only update if content differs (preserves mtime if identical)
-                if [[ ! -f $target ]] || ! cmp -s $temp_file $target; then
-                    mv $temp_file $target
-                else
-                    rm $temp_file
-                    # Touch target to match .enc mtime
-                    touch -r $enc_file $target
-                fi
-                print "  ...done"
-            else
-                rm -f $temp_file
-                print "  ...failed to decrypt $enc_file (missing age key?)"
-            fi
-        fi
-    done
 fi
 
 # Install LiteLLM proxy via uv tool

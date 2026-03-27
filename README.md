@@ -82,13 +82,17 @@ simple:
 ```sh
 git clone https://github.com/z0rc/dotfiles.git "$HOME/.local/dotfiles"
 $HOME/.local/dotfiles/deploy.zsh
+$HOME/.local/dotfiles/scripts/save-secrets.zsh      # optional, writes plaintext secret overrides back to .enc
+$HOME/.local/dotfiles/scripts/restore-secrets.zsh  # optional, restores plaintext secrets
 chsh -s /bin/zsh
 ```
 
 The [deployment script](deploy.zsh) helps set up all required symlinks after
 the initial clone. It also adds a cron job to pull updates every midnight and
 serves as a post-merge git hook, so you don't have to worry about updating
-submodules after a successful pull.
+submodules after a successful pull. Secret save/restore is now separate and
+manual via [`scripts/save-secrets.zsh`](scripts/save-secrets.zsh) and
+[`scripts/restore-secrets.zsh`](scripts/restore-secrets.zsh).
 
 ## Zero Home Presence
 

@@ -1,11 +1,5 @@
 require('nvim-treesitter.config').setup({})
 
--- Treesitter is enabled again, but missing parsers are installed in the
--- background so opening a new filetype does not block the UI.
-if vim.g.dotfiles_treesitter_enabled == nil then
-  vim.g.dotfiles_treesitter_enabled = true
-end
-
 DotfilesTreesitter = {}
 
 local install_inflight = {}
@@ -21,15 +15,7 @@ local function dotfiles_treesitter_current_lang(buf)
   return vim.treesitter.language.get_lang(filetype)
 end
 
-function DotfilesTreesitter.is_enabled()
-  return vim.g.dotfiles_treesitter_enabled == true
-end
-
 function DotfilesTreesitter.has_parser(buf)
-  if not DotfilesTreesitter.is_enabled() then
-    return false
-  end
-
   local lang = dotfiles_treesitter_current_lang(buf)
   if not lang then
     return false
@@ -39,10 +25,6 @@ function DotfilesTreesitter.has_parser(buf)
 end
 
 function DotfilesTreesitter.ensure_parser(buf)
-  if not DotfilesTreesitter.is_enabled() then
-    return false
-  end
-
   local lang = dotfiles_treesitter_current_lang(buf)
   if not lang then
     return false

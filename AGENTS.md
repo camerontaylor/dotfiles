@@ -5,7 +5,9 @@
 XDG-compliant zsh/neovim/vim/tmux dotfiles. All external code is git submodules (~145). Solarized Dark everywhere.
 
 ## Commands
-- `./deploy.zsh` — full install: create dirs, symlink configs, sync submodules, install tools, decrypt secrets
+- `./deploy.zsh` — full install: create dirs, symlink configs, sync submodules, install tools
+- `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
+- `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
 - Deploy runs automatically on `git pull` (post-merge/post-checkout hooks)
 - `sudo bash scripts/install-build-deps.sh` — install APT deps for compiling Ruby, Python, Node via env-wrappers
 - `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function)
@@ -29,13 +31,15 @@ Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotf
 # Create a secrets file
 echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 # Encrypt it (creates 90_secrets.zsh.enc)
-dotfiles-encrypt zsh/env.d/90_secrets.zsh
-# Decrypt happens automatically on deploy
+./scripts/save-secrets.zsh
+# Restore plaintext later if needed
+./scripts/restore-secrets.zsh
 ```
 
 **Key location**: `~/.config/sops/age/keys.txt` — **BACKUP THIS FILE** to your password manager!
 **Encrypted file pattern**: `zsh/env.d/9[0-9]_*.enc`, `zsh/rc.d/9[0-9]_*.enc`, `nvim/init/9[0-9]_*.enc`
-**Decryption**: `deploy.zsh` lines 236-251 auto-decrypts `.enc` files when original is missing or stale
+**Encryption**: `./scripts/save-secrets.zsh` skips overwriting newer `.enc` files unless `--force`
+**Decryption**: `./scripts/restore-secrets.zsh` overwrites plaintext files from tracked `.enc` secrets on demand
 
 ## Runtime Management (mise)
 mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mise.toml`.
@@ -75,8 +79,10 @@ mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mis
 
 ## Structure
 ```
-├── deploy.zsh          # Main installer + git hooks (lines 236-251: secrets decrypt)
+├── deploy.zsh          # Main installer + git hooks
 ├── scripts/
+│   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
+│   ├── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
 │   └── install-build-deps.sh  # APT deps for env-wrappers (rbenv, pyenv, etc.)
 ├── configs/
 │   └── mise.toml       # Global runtime versions (node, bun, ruby, python, sops, age)

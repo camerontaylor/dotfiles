@@ -10,9 +10,7 @@ require('mini.extra').setup()
 local ai_textobjects = {
   B = MiniExtra.gen_ai_spec.buffer(),
 }
-if vim.g.dotfiles_treesitter_enabled ~= false then
-  ai_textobjects.F = require('mini.ai').gen_spec.treesitter({ a = '@function.outer', i = '@function.inner' })
-end
+ai_textobjects.F = require('mini.ai').gen_spec.treesitter({ a = '@function.outer', i = '@function.inner' })
 require('mini.ai').setup({
   search_method = 'cover_or_nearest',
   custom_textobjects = ai_textobjects,
