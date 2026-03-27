@@ -6,13 +6,14 @@
 [push]
 	default = current
 	followTags = true
+	autoSetupRemote = true
 [branch]
 	autoSetupRebase = always
 	sort = -committerdate
 [tag]
 	sort = version:refname
 [merge]
-	conflictstyle = diff3
+	conflictstyle = zdiff3
 	tool = nvimdiff
 [mergetool]
 	prompt = false

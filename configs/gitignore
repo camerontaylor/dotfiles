@@ -22,6 +22,8 @@ venv/
 ### *env ###
 # pyenv
 .python-version
+# rbenv
+.ruby-version
 # nodenv
 .node-version
 # luaenv

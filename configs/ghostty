@@ -1,4 +1,5 @@
 theme = iTerm2 Solarized Dark
+palette-generate = false
 shell-integration = none
 shell-integration-features = cursor,path,title,sudo,ssh-env,ssh-terminfo
 confirm-close-surface = false
