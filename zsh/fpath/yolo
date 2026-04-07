@@ -1,0 +1,8 @@
+emulate -L zsh
+
+local root
+root="$(_webfront_root)" || { _yolo "$@"; return }
+
+command zsh "$root/scripts/run-agent-alias.sh" yolo "$@"
+
+# vim: ft=zsh

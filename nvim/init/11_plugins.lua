@@ -69,3 +69,4 @@ require('markview').setup({
     ignore_buftypes = {},
   },
 })
+require('flash').setup({})

@@ -1,6 +1,7 @@
 # Completion tweaks
 zstyle ':completion:*'              list-colors         ${(s.:.)LS_COLORS}
 zstyle ':completion:*'              list-dirs-first     true
+zstyle ':completion:*:*:-command-:*' list-dirs-first     false
 zstyle ':completion:*'              verbose             true
 zstyle ':completion:*'              menu                no
 zstyle ':completion:*'              matcher-list        'm:{[:lower:]}={[:upper:]}'

@@ -476,3 +476,6 @@
 [submodule "zsh/plugins/history-substring-search"]
 	path = zsh/plugins/history-substring-search
 	url = https://github.com/zsh-users/zsh-history-substring-search.git
+[submodule "nvim/plugins/flash"]
+	path = nvim/plugins/flash
+	url = https://github.com/folke/flash.nvim.git

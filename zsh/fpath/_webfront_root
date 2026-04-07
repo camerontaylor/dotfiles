@@ -1,0 +1,11 @@
+emulate -L zsh
+
+local root
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || return 1
+
+[[ -f "$root/scripts/run-agent-alias.sh" ]] || return 1
+[[ -f "$root/scripts/wt-archive" ]] || return 1
+
+print -r -- "$root"
+
+# vim: ft=zsh

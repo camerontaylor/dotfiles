@@ -42,7 +42,7 @@ happy() {
 alias ccc='unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY && claude'
 
 # Cheap OpenRouter via CCR
-alias cc='eval "$(ccr activate)" && claude'
+alias cc='(eval "$(ccr activate)" && exec claude)'
 
 # MiniMax M2.7 - direct Claude Code (no happy yolo)
 alias ccm='CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" claude --model MiniMax-M2.7'
@@ -58,5 +58,15 @@ alias ccz='CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_M
 
 # Z.AI via happy yolo
 alias ccz-happy='CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5-turbo ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions'
+
+alias yolo="happy yolo --dangerously-skip-permissions"
+
+# Callable clones for webfront fpath wrappers to fall back on
+_cc()        { (eval "$(ccr activate)" && exec claude "$@") }
+_ccm()       { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" claude --model MiniMax-M2.7 "$@" }
+_ccm-happy() { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
+_ccz()       { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5-turbo ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" claude --model glm-5-turbo "$@" }
+_ccz-happy() { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=glm-4.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-4.7-air ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5-turbo ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
+_yolo()      { happy yolo --dangerously-skip-permissions "$@" }
 
 #export GEMINI_API_KEY=...  # set in zsh/env.d/90_secrets.zsh

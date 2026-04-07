@@ -5,6 +5,13 @@ local vmap = function(lhs, rhs) vim.keymap.set('v', lhs, rhs) end
 local nmap_leader = function(suffix, rhs, desc) vim.keymap.set('n', '<Leader>' .. suffix, rhs, { desc = desc }) end
 local xmap_leader = function(suffix, rhs, desc) vim.keymap.set('x', '<Leader>' .. suffix, rhs, { desc = desc }) end
 
+-- motions
+vim.keymap.set({ 'n', 'x', 'o' }, 's', function() require('flash').jump() end, { desc = 'Flash' })
+vim.keymap.set({ 'n', 'x', 'o' }, 'S', function() require('flash').treesitter() end, { desc = 'Flash Treesitter' })
+vim.keymap.set('o', 'r', function() require('flash').remote() end, { desc = 'Remote Flash' })
+vim.keymap.set({ 'o', 'x' }, 'R', function() require('flash').treesitter_search() end, { desc = 'Treesitter Search' })
+vim.keymap.set('c', '<C-s>', function() require('flash').toggle() end, { desc = 'Toggle Flash Search' })
+
 -- sanity https://github.com/neovim/neovim/issues/9953#issuecomment-1732700161
 cmap('<Up>', function() return vim.fn.wildmenumode() == 1 and '<Left>' or '<Up>' end)
 cmap('<Down>', function() return vim.fn.wildmenumode() == 1 and '<Right>' or '<Down>' end)

@@ -17,6 +17,11 @@ pnpm = "latest"
 "npm:tsx" = "latest"
 "npm:portless" = "latest"
 "npm:agent-browser" = "latest"
+"npm:happy-dom" = "latest"
+"npm:@ast-grep/cli" = "latest"
+"npm:@ast-grep/napi" = "latest"
+"npm:oxlint" = "latest"
+"npm:not-claude-code-emulator" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions
