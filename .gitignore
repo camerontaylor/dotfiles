@@ -14,6 +14,7 @@ zsh/env.d/9[0-9]_*
 !zsh/env.d/9[0-9]_*.enc
 zsh/.zlogin
 zsh/.zlogout
+zsh/.zcompdump*
 
 configs/ranger-plugins/__init__.py
 configs/ranger-plugins/__pycache__
