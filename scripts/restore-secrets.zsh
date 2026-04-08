@@ -61,3 +61,24 @@ for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
         print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
+
+# Portless CA and server certs
+local portless_dir=$HOME/.portless
+mkdir -p $portless_dir
+for enc_file in configs/portless/*.pem.enc(N); do
+    target=$portless_dir/${${enc_file:t}%.enc}
+    if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
+        print "Skipping ${enc_file}: ${target} is newer (use --force to overwrite)"
+        continue
+    fi
+    print "Decrypting ${enc_file} -> ${target}..."
+    temp_file=$(mktemp)
+    if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+        chmod 600 $temp_file
+        mv $temp_file $target
+        print "  ...done"
+    else
+        rm -f $temp_file
+        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+    fi
+done

@@ -105,6 +105,8 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/opencode.json $XDG_CONFIG_HOME/opencode/
 zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json
 # OMX standalone agents
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
+# Portless
+zf_mkdir -p $HOME/.portless
 print "  ...done"
 
 # Make sure submodules are installed
@@ -328,6 +330,24 @@ creation_rules:
 EOF
         print "  ...done"
     fi
+fi
+
+# Decrypt portless certs to ~/.portless/
+if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
+    print "Restoring portless certs..."
+    local _pless_enc _pless_target _pless_tmp
+    for _pless_enc in $SCRIPT_DIR/configs/portless/*.pem.enc(N); do
+        _pless_target=$HOME/.portless/${${_pless_enc:t}%.enc}
+        _pless_tmp=$(mktemp)
+        if sops --decrypt $_pless_enc > $_pless_tmp 2>/dev/null; then
+            chmod 600 $_pless_tmp
+            mv $_pless_tmp $_pless_target
+        else
+            rm -f $_pless_tmp
+            print "  WARNING: failed to decrypt ${_pless_enc:t}"
+        fi
+    done
+    print "  ...done"
 fi
 
 # Install LiteLLM proxy via uv tool

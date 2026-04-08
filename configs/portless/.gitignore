@@ -1,0 +1,9 @@
+# Encrypted versions are tracked as *.enc
+*.pem
+*.srl
+host-certs/
+routes.json
+proxy.log
+proxy.pid
+proxy.port
+proxy.tls

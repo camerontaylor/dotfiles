@@ -70,3 +70,27 @@ for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
         fi
     fi
 done
+
+# Portless CA and server certs
+local portless_dir=$HOME/.portless
+for f (ca.pem ca-key.pem server.pem server-key.pem); do
+    plaintext=$portless_dir/$f
+    enc_file=configs/portless/${f}.enc
+    [[ -f $plaintext ]] || continue
+
+    if ! $force && [[ -f $enc_file && $enc_file -nt $plaintext ]]; then
+        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
+        continue
+    fi
+
+    print "Encrypting ${plaintext} -> ${enc_file}..."
+    if sops --encrypt --age $pubkey --input-type binary --output-type binary --config /dev/null --output $enc_file $plaintext 2>/dev/null; then
+        if $git_add; then
+            git add $enc_file
+        fi
+        print "  ...done"
+    else
+        print "  ...failed to encrypt $plaintext" >&2
+        exit 1
+    fi
+done
