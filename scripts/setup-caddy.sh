@@ -55,6 +55,22 @@ if ! command -v portless &>/dev/null; then
   exit 1
 fi
 
+# Check if something other than Caddy is already holding port 443
+port_holder=$(sudo ss -tlnp 'sport = :443' 2>/dev/null | tail -n +2 || true)
+if [[ -n "$port_holder" ]]; then
+  holder_pid=$(echo "$port_holder" | grep -oP 'pid=\K[0-9]+' | head -1)
+  if [[ -n "$holder_pid" ]]; then
+    holder_cmd=$(ps -p "$holder_pid" -o args= 2>/dev/null || echo "unknown")
+    if [[ "$holder_cmd" != *caddy* ]]; then
+      echo "ERROR: Port 443 is already in use by PID $holder_pid:"
+      echo "  $holder_cmd"
+      echo ""
+      echo "Kill it first:  sudo kill $holder_pid"
+      exit 1
+    fi
+  fi
+fi
+
 PORTLESS_BIN=$(command -v portless)
 echo "Machine:   $HOSTNAME"
 echo "Domain:    *.$DOMAIN"
