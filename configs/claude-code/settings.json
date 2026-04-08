@@ -126,7 +126,7 @@
       "/home/app"
     ]
   },
-  "model": "glm-5.1",
+  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "node $HOME/.claude/hud/omc-hud.mjs"

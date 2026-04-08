@@ -106,7 +106,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/op
 # OMX standalone agents
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 # Portless
-zf_mkdir -p $HOME/.portless
+zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 print "  ...done"
 
 # Make sure submodules are installed
@@ -332,12 +332,12 @@ EOF
     fi
 fi
 
-# Decrypt portless certs to ~/.portless/
+# Decrypt portless certs into configs/portless/ (symlinked to ~/.portless)
 if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
     print "Restoring portless certs..."
     local _pless_enc _pless_target _pless_tmp
     for _pless_enc in $SCRIPT_DIR/configs/portless/*.pem.enc(N); do
-        _pless_target=$HOME/.portless/${${_pless_enc:t}%.enc}
+        _pless_target=$SCRIPT_DIR/configs/portless/${${_pless_enc:t}%.enc}
         _pless_tmp=$(mktemp)
         if sops --decrypt $_pless_enc > $_pless_tmp 2>/dev/null; then
             chmod 600 $_pless_tmp
