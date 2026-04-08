@@ -126,6 +126,7 @@
       "/home/app"
     ]
   },
+  "model": "glm-5.1",
   "statusLine": {
     "type": "command",
     "command": "node $HOME/.claude/hud/omc-hud.mjs"
@@ -159,6 +160,5 @@
     }
   },
   "autoDreamEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "model": "sonnet"
+  "skipDangerousModePermissionPrompt": true
 }
