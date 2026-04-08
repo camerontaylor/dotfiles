@@ -24,3 +24,4 @@ configs/ranger-plugins/__pycache__
 .sops.yaml
 .omx
 .claude/
+.bg-shell/
