@@ -8,7 +8,7 @@ PACKAGES=(
     autoconf automake curl git libbz2-dev libcurl4-openssl-dev libedit-dev
     libffi-dev libgdbm-dev libgmp-dev libncurses-dev libreadline-dev
     libsqlite3-dev libssl-dev libtool liblzma-dev libxml2-dev libyaml-dev
-    libclang-18-dev pkg-config python3-dev tk-dev uuid-dev wget
+    libclang-18-dev pkg-config python3-dev tk-dev tmux uuid-dev wget
 )
 
 if [[ "${1:-}" == "--check" ]]; then
