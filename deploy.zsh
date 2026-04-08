@@ -33,7 +33,8 @@ print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
-zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm,systemd/user}
+zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm,systemd/user,opencode}
+zf_mkdir -p $HOME/{.claude,.codex,.omx}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
@@ -82,6 +83,27 @@ zf_ln -sfn $SCRIPT_DIR/yazi/plugins $XDG_CONFIG_HOME/yazi/plugins
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg.conf $XDG_CONFIG_HOME/gnupg/gpg.conf
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg-agent.conf $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
 zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
+# Claude Code + OMC
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/RTK.md $HOME/.claude/RTK.md
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/settings.json $HOME/.claude/settings.json
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/settings.local.json $HOME/.claude/settings.local.json
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/statusline-command.sh $HOME/.claude/statusline-command.sh
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/hooks $HOME/.claude/hooks
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/hud $HOME/.claude/hud
+zf_ln -sfn $SCRIPT_DIR/configs/claude-code/skills $HOME/.claude/skills
+# Codex CLI + OMX
+zf_ln -sfn $SCRIPT_DIR/configs/codex/config.toml $HOME/.codex/config.toml
+zf_ln -sfn $SCRIPT_DIR/configs/codex/AGENTS.md $HOME/.codex/AGENTS.md
+zf_ln -sfn $SCRIPT_DIR/configs/codex/agents $HOME/.codex/agents
+zf_ln -sfn $SCRIPT_DIR/configs/codex/prompts $HOME/.codex/prompts
+zf_ln -sfn $SCRIPT_DIR/configs/codex/rules $HOME/.codex/rules
+zf_ln -sfn $SCRIPT_DIR/configs/codex/skills $HOME/.codex/skills
+# OpenCode
+zf_ln -sfn $SCRIPT_DIR/configs/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
+zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json
+# OMX standalone agents
+zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 print "  ...done"
 
 # Make sure submodules are installed
@@ -156,6 +178,34 @@ if (( ! ${+commands[wtp]} )); then
         rm -rf $wtp_tmp
     else
         print "  ...unsupported platform for wtp auto-install, skipping"
+    fi
+fi
+
+if (( ! ${+commands[gh]} )); then
+    print "Installing gh (GitHub CLI)..."
+    local gh_arch=$(uname -m)
+    local gh_os=$(uname -s)
+    if [[ $gh_os == Linux && ($gh_arch == x86_64 || $gh_arch == aarch64) ]]; then
+        [[ $gh_arch == x86_64 ]] && gh_arch=amd64
+        [[ $gh_arch == aarch64 ]] && gh_arch=arm64
+        local gh_version
+        gh_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/cli/cli/releases/latest | sed 's|.*/tag/v||')
+        if [[ -n $gh_version ]]; then
+            local gh_tmp=$(mktemp -d)
+            local gh_os_lower=${gh_os:l}
+            if curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_${gh_os_lower}_${gh_arch}.tar.gz" | tar xz -C $gh_tmp; then
+                zf_mv $gh_tmp/gh_${gh_version}_${gh_os_lower}_${gh_arch}/bin/gh $HOME/.local/bin/gh
+                chmod +x $HOME/.local/bin/gh
+                print "  ...done"
+            else
+                print "  ...failed to download gh, skipping"
+            fi
+            rm -rf $gh_tmp
+        else
+            print "  ...failed to determine latest gh version, skipping"
+        fi
+    else
+        print "  ...unsupported platform for gh auto-install, skipping"
     fi
 fi
 

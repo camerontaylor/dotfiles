@@ -1,0 +1,76 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "atelier",
+  "description": "Personal development toolkit - spec-driven development, code quality, deep thinking, and ecosystem patterns",
+  "owner": {
+    "name": "Martin Richards"
+  },
+  "plugins": [
+    {
+      "name": "spec",
+      "description": "Spec-driven development workflows - methodology, task tracking, project structure, and testing patterns",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/spec:architect",
+        "./skills/spec:beads",
+        "./skills/spec:methodology",
+        "./skills/spec:product",
+        "./skills/spec:project-structure",
+        "./skills/spec:testing"
+      ]
+    },
+    {
+      "name": "oracle",
+      "description": "Deep thinking and reasoning patterns for complex problem-solving and critical analysis",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/oracle:challenge",
+        "./skills/oracle:thinkdeep"
+      ]
+    },
+    {
+      "name": "typescript",
+      "description": "TypeScript ecosystem patterns - DynamoDB, Drizzle, Fastify, Effect, and API design",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/typescript:api-design",
+        "./skills/typescript:build-tools",
+        "./skills/typescript:drizzle-orm",
+        "./skills/typescript:dynamodb-toolbox",
+        "./skills/typescript:effect-ts",
+        "./skills/typescript:fastify",
+        "./skills/typescript:functional-patterns",
+        "./skills/typescript:testing"
+      ]
+    },
+    {
+      "name": "python",
+      "description": "Modern Python ecosystem patterns - FastAPI, SQLAlchemy, Temporal, architecture, and testing",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/python:architecture",
+        "./skills/python:build-tools",
+        "./skills/python:fastapi",
+        "./skills/python:modern-python",
+        "./skills/python:monorepo",
+        "./skills/python:sqlalchemy",
+        "./skills/python:temporal",
+        "./skills/python:testing"
+      ]
+    },
+    {
+      "name": "code",
+      "description": "Code development utilities - code review and conventional commits",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/code-review",
+        "./skills/conventional-commit"
+      ]
+    }
+  ]
+}

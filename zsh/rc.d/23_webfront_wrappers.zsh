@@ -1,6 +1,5 @@
 _webfront_wrapper_names=(
     p
-    wt-archive
     cc
     ccm
     ccz
@@ -24,8 +23,6 @@ _webfront_wrappers_refresh() {
     done
 
     (( ${+functions[compdef]} )) || return 0
-
-    compdef _wt-archive wt-archive
 
     if [[ -d $_webfront_wrapper_claude_completion_dir ]]; then
         (( ${fpath[(I)$_webfront_wrapper_claude_completion_dir]} )) || fpath=($_webfront_wrapper_claude_completion_dir $fpath)
