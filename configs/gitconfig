@@ -44,6 +44,7 @@
 [rerere]
 	enabled = true
 [delta]
+	pager = less
 	navigate = true
 	hyperlinks = true
 	dark = true
