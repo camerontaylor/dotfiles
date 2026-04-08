@@ -8,6 +8,11 @@ _zshrc_dbg() { (( _ZSHRC_DEBUG )) && echo "[zshrc] $*" >> /tmp/zsh-debug.log; }
 
 _zshrc_dbg "start"
 
+# Auto-attach to tmux for SSH sessions (must run before p10k instant prompt)
+if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 ]]; then
+    exec tmux new-session -A -s ssh
+fi
+
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   _zshrc_dbg "sourcing p10k instant prompt"
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" || echo "Warning: error in p10k instant prompt" >&2
