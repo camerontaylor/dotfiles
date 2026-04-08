@@ -302,6 +302,17 @@ if [[ ! -f $age_key_dir/keys.txt ]]; then
         chmod 600 $age_key_dir/keys.txt
         print "  ...done"
         print "  IMPORTANT: Back up $age_key_dir/keys.txt to your password manager!"
+    else
+        print ""
+        print "WARNING: age key not found and age-keygen not available."
+        print "  Encrypted secrets (zsh/env.d/90_secrets.zsh etc.) cannot be decrypted."
+        print ""
+        print "  To restore secrets on this machine, either:"
+        print "    1. Copy your existing keys.txt from your password manager to:"
+        print "         $age_key_dir/keys.txt"
+        print "    2. Or install age (mise install) and re-run deploy.zsh to generate a new key."
+        print "       (A new key cannot decrypt existing .enc files — you must re-encrypt them.)"
+        print ""
     fi
 fi
 

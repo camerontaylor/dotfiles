@@ -33,6 +33,13 @@ fi
 
 if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
     print "age key not found at $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
+    print "" >&2
+    print "  To decrypt secrets, place your age private key at:" >&2
+    print "    $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
+    print "" >&2
+    print "  If you have a backup, copy it there and run this script again." >&2
+    print "  If setting up fresh, run deploy.zsh first to generate a new key." >&2
+    print "  (A new key cannot decrypt existing .enc files — you must re-encrypt them.)" >&2
     exit 1
 fi
 
