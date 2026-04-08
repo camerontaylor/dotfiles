@@ -22,6 +22,8 @@ pnpm = "latest"
 "npm:@ast-grep/napi" = "latest"
 "npm:oxlint" = "latest"
 "npm:not-claude-code-emulator" = "latest"
+"npm:gsd-pi" = "latest"
+"npm:@oh-my-pi/pi-coding-agent" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

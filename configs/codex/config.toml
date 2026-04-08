@@ -34,11 +34,13 @@ max_depth = 2
 [mcp_servers.web-reader]
 command = "python3"
 args = ["/home/ctaylor/.codex/bin/zai_streamable_http_mcp_bridge.py", "https://api.z.ai/api/mcp/web_reader/mcp", "Z_AI_API_KEY"]
+enabled = false
 startup_timeout_sec = 10
 
 [mcp_servers.zread]
 command = "python3"
 args = ["/home/ctaylor/.codex/bin/zai_streamable_http_mcp_bridge.py", "https://api.z.ai/api/mcp/zread/mcp", "Z_AI_API_KEY"]
+enabled = false
 startup_timeout_sec = 10
 
 [mcp_servers.web-to-mcp]
@@ -46,11 +48,13 @@ url = "https://web-to-mcp.com/mcp/541f0cbf-c5e3-4e77-9170-885d742bb4bf/"
 [mcp_servers.serena]
 command = "/home/ctaylor/repos/deploy/serena/serena-repo/.venv/bin/serena-mcp-server"
 args = [ "--context", "claude-code" ]
+enabled = false
 startup_timeout_sec = 5
 
 [mcp_servers.react-grab-mcp]
 command = "/home/ctaylor/repos/webfront/packages/app/node_modules/.bin/react-grab-mcp"
 args = [ "--stdio" ]
+enabled = false
 startup_timeout_sec = 5
 
 [env]
@@ -92,6 +96,9 @@ startup_timeout_sec = 5
 # OMX TUI StatusLine (Codex CLI v0.101.0+)
 [tui]
 status_line = ["model-with-reasoning", "git-branch", "context-remaining", "total-input-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit"]
+
+[plugins."github@openai-curated"]
+enabled = true
 
 # ============================================================
 # End oh-my-codex

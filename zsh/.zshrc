@@ -9,8 +9,16 @@ _zshrc_dbg() { (( _ZSHRC_DEBUG )) && echo "[zshrc] $*" >> /tmp/zsh-debug.log; }
 _zshrc_dbg "start"
 
 # Auto-attach to tmux for SSH sessions (must run before p10k instant prompt)
+# Reattach to first unattached session, or create a new one
 if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 ]]; then
-    exec tmux new-session -A -s ssh
+    _free_session=$(tmux ls -F '#{session_name} #{session_attached}' 2>/dev/null \
+        | awk '$2 == "0" { print $1; exit }')
+    if [[ -n $_free_session ]]; then
+        exec tmux attach -t "$_free_session"
+    else
+        exec tmux new-session
+    fi
+    unset _free_session
 fi
 
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
