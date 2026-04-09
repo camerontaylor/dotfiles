@@ -212,6 +212,12 @@ if (( ! ${+commands[gh]} )); then
     fi
 fi
 
+if (( ${+commands[gh]} )); then
+    gh extension list 2>/dev/null | grep -q chmouel/gh-prreview \
+        || gh extension install chmouel/gh-prreview 2>/dev/null \
+        || true
+fi
+
 if (( ! ${+commands[glab]} )); then
     print "Installing glab..."
     local glab_arch=$(uname -m)

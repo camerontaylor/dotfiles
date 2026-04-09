@@ -21,12 +21,9 @@ if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 ]]; then
     unset _free_session
 fi
 
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  _zshrc_dbg "sourcing p10k instant prompt"
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" || echo "Warning: error in p10k instant prompt" >&2
-else
-  _zshrc_dbg "p10k instant prompt not found, skipping"
-fi
+# p10k instant prompt is sourced in rc.d/01_instant_prompt.zsh
+# (after clear-screen-soft-bottom, so the clear doesn't trigger the
+# "console output during initialization" warning)
 
 # Include interactive rc files
 for conffile in $ZDOTDIR/rc.d/*(N); do

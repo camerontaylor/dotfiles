@@ -21,3 +21,4 @@ keybind = global:ctrl+grave_accent=toggle_quick_terminal
 
 
 linux-cgroup = single-instance
+window-vsync = false
