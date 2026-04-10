@@ -38,6 +38,9 @@ happy() {
     _run_with_terminal_restore happy "$@"
 }
 
+# Default ToolSearch for Claude Code (overridden to false by ccz/ccm aliases)
+export ENABLE_TOOL_SEARCH="auto:5"
+
 # Normal Max plan Claude - explicitly unset any CCR vars
 alias ccc='unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY && claude'
 
