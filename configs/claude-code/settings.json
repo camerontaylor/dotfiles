@@ -126,7 +126,7 @@
       "/home/app"
     ]
   },
-  "model": "opus",
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
@@ -144,7 +144,9 @@
     "frontend-design@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": false,
-    "codex@openai-codex": true
+    "codex@openai-codex": true,
+    "ck@cavekit-local": true,
+    "bp@cavekit-local": true
   },
   "extraKnownMarketplaces": {
     "engram": {
@@ -163,6 +165,18 @@
       "source": {
         "source": "github",
         "repo": "openai/codex-plugin-cc"
+      }
+    },
+    "jamie-bitflight-skills": {
+      "source": {
+        "source": "github",
+        "repo": "Jamie-BitFlight/claude_skills"
+      }
+    },
+    "cavekit-local": {
+      "source": {
+        "source": "directory",
+        "path": "/home/ctaylor/.claude/plugins/local/cavekit-marketplace"
       }
     }
   },
