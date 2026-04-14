@@ -13,6 +13,7 @@
 	verbose = true
 [branch]
 	sort = -committerdate
+	autoSetupRebase = never
 [tag]
 	sort = version:refname
 [merge]
