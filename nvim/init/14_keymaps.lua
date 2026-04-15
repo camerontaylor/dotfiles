@@ -1,3 +1,9 @@
+vim.opt.clipboard = 'unnamedplus'
+
+-- send c/d to named register so they don't clobber the clipboard
+vim.keymap.set({ 'n', 'x' }, 'c', '"ac')
+vim.keymap.set({ 'n', 'x' }, 'd', '"ad')
+
 -- simple shorthands
 local nimap = function(lhs, rhs, desc) vim.keymap.set({ 'n', 'i' }, lhs, rhs, { desc = desc }) end
 local cmap = function(lhs, rhs) vim.keymap.set('c', lhs, rhs, { expr = true }) end

@@ -40,6 +40,12 @@ command! -bang Qa qa<bang>
 " allow the . to execute once for each line of a visual selection
 vnoremap . :normal .<CR>
 
+" send c/d to named register so they don't clobber the clipboard
+nnoremap c "ac
+nnoremap d "ad
+xnoremap c "ac
+xnoremap d "ad
+
 " I fat finger this too often. Command history window, you won't be missed
 " Ctrl+f in command line in case you really need it
 nnoremap q: :q
