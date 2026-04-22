@@ -1,6 +1,6 @@
 ---
 name: ultrawork
-description: Parallel execution engine for high-throughput task completion
+description: "[OMX] Parallel execution engine for high-throughput task completion"
 ---
 
 <Purpose>
@@ -29,6 +29,7 @@ Sequential task execution wastes time when tasks are independent. Ultrawork enab
 - Fire all independent agent calls simultaneously -- never serialize independent work
 - Always pass the `model` parameter explicitly when delegating
 - Read `docs/shared/agent-tiers.md` before first delegation for agent selection guidance
+- Auto-delegate `researcher` when official docs, version-aware framework guidance, best practices, or external dependency behavior materially affect task correctness; treat it as an evidence lane, not a replacement primary workflow
 - Use `run_in_background: true` for operations over ~30 seconds (installs, builds, tests)
 - Run quick commands (git status, file reads, simple checks) in the foreground
 </Execution_Policy>

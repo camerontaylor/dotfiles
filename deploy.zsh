@@ -246,6 +246,42 @@ if (( ! ${+commands[glab]} )); then
     fi
 fi
 
+# Install AWS CLI v2 if not present
+if (( ! ${+commands[aws]} )); then
+    print "Installing AWS CLI v2..."
+    local aws_arch=$(uname -m)
+    local aws_os=$(uname -s)
+    if [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
+        print "  ...unsupported platform for AWS CLI auto-install, skipping"
+    elif (( ! ${+commands[unzip]} )); then
+        print "  ...unzip not available, skipping (install via build-deps)"
+    else
+        local aws_tmp=$(mktemp -d)
+        if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip" -o $aws_tmp/awscliv2.zip \
+            && unzip -q $aws_tmp/awscliv2.zip -d $aws_tmp \
+            && $aws_tmp/aws/install -i $HOME/.local/aws-cli -b $HOME/.local/bin > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install AWS CLI, skipping"
+        fi
+        rm -rf $aws_tmp
+    fi
+elif $upgrade_mode; then
+    print "Upgrading AWS CLI v2..."
+    local aws_arch=$(uname -m)
+    if [[ $(uname -s) == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
+        local aws_tmp=$(mktemp -d)
+        if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip" -o $aws_tmp/awscliv2.zip \
+            && unzip -q $aws_tmp/awscliv2.zip -d $aws_tmp \
+            && $aws_tmp/aws/install --update -i $HOME/.local/aws-cli -b $HOME/.local/bin > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...AWS CLI upgrade failed"
+        fi
+        rm -rf $aws_tmp
+    fi
+fi
+
 # Install moor (modern terminal pager) if not present
 if (( ! ${+commands[moor]} )); then
     print "Installing moor..."
