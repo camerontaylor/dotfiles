@@ -163,25 +163,7 @@ fi
 
 # Install wtp if not present
 if (( ! ${+commands[wtp]} )); then
-    print "Installing wtp..."
-    local wtp_arch=$(uname -m)
-    local wtp_os=$(uname -s)
-    if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
-        [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
-        local wtp_version
-        wtp_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/satococoa/wtp/releases/latest | sed 's|.*/tag/v||')
-        local wtp_tmp=$(mktemp -d)
-        if [[ -n $wtp_version ]] && curl -fsSL "https://github.com/satococoa/wtp/releases/download/v${wtp_version}/wtp_${wtp_version}_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
-            zf_mv $wtp_tmp/wtp $HOME/.local/bin/wtp
-            chmod +x $HOME/.local/bin/wtp
-            print "  ...done"
-        else
-            print "  ...failed to download wtp, skipping"
-        fi
-        rm -rf $wtp_tmp
-    else
-        print "  ...unsupported platform for wtp auto-install, skipping"
-    fi
+    $SCRIPT_DIR/scripts/install-wtp.zsh || true
 fi
 
 if (( ! ${+commands[gh]} )); then
@@ -447,7 +429,7 @@ fi
 
 # Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find zoxide tree-sitter-cli)
+    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg

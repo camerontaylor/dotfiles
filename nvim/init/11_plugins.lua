@@ -63,10 +63,4 @@ require('tmux').setup({
   resize = { enable_default_keybindings = false },
 })
 require('schema-companion').setup({})
-require('markview').setup({
-  preview = {
-    filetypes = { 'markdown', 'codecompanion' },
-    ignore_buftypes = {},
-  },
-})
 require('flash').setup({})

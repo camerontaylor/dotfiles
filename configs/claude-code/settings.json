@@ -1,6 +1,7 @@
 {
+  "cleanupPeriodDays": 90,
   "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "90",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     "CLAUDE_CODE_SHELL": "zsh",
@@ -143,9 +144,7 @@
     "frontend-design@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": false,
-    "codex@openai-codex": true,
-    "ck@cavekit-local": true,
-    "bp@cavekit-local": true
+    "ck@cavekit-local": true
   },
   "extraKnownMarketplaces": {
     "engram": {
@@ -180,5 +179,9 @@
     }
   },
   "autoDreamEnabled": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "editorMode": "vim",
+  "teammateMode": "tmux",
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true
 }

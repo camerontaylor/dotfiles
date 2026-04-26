@@ -98,6 +98,5 @@ nmap_leader('bW', function() MiniBufremove.wipeout(0, true) end, 'Wipeout!')
 
 -- toggles
 nmap_leader('tt', require('nvim-tree.api').tree.toggle, 'NvimTree')
-nmap_leader('tm', require('markview').commands.toggle, 'Markdown rendering')
 nmap_leader('tc', require('codecompanion').toggle, 'CodeCompanion chat')
 nmap_leader('td', require('mini.diff').toggle_overlay, 'Diff overlay')
