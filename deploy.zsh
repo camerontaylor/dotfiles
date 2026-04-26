@@ -342,17 +342,32 @@ if [[ ! -f $age_key_dir/keys.txt ]]; then
     fi
 fi
 
-# Configure .sops.yaml with age public key
+# Verify this machine's age public key is registered in the committed .sops.yaml.
+# .sops.yaml is the source of truth for which keys can decrypt; deploy.zsh never
+# rewrites it. If this machine isn't registered, print actionable instructions.
 if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
     age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
     if [[ -n $age_public_key ]]; then
-        print "Configuring .sops.yaml..."
-        cat > $SCRIPT_DIR/.sops.yaml << EOF
-creation_rules:
-  - path_regex: \.enc$
-    age: $age_public_key
-EOF
-        print "  ...done"
+        if [[ ! -f $SCRIPT_DIR/.sops.yaml ]]; then
+            print ""
+            print "WARNING: .sops.yaml not found in repo root."
+            print "  This machine's age public key:"
+            print "    $age_public_key"
+            print "  Add it to .sops.yaml on a registered machine and re-encrypt secrets."
+            print ""
+        elif ! grep -Fq "$age_public_key" $SCRIPT_DIR/.sops.yaml; then
+            print ""
+            print "WARNING: this machine's age key is not registered for sops decryption."
+            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, configs/portless/*.pem.enc) cannot be read."
+            print ""
+            print "  This machine's public key:"
+            print "    $age_public_key"
+            print ""
+            print "  To register, on an already-registered machine run:"
+            print "    scripts/sops-add-recipient.zsh $age_public_key"
+            print "  then commit and push. Pull here to pick up the re-encrypted secrets."
+            print ""
+        fi
     fi
 fi
 

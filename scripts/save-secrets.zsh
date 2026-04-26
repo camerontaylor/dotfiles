@@ -40,12 +40,8 @@ if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
     exit 1
 fi
 
-local pubkey
-pubkey=$(grep 'public key:' $XDG_CONFIG_HOME/sops/age/keys.txt | awk '{print $NF}')
-if [[ -z $pubkey ]]; then
-    print "could not extract public key from $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
-    exit 1
-fi
+# Encryption uses the recipient list defined in .sops.yaml (no --age / --config
+# overrides) so multi-machine setups stay multi-recipient.
 
 local plaintext enc_file
 for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
@@ -59,7 +55,7 @@ for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
 
     if [[ ! -f $enc_file || $plaintext -nt $enc_file || $force == true ]]; then
         print "Encrypting ${plaintext} -> ${enc_file}..."
-        if sops --encrypt --age $pubkey --input-type binary --output-type binary --config /dev/null --output $enc_file $plaintext 2>/dev/null; then
+        if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
             if $git_add; then
                 git add $enc_file
             fi
@@ -84,7 +80,7 @@ for f (ca.pem ca-key.pem server.pem server-key.pem); do
     fi
 
     print "Encrypting ${plaintext} -> ${enc_file}..."
-    if sops --encrypt --age $pubkey --input-type binary --output-type binary --config /dev/null --output $enc_file $plaintext 2>/dev/null; then
+    if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
         if $git_add; then
             git add $enc_file
         fi
