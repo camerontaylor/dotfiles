@@ -6,9 +6,6 @@ developer_instructions = "You have oh-my-codex installed. AGENTS.md is your orch
 
 
 
-
-
-
 suppress_unstable_features_warning = true
 model = "gpt-5.5"
 model_context_window = 1000000
@@ -39,13 +36,14 @@ multi_agent = true
 child_agents_md = true
 
 codex_hooks = true
+js_repl = true
+image_detail_original = true
 [agents]
 max_threads = 12
 max_depth = 4
 
 [mcp_servers.web-to-mcp]
 url = "https://web-to-mcp.com/mcp/541f0cbf-c5e3-4e77-9170-885d742bb4bf/"
-enabled = false
 
 [mcp_servers.react-grab-mcp]
 command = "/home/ctaylor/repos/webfront/packages/app/node_modules/.bin/react-grab-mcp"
