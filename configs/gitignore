@@ -68,4 +68,48 @@ Session.vim
 # MacOS
 .DS_Store
 
+### oh-my-claudecode / OMC / sisyphus (copied from webfront/.gitignore) ###
+# Ignore root .omc by default, then allowlist meaningful artifacts
+.omc/*
+
+# Ignore any nested .omc directories outright (keep root /.omc managed below)
+**/.omc/
+!/.omc/
+
+# Keep meaningful agent knowledge artifacts
+!/.omc/plans/
+!/.omc/plans/**
+!/.omc/research/
+!/.omc/research/**
+!/.omc/notepad.md
+!/.omc/skills/
+!/.omc/skills/**
+!/.omc/templates/
+!/.omc/templates/**
+!/.omc/specs/
+!/.omc/specs/**
+
+# Ignore high-churn runtime artifacts in root .omc
+/.omc/state/
+/.omc/sessions/
+/.omc/**/*.jsonl
+/.omc/**/*.log
+
+# Specific files inside allowlisted dirs that should still be ignored
+.omc/plans/open-questions.md
+
+# .omx mirrors the .omc allowlist pattern
+.omx/*
+!.omx/plans/
+!.omx/plans/**
+!.omx/research/
+!.omx/research/**
+!.omx/specs/
+!.omx/specs/**
+!.omx/context/
+!.omx/context/**
+
+# Sisyphus boulder state
+.sisyphus/boulder.json
+
 # vi: ft=gitignore
