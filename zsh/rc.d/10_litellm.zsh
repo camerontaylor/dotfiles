@@ -1,23 +1,70 @@
-# LiteLLM proxy: systemd user service
+# LiteLLM proxy: systemd user service (lives on ceres; reachable from LAN peers via mDNS)
 # Real Opus → use ccc (direct Anthropic OAuth, NOT this proxy)
 # Sonnet/Haiku (claude-sonnet-4-6 / claude-haiku-4-5-20251001) → MiniMax via proxy (ccl)
 # Eclectic tier (Z.AI bg / Fireworks / Cerebras free+paid) → ccfw, cczbg, role aliases
-if (( ${+commands[litellm]} )); then
+#
+# Host resolution: defaults to ceres.local (mDNS, works from ceres/pluto/make).
+# Override with LITELLM_HOST env var (e.g. LITELLM_HOST=localhost or 192.168.0.74).
+# The proxy binds 0.0.0.0:4199; only ceres runs the systemd unit, peers just connect.
+typeset -g _LITELLM_HOST="${LITELLM_HOST:-ceres.local}"
+typeset -g _LITELLM_PORT="${LITELLM_PORT:-4199}"
+typeset -g _LITELLM_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/litellm"
+typeset -g _LITELLM_BASE_URL="http://${_LITELLM_HOST}:${_LITELLM_PORT}"
 
-  typeset -g _LITELLM_PORT=4199
-  typeset -g _LITELLM_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/litellm"
+# True when this machine owns the systemd unit (ceres). On peers, ensure_service
+# becomes a remote-reachability probe instead of a systemctl invocation.
+_litellm_is_host() {
+  [[ "$(hostname -s 2>/dev/null)" == "ceres" ]]
+}
 
-  # Ensure systemd service is running (idempotent)
+# Resolve the master key. Source of truth is the encrypted secret
+# (`zsh/env.d/90_secrets.zsh` exports LITELLM_MASTER_KEY at login). Falls back
+# to the local key file on ceres for first-run bootstrap before the secret
+# exists. On remote peers (no key file), the env var is the only path.
+_litellm_master_key() {
+  if [[ -n "${LITELLM_MASTER_KEY:-}" ]]; then
+    print -r -- "$LITELLM_MASTER_KEY"
+    return 0
+  fi
+  local keyfile="$_LITELLM_STATE/master-key"
+  if [[ -r $keyfile ]]; then
+    local key
+    key="$(<"$keyfile")"
+    print -r -- "${key%$'\n'}"
+    return 0
+  fi
+  print -u2 -- "_litellm_master_key: LITELLM_MASTER_KEY unset and $keyfile unreadable"
+  return 1
+}
+
+if (( ${+commands[litellm]} )) || ! _litellm_is_host; then
+
+  # Ensure systemd service is running (idempotent on ceres; remote probe elsewhere)
   _litellm_ensure_service() {
+    if ! _litellm_is_host; then
+      # Remote machine: just verify the proxy is reachable.
+      if ! curl -sf --max-time 3 "${_LITELLM_BASE_URL}/health/liveliness" 2>/dev/null | grep -q "alive"; then
+        print "LiteLLM proxy unreachable at ${_LITELLM_BASE_URL}. Is ceres up?" >&2
+        return 1
+      fi
+      return 0
+    fi
     local statedir="$_LITELLM_STATE"
     local envfile="$statedir/env"
 
     [[ -d $statedir ]] || { mkdir -p "$statedir" && chmod 700 "$statedir" }
 
-    # Generate stable master key if missing
+    # Generate stable master key if missing (first-run bootstrap; normally the
+    # secret env var is the source of truth — see _litellm_master_key).
     local keyfile="$statedir/master-key"
-    if [[ ! -f $keyfile ]]; then
+    if [[ -z "${LITELLM_MASTER_KEY:-}" && ! -f $keyfile ]]; then
       print "sk-litellm-$(head -c 16 /dev/urandom | xxd -p)" > "$keyfile"
+      chmod 600 "$keyfile"
+      print "Bootstrapped new master key at $keyfile — copy into zsh/env.d/90_secrets.zsh as LITELLM_MASTER_KEY then run scripts/save-secrets.zsh" >&2
+    fi
+    # Mirror the env var into the file so legacy readers stay consistent.
+    if [[ -n "${LITELLM_MASTER_KEY:-}" && "${LITELLM_MASTER_KEY}" != "$(<"$keyfile" 2>/dev/null)" ]]; then
+      print -r -- "$LITELLM_MASTER_KEY" > "$keyfile"
       chmod 600 "$keyfile"
     fi
 
@@ -28,7 +75,7 @@ if (( ${+commands[litellm]} )); then
     local prev_hash=""
     [[ -f $hashfile ]] && prev_hash=$(<"$hashfile")
     {
-      print "LITELLM_MASTER_KEY=$(<"$keyfile")"
+      print "LITELLM_MASTER_KEY=$(_litellm_master_key)"
       print "MINIMAX_API_KEY=$MINIMAX_API_KEY"
       print "FIREWORKS_API_KEY=$FIREWORKS_API_KEY"
       print "CEREBRAS_API_KEY=$CEREBRAS_API_KEY"
@@ -59,7 +106,7 @@ if (( ${+commands[litellm]} )); then
 
       # Wait for health (max 20s)
       local i=0
-      while ! curl -sf "http://localhost:$_LITELLM_PORT/health/liveliness" 2>/dev/null | grep -q "alive"; do
+      while ! curl -sf "${_LITELLM_BASE_URL}/health/liveliness" 2>/dev/null | grep -q "alive"; do
         sleep 1
         if (( ++i > 20 )); then
           print "LiteLLM proxy failed health check. Check: ccl-log" >&2
@@ -74,7 +121,7 @@ if (( ${+commands[litellm]} )); then
   ccl() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     # CLAUDE_CODE_ATTRIBUTION_HEADER=0 stops Claude Code 2.1.36+ from emitting
     # the per-request x-anthropic-billing-header that breaks prompt caching.
     # Proxy auth via x-litellm-api-key; Claude Code's x-api-key (OAuth) passes through to Anthropic.
@@ -84,7 +131,7 @@ if (( ${+commands[litellm]} )); then
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_SMALL_FAST_MODEL="fleet-small-fast" \
       claude "$@"
@@ -93,11 +140,11 @@ if (( ${+commands[litellm]} )); then
   ccl-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_SMALL_FAST_MODEL="fleet-small-fast" \
       happy yolo --dangerously-skip-permissions "$@"
@@ -109,12 +156,12 @@ if (( ${+commands[litellm]} )); then
   ccfw() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="fleet-opus" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="fleet-opus" \
@@ -128,12 +175,12 @@ if (( ${+commands[litellm]} )); then
   ccfw-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="fleet-opus" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="fleet-opus" \
@@ -150,13 +197,13 @@ if (( ${+commands[litellm]} )); then
   cczbg() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ENABLE_TOOL_SEARCH=false \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="glm-5.1-bg" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.1-bg" \
@@ -170,13 +217,13 @@ if (( ${+commands[litellm]} )); then
   cczbg-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ENABLE_TOOL_SEARCH=false \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="glm-5.1-bg" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.1-bg" \
@@ -194,12 +241,12 @@ if (( ${+commands[litellm]} )); then
   cc-fast() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="glm-4.7-cerebras" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="fleet-opus" \
@@ -213,12 +260,12 @@ if (( ${+commands[litellm]} )); then
   cc-fast-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
     ANTHROPIC_API_KEY="" \
     ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="http://localhost:$_LITELLM_PORT" \
+    ANTHROPIC_BASE_URL="${_LITELLM_BASE_URL}" \
     ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $master_key" \
     ANTHROPIC_MODEL="glm-4.7-cerebras" \
     ANTHROPIC_DEFAULT_OPUS_MODEL="fleet-opus" \
@@ -232,16 +279,16 @@ if (( ${+commands[litellm]} )); then
   ccl-health() {
     emulate -L zsh
     _litellm_ensure_service || return 1
-    local master_key=$(<"$_LITELLM_STATE/master-key")
+    local master_key=$(_litellm_master_key) || return 1
     print "=== /health/readiness ==="
-    curl -sS "http://localhost:$_LITELLM_PORT/health/readiness" | jq . 2>/dev/null || \
-      curl -sS "http://localhost:$_LITELLM_PORT/health/readiness"
+    curl -sS "${_LITELLM_BASE_URL}/health/readiness" | jq . 2>/dev/null || \
+      curl -sS "${_LITELLM_BASE_URL}/health/readiness"
     print "\n=== /health (per-deployment) ==="
     # NOTE: LiteLLM auth path requires "Bearer " prefix even on the custom
     # x-litellm-api-key header (hardcoded in litellm.proxy.auth.user_api_key_auth).
-    curl -sS "http://localhost:$_LITELLM_PORT/health" \
+    curl -sS "${_LITELLM_BASE_URL}/health" \
       -H "x-litellm-api-key: Bearer $master_key" | jq . 2>/dev/null || \
-      curl -sS "http://localhost:$_LITELLM_PORT/health" \
+      curl -sS "${_LITELLM_BASE_URL}/health" \
       -H "x-litellm-api-key: Bearer $master_key"
   }
 
@@ -250,8 +297,8 @@ if (( ${+commands[litellm]} )); then
     _litellm_ensure_service || return 1
     local model="${1:?usage: ccl-probe <model_name> [prompt]}"
     local prompt="${2:-reply with the single word ready}"
-    local master_key=$(<"$_LITELLM_STATE/master-key")
-    curl -sS "http://localhost:$_LITELLM_PORT/v1/messages" \
+    local master_key=$(_litellm_master_key) || return 1
+    curl -sS "${_LITELLM_BASE_URL}/v1/messages" \
       -H "x-litellm-api-key: Bearer $master_key" \
       -H "Content-Type: application/json" \
       -H "anthropic-version: 2023-06-01" \
@@ -261,6 +308,10 @@ if (( ${+commands[litellm]} )); then
 
   ccl-stop() {
     emulate -L zsh
+    if ! _litellm_is_host; then
+      print "ccl-stop: service runs on ceres; ssh ceres ccl-stop" >&2
+      return 1
+    fi
     if systemctl --user is-active --quiet litellm-proxy; then
       systemctl --user stop litellm-proxy
       print "LiteLLM proxy stopped."
@@ -271,11 +322,19 @@ if (( ${+commands[litellm]} )); then
 
   ccl-status() {
     emulate -L zsh
+    if ! _litellm_is_host; then
+      print "ccl-status: service runs on ceres; ssh ceres ccl-status" >&2
+      return 1
+    fi
     systemctl --user status litellm-proxy --no-pager 2>/dev/null
   }
 
   ccl-log() {
     emulate -L zsh
+    if ! _litellm_is_host; then
+      print "ccl-log: log file is on ceres; ssh ceres ccl-log" >&2
+      return 1
+    fi
     local logfile="$_LITELLM_STATE/proxy.log"
     if [[ ! -f $logfile ]]; then
       print "No log file yet: $logfile" >&2
