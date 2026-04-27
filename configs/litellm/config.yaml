@@ -7,7 +7,7 @@
 #   - existing MiniMax sonnet/haiku mapping retained
 #
 # Proxy auth: master key in `x-litellm-api-key` header (NOT Authorization),
-# matching the ccl/ccfw/cczbg alias convention.
+# matching the ccl/ccfw/ccz alias convention.
 
 model_list:
   # ============================================
@@ -370,6 +370,6 @@ litellm_settings:
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   # Proxy auth via custom header — keeps x-api-key free for Anthropic passthrough
-  # if/when an OAuth-routed model is reintroduced. Required by ccl/ccfw/cczbg
+  # if/when an OAuth-routed model is reintroduced. Required by ccl/ccfw/ccz
   # aliases which set ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer ...".
   litellm_key_header_name: "x-litellm-api-key"

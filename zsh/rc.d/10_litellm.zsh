@@ -1,7 +1,7 @@
 # LiteLLM proxy: systemd user service (lives on ceres; reachable from LAN peers via mDNS)
 # Real Opus → use ccc (direct Anthropic OAuth, NOT this proxy)
 # Sonnet/Haiku (claude-sonnet-4-6 / claude-haiku-4-5-20251001) → MiniMax via proxy (ccl)
-# Eclectic tier (Z.AI bg / Fireworks / Cerebras free+paid) → ccfw, cczbg, role aliases
+# Eclectic tier (Z.AI bg / Fireworks / Cerebras free+paid) → ccfw, ccz, role aliases
 #
 # Host resolution: defaults to ceres.local (mDNS, works from ceres/pluto/make).
 # Override with LITELLM_HOST env var (e.g. LITELLM_HOST=localhost or 192.168.0.74).
@@ -70,7 +70,7 @@ if (( ${+commands[litellm]} )) || ! _litellm_is_host; then
 
     # Write env file for systemd (refreshes keys each start).
     # Self-healing: provider keys come from current shell env, so any rotation
-    # in zsh/env.d/*secrets* propagates to the proxy on next ccl/ccfw/cczbg call.
+    # in zsh/env.d/*secrets* propagates to the proxy on next ccl/ccfw/ccz call.
     local hashfile="$statedir/env.sha1"
     local prev_hash=""
     [[ -f $hashfile ]] && prev_hash=$(<"$hashfile")
@@ -191,10 +191,11 @@ if (( ${+commands[litellm]} )) || ! _litellm_is_host; then
       happy yolo --dangerously-skip-permissions "$@"
   }
 
-  # cczbg: Z.AI single-stream background tier via LiteLLM proxy.
+  # ccz: Z.AI single-stream background tier via LiteLLM proxy. (Was: cczbg.)
   # All roles route to glm-5.1-bg (max_parallel_requests=1). Use for low-priority
-  # worktrees. Falls back to glm-5.1-fast (Fireworks) when 429s.
-  cczbg() {
+  # worktrees. Falls back to glm-5.1-fast (Fireworks) when 429s. The legacy
+  # direct-Z.AI alias is now `ccz-direct`, kept as fallback.
+  ccz() {
     emulate -L zsh
     _litellm_ensure_service || return 1
     local master_key=$(_litellm_master_key) || return 1
@@ -214,7 +215,7 @@ if (( ${+commands[litellm]} )) || ! _litellm_is_host; then
       claude --model glm-5.1-bg "$@"
   }
 
-  cczbg-happy() {
+  ccz-happy() {
     emulate -L zsh
     _litellm_ensure_service || return 1
     local master_key=$(_litellm_master_key) || return 1

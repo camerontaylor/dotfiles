@@ -32,7 +32,7 @@ talks to Anthropic directly via `ccc`. The proxy is for the eclectic tier
 └── proxy.log                   ← stdout+stderr append-mode
 
 # Shell glue (lives in dotfiles zsh):
-~/.local/dotfiles/zsh/rc.d/10_litellm.zsh   ← _litellm_ensure_service + ccl/ccfw/cczbg/cc-fast functions
+~/.local/dotfiles/zsh/rc.d/10_litellm.zsh   ← _litellm_ensure_service + ccl/ccfw/ccz/cc-fast functions
 ```
 
 The systemd unit listens on **port 4199** (not 4000 from the LiteLLM reference
@@ -51,7 +51,8 @@ ccl -p "hi"
 ccc                    # direct Anthropic OAuth, NO proxy (real Opus quota)
 ccl                    # proxy → MiniMax (sonnet/haiku-tier via claude-sonnet-4-6)
 ccfw                   # proxy → Fireworks fleet (kimi-k2.6, glm-5.1, etc.)
-cczbg                  # proxy → Z.AI background tier, single-stream
+ccz                    # proxy → Z.AI background tier, single-stream (was: cczbg)
+ccz-direct             # direct Z.AI api.z.ai shim, kept as fallback (was: ccz)
 cc-fast                # proxy → GLM-4.7 on Cerebras (~3000 t/s foreground)
 ```
 
@@ -151,7 +152,7 @@ block instead of every alias function.
 |---|---|---|---|
 | `fleet-opus` | `kimi-k2.6` (Fireworks) | `ccfw` foreground | `glm-5.1-fast` → `minimax-m2.7` |
 | `fleet-sonnet` | `glm-5.1-fast` (Fireworks) | `ccfw` sub-agents | `kimi-k2.6` → `minimax-m2.7` |
-| `fleet-haiku` | `llama3.1-8b` (Cerebras free) | `ccfw`/`cczbg`/`cc-fast` sub-agents | `cerebras-paid-8b` → `minimax-m2.7` |
+| `fleet-haiku` | `llama3.1-8b` (Cerebras free) | `ccfw`/`ccz`/`cc-fast` sub-agents | `cerebras-paid-8b` → `minimax-m2.7` |
 
 Why `fleet-` prefix and not bare `opus`/`sonnet`/`haiku`? See Gotcha #2.
 
@@ -219,7 +220,7 @@ ANTHROPIC_SMALL_FAST_MODEL=fleet-haiku
 
 GLM-4.7 is fast and cheap but not what you want background agents falling
 back to. The split keeps interactive turns blazing while keeping sub-agent
-behavior consistent across `ccfw`/`cczbg`/`cc-fast`.
+behavior consistent across `ccfw`/`ccz`/`cc-fast`.
 
 ---
 
@@ -415,7 +416,7 @@ Some webfront worktrees layer a second alias system on top
 build orchestrators, etc.) inherit the same provider env vars without the
 calling shell needing to export them explicitly.
 
-That layer mirrors `ccfw`/`cczbg`/`cc-fast` etc. as worktree-local aliases.
+That layer mirrors `ccfw`/`ccz`/`cc-fast` etc. as worktree-local aliases.
 The dotfiles functions (this file's setup) are global and work in any
 directory; the worktree mise aliases only fire when `cd`'d into a worktree
 that defines them. Both are valid; pick based on whether you need
@@ -484,8 +485,8 @@ be removed.
 | `config.yaml` | model_list, router_settings, litellm_settings, general_settings |
 | `proxy_wrapper.py` | Python entry point + `StripUnsupportedAnthropicParamsMiddleware` |
 | `litellm-proxy.service` | systemd user unit (port 4199, EnvironmentFile, log dest) |
-| `~/.local/dotfiles/zsh/rc.d/10_litellm.zsh` | Shell functions: `_litellm_ensure_service`, `ccl`, `ccfw`, `cczbg`, `cc-fast`, `ccl-status`, `ccl-stop`, `ccl-log`, `ccl-health`, `ccl-probe` |
-| `~/.local/dotfiles/zsh/env.d/09_claude_code_aliases.zsh` | Direct-provider aliases (ccm, ccz, ccc) — do NOT route through this proxy |
+| `~/.local/dotfiles/zsh/rc.d/10_litellm.zsh` | Shell functions: `_litellm_ensure_service`, `ccl`, `ccfw`, `ccz`, `cc-fast`, `ccl-status`, `ccl-stop`, `ccl-log`, `ccl-health`, `ccl-probe` |
+| `~/.local/dotfiles/zsh/env.d/09_claude_code_aliases.zsh` | Direct-provider aliases (ccm, ccz-direct, ccc) — do NOT route through this proxy |
 | `~/.local/state/litellm/env` | systemd EnvironmentFile (provider keys, regenerated from shell) |
 | `~/.local/state/litellm/master-key` | Stable per-machine LiteLLM master key (auto-generated on first run) |
 | `~/.local/state/litellm/proxy.log` | Append-mode stdout+stderr from the systemd service |
