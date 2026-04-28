@@ -1,0 +1,38 @@
+{
+  "PORT": 3456,
+  "HOST": "0.0.0.0",
+  "LOG": true,
+  "LOG_LEVEL": "info",
+  "CUSTOM_ROUTER_PATH": "/home/ctaylor/.local/dotfiles/configs/ccr-router/custom-router.js",
+  "APIKEY": "${LITELLM_MASTER_KEY}",
+  "Providers": [
+    {
+      "name": "litellm-fleet",
+      "api_base_url": "http://127.0.0.1:4199/v1/chat/completions",
+      "api_key": "${LITELLM_MASTER_KEY}",
+      "models": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast",
+        "glm-5.1-bg",
+        "glm-5-bg",
+        "glm-5-turbo-bg",
+        "glm-4.7-cerebras",
+        "cerebras-paid-glm-4.7",
+        "claude-sonnet-4-6",
+        "claude-haiku-4-5-20251001",
+        "minimax-m2.5",
+        "minimax-m2.7"
+      ]
+    }
+  ],
+  "Router": {
+    "default": "litellm-fleet,fleet-sonnet",
+    "background": "litellm-fleet,fleet-small-fast",
+    "think": "litellm-fleet,fleet-opus",
+    "longContext": "litellm-fleet,fleet-opus",
+    "longContextThreshold": 60000,
+    "webSearch": "litellm-fleet,fleet-sonnet"
+  }
+}
