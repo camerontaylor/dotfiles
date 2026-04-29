@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 ---@diagnostic disable-next-line: missing-fields
 require('lazydev').setup({
   library = {

@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 local miniclue = require('mini.clue')
 miniclue.setup({
   triggers = {

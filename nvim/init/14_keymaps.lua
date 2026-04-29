@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 vim.opt.clipboard = 'unnamedplus'
 
 -- send c/d to named register so they don't clobber the clipboard

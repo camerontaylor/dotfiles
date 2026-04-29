@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 -- Disable highlighting of search results when moving the cursor
 -- https://www.reddit.com/r/neovim/comments/1ct2w2h/comment/l4bgvn1/
 vim.api.nvim_create_autocmd('CursorMoved', {

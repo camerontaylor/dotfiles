@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 require('solarized').setup({
   variant = 'autumn',
   on_highlights = function(colors, helper)

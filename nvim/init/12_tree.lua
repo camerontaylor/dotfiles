@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 require('nvim-tree').setup({
   respect_buf_cwd = true,
   update_focused_file = {
