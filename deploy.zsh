@@ -307,13 +307,11 @@ if (( ${+commands[mise]} )); then
         print "  ...mise install had issues"
     fi
 
-    if $upgrade_mode; then
-        print "Upgrading mise tools..."
-        if mise upgrade --yes > /dev/null 2>&1; then
-            print "  ...done"
-        else
-            print "  ...mise upgrade had issues"
-        fi
+    print "Upgrading mise tools..."
+    if mise upgrade --yes > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...mise upgrade had issues"
     fi
 fi
 
