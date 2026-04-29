@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 -- toggle status-line of entering/leaving the nvim-tree
 local tl_group = vim.api.nvim_create_augroup('toggle-laststatus', { clear = true })
 vim.api.nvim_create_autocmd('BufEnter', {

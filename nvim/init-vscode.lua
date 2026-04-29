@@ -5,6 +5,12 @@
 
 vim.loader.enable()
 
+-- Skip both rtp `plugin/**/*.lua` and the `pack/*/start/*` glob — markview,
+-- mini.*, flash, treesitter, etc. ship their own `plugin/*.lua` that
+-- VSCode-side rendering would conflict with. Must be set in the init file
+-- before nvim's plugin-loading phase runs.
+vim.o.loadplugins = false
+
 -- Verification marker. In a VSCode buffer, press `:` then type:
 --   lua =vim.g.init_vscode_loaded
 -- Should echo 1. If it echoes nil, the extension is NOT using this init.

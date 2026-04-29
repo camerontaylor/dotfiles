@@ -113,10 +113,17 @@ model_list:
       rpm: 600
       max_parallel_requests: 12
 
+  # minimax-m2.7 routed via Minimax's direct OpenAI-compat endpoint
+  # (api.minimax.io/v1) instead of Fireworks. The previous Fireworks-backed
+  # entry kept hitting the same /v1/chat/completions reasoning-content
+  # streaming truncation as fleet-opus. Going direct via Minimax's OpenAI-
+  # compat surface bypasses the entire Fireworks/LiteLLM-streaming chain.
+  # (2026-04-28)
   - model_name: minimax-m2.7
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/minimax-m2p7
-      api_key: os.environ/FIREWORKS_API_KEY
+      model: openai/MiniMax-M2.7
+      api_base: https://api.minimax.io/v1
+      api_key: os.environ/MINIMAX_API_KEY
       rpm: 600
       max_parallel_requests: 12
 
@@ -349,17 +356,33 @@ router_settings:
 
 litellm_settings:
   drop_params: true        # silently drop unsupported params (e.g. cache_control)
-  # Belt-and-suspenders: explicitly drop Anthropic-only params that Claude Code
-  # sends to /v1/messages but that LiteLLM's per-provider transformers don't
-  # recognize as droppable. `output_config` is the extended-thinking config —
-  # Cerebras's chat completions API rejects it with 400 invalid_request_error.
+  # Belt-and-suspenders: explicitly drop params that Claude Code or CCR sends
+  # but that LiteLLM's per-provider transformers don't recognize as droppable.
+  # - `output_config`: Anthropic extended-thinking config; Cerebras 400s
+  # - `thinking_config`: alternate spelling that has appeared in some clients
+  # - `reasoning`: CCR's Anthropic transformer translates Anthropic `thinking`
+  #   into OpenAI o1-style `reasoning: {effort, enabled}`. Fireworks does NOT
+  #   accept this field and 400s with "Extra inputs are not permitted, field:
+  #   'reasoning'". Strip it before forwarding upstream. (2026-04-28)
+  # - `enable_thinking`: CCR's reasoning transformer also adds this boolean
+  #   alongside `thinking`. Same Fireworks rejection class.
   # Add new params here when LiteLLM gets out-of-date with Anthropic SDK.
   additional_drop_params:
     - output_config
     - thinking_config
+    - reasoning
+    - enable_thinking
   set_verbose: false
   json_logs: true
   request_timeout: 600
+
+  # Auto-inject `stream_options.include_usage: true` for streamed calls.
+  # Without this, the OpenAI-compatible streaming spec doesn't return
+  # `usage` in the final chunk, so cost tracking / Langfuse logging shows
+  # zero tokens. Per official LiteLLM Fireworks docs:
+  # https://docs.litellm.ai/docs/providers/fireworks_ai
+  stream_options:
+    include_usage: true
 
   # Cache identical requests briefly (helps with retry storms)
   cache: true
@@ -369,7 +392,13 @@ litellm_settings:
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  # Proxy auth via custom header — keeps x-api-key free for Anthropic passthrough
-  # if/when an OAuth-routed model is reintroduced. Required by ccl/ccfw/ccz
-  # aliases which set ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer ...".
-  litellm_key_header_name: "x-litellm-api-key"
+  # Custom header_name disabled 2026-04-27 to allow CCR (claude-code-router)
+  # to authenticate via the standard `Authorization: Bearer ...` header that
+  # CCR auto-emits from `provider.api_key`. CCR strips client-supplied custom
+  # headers and rewrites Authorization on outbound calls, so the previous
+  # `x-litellm-api-key` plumbing is incompatible with CCR-fronted traffic.
+  # Aliases (ccl/ccfw/ccz/cc-fast) updated to use ANTHROPIC_AUTH_TOKEN which
+  # makes Claude Code emit the standard Authorization header that LiteLLM
+  # now accepts. To rollback to legacy x-litellm-api-key plumbing, uncomment
+  # the line below AND revert alias env-vars.
+  # litellm_key_header_name: "x-litellm-api-key"

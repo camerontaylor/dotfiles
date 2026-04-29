@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 require('mini.basics').setup({
   options = {
     extra_ui = true,
