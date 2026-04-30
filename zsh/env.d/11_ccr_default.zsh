@@ -1,18 +1,14 @@
-# CCR (claude-code-router) default routing flag (2026-04-27)
+# CCR (claude-code-router) legacy routing flag (2026-04-27)
 #
-# USE_CCR=1 routes ccl/ccfw/ccz/cc-fast (+ -happy variants) through CCR on
-# port 3456 instead of LiteLLM /v1/messages on :4199 (the legacy/broken
-# path). CCR auto-translates Anthropic Messages -> OpenAI Chat Completions
-# and forwards to LiteLLM's /v1/chat/completions, which works correctly
-# unlike LiteLLM 1.83.14's experimental /v1/messages?beta=true SSE
-# truncation regression.
+# Bifrost now owns the default proxy path for ccfw/ccz/cc-fast (+ -happy
+# variants) on ceres.local:4242. Set USE_CCR=1 only for temporary rollback
+# to the older CCR on port 3456.
 #
 # Per-alias overrides (used during cutover or for ad-hoc rollback):
-#   USE_CCR_CCL=0     -- ccl + ccl-happy fall back to LiteLLM /v1/messages
-#   USE_CCR_CCFW=0    -- ccfw + ccfw-happy fall back
-#   USE_CCR_CCZ=0     -- ccz + ccz-happy fall back
-#   USE_CCR_CC_FAST=0 -- cc-fast + cc-fast-happy fall back
+#   USE_CCR_CCFW=1    -- ccfw + ccfw-happy use CCR
+#   USE_CCR_CCZ=1     -- ccz + ccz-happy use CCR
+#   USE_CCR_CC_FAST=1 -- cc-fast + cc-fast-happy use CCR
 #
 # Real Opus path (`ccc`, direct Anthropic OAuth) is NOT affected by this
-# variable. ccc bypasses both CCR and LiteLLM entirely.
-export USE_CCR=1
+# variable. ccc bypasses both CCR and Bifrost entirely.
+export USE_CCR=0

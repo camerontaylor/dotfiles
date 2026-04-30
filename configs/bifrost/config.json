@@ -1,4 +1,5 @@
 {
+  "$schema": "https://www.getbifrost.ai/schema",
   "providers": {
     "cerebras": {
       "keys": [
@@ -37,6 +38,7 @@
             "accounts/fireworks/models/kimi-k2p6",
             "accounts/fireworks/models/kimi-k2p5",
             "accounts/fireworks/models/glm-5p1",
+            "accounts/fireworks/models/gpt-oss-120b",
             "accounts/fireworks/models/minimax-m2p7",
             "accounts/fireworks/models/minimax-m2p5"
           ],
@@ -102,6 +104,25 @@
   "governance": {
     "routing_rules": [
       {
+        "id": "fleet-count-tokens",
+        "name": "fleet-count-tokens",
+        "description": "Route count_tokens probes away from Fireworks-backed fleet models because Bifrost does not support count_tokens for the Fireworks provider.",
+        "enabled": true,
+        "cel_expression": "request_type == 'count_tokens' && model in ['fleet-opus', 'fleet-sonnet']",
+        "targets": [
+          {
+            "provider": "zai",
+            "model": "glm-5.1",
+            "weight": 1.0
+          }
+        ],
+        "fallbacks": [
+          "minimax/MiniMax-M2.7"
+        ],
+        "scope": "global",
+        "priority": -10
+      },
+      {
         "id": "fleet-opus",
         "name": "fleet-opus",
         "description": "Frontier coder; primary Fireworks Kimi-K2.6, fallback Z.AI then MiniMax (deliberately AVOIDS Fireworks fallbacks per LiteLLM-era policy: better to fail loudly than degrade onto fast expensive slop).",
@@ -135,7 +156,7 @@
           },
           {
             "provider": "zai",
-            "model": "zai/glm5.1",
+            "model": "glm-5.1",
             "weight": 0.4
           }
         ],
@@ -192,7 +213,7 @@
         "name": "fleet-cc-fast",
         "description": "cc-fast foreground; primary Cerebras GLM-4.7 (~3000 t/s wafer-scale), fallback Fireworks GLM-5.1 then Z.AI GLM-4.6.",
         "enabled": true,
-        "cel_expression": "model == 'fleet-cc-fast'",
+        "cel_expression": "model == 'fleet-cc-fast' || model == 'glm-4.7-cerebras'",
         "targets": [
           {
             "provider": "cerebras",

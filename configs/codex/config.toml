@@ -1,11 +1,14 @@
+# oh-my-codex top-level settings (must be before any [table])
+notify = ["node", "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/scripts/notify-hook.js"]
 model_reasoning_effort = "xhigh"
+developer_instructions = "You have oh-my-codex installed. AGENTS.md is the orchestration brain and main control surface. Follow AGENTS.md for skill/keyword routing, $name workflow invocation, and role-specialized subagents. Native subagents live in .codex/agents and may handle independent parallel subtasks within one Codex session or team pane. Skills load from .codex/skills, not native-agent TOMLs. Treat installed prompts as narrower execution surfaces under AGENTS.md authority."
+
 suppress_unstable_features_warning = true
 model = "gpt-5.5"
 model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
-developer_instructions = "You have oh-my-codex installed. AGENTS.md is your orchestration brain and the main orchestration surface. Use skill/keyword routing like $name plus spawned role-specialized subagents for specialized work. Codex native subagents are available via .codex/agents and may be used for independent parallel subtasks within a single session or team pane. Skills are loaded from installed SKILL.md files under .codex/skills, not from native agent TOMLs. Use workflow skills via $name when explicitly invoked or clearly routed by AGENTS.md. Treat installed prompts as narrower internal execution surfaces under AGENTS.md authority, even when user-facing docs prefer $name keywords."
 
 [projects."/home/ctaylor/repos/webfront"]
 trust_level = "trusted"
@@ -28,11 +31,16 @@ trust_level = "trusted"
 [projects."/home/ctaylor/repos/telemetry"]
 trust_level = "trusted"
 
+[projects."/home/ctaylor/repos/ollie_notes"]
+trust_level = "trusted"
+
 [features]
 
 js_repl = true
 image_detail_original = true
 codex_hooks = true
+multi_agent = true
+child_agents_md = true
 [agents]
 max_threads = 12
 max_depth = 4
@@ -53,9 +61,6 @@ persistence = "save-all"
 [notice.model_migrations]
 "gpt-5.3-codex" = "gpt-5.4"
 
-[tui.model_availability_nux]
-"gpt-5.5" = 2
-
 # BEGIN OMC MANAGED MCP REGISTRY
 
 [mcp_servers.serena]
@@ -64,3 +69,61 @@ args = ["run", "--directory", "/home/ctaylor/repos/deploy/serena/serena-repo", "
 enabled = false
 
 # END OMC MANAGED MCP REGISTRY
+
+[marketplaces.oh-my-codex-local]
+source_type = "local"
+source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex"
+
+[env]
+USE_OMX_EXPLORE_CMD = "1"
+
+# ============================================================
+# oh-my-codex (OMX) Configuration
+# Managed by omx setup - manual edits preserved on next setup
+# ============================================================
+
+# OMX State Management MCP Server
+[mcp_servers.omx_state]
+command = "node"
+args = ["/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/mcp/state-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Project Memory MCP Server
+[mcp_servers.omx_memory]
+command = "node"
+args = ["/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/mcp/memory-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Code Intelligence MCP Server (LSP diagnostics, AST search)
+[mcp_servers.omx_code_intel]
+command = "node"
+args = ["/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/mcp/code-intel-server.js"]
+enabled = true
+startup_timeout_sec = 10
+
+# OMX Trace MCP Server (agent flow timeline & statistics)
+[mcp_servers.omx_trace]
+command = "node"
+args = ["/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/mcp/trace-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX Wiki MCP Server (persistent project knowledge base)
+[mcp_servers.omx_wiki]
+command = "node"
+args = ["/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/mcp/wiki-server.js"]
+enabled = true
+startup_timeout_sec = 5
+
+# OMX TUI StatusLine (Codex CLI v0.101.0+)
+[tui]
+# omx:managed-status-line
+status_line = ["model-with-reasoning", "git-branch", "context-remaining", "total-input-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit"]
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+
+# ============================================================
+# End oh-my-codex
