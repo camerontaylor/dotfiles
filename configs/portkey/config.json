@@ -198,7 +198,7 @@
       }
     },
     "fleet-haiku": {
-      "description": "Sub-agent route: intended primary Cerebras gpt-oss-120b, with Fireworks MiniMax and direct MiniMax fallback.",
+      "description": "Sub-agent route: primary OpenRouter BYOK -> Cerebras gpt-oss-120b, with Fireworks MiniMax and direct MiniMax fallback.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -228,10 +228,22 @@
         "request_timeout": 75000,
         "targets": [
           {
-            "provider": "cerebras",
-            "api_key_env": "CEREBRAS_API_KEY",
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
             "override_params": {
-              "model": "gpt-oss-120b"
+              "model": "openai/gpt-oss-120b",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "exclude": true
+              }
             },
             "request_timeout": 45000
           },
@@ -257,7 +269,7 @@
       }
     },
     "fleet-small-fast": {
-      "description": "Fast cheap route: intended primary Cerebras Llama 3.1 8B, then Cerebras gpt-oss-120b, Fireworks gpt-oss-120b, and MiniMax fallback.",
+      "description": "Fast cheap route: primary OpenRouter BYOK -> Cerebras Llama 3.1 8B, then OpenRouter BYOK -> Cerebras gpt-oss-120b, Fireworks gpt-oss-120b, and MiniMax fallback.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -287,18 +299,42 @@
         "request_timeout": 75000,
         "targets": [
           {
-            "provider": "cerebras",
-            "api_key_env": "CEREBRAS_FREE_API_KEY",
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
             "override_params": {
-              "model": "llama3.1-8b"
+              "model": "meta-llama/llama-3.1-8b-instruct",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "exclude": true
+              }
             },
             "request_timeout": 45000
           },
           {
-            "provider": "cerebras",
-            "api_key_env": "CEREBRAS_API_KEY",
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
             "override_params": {
-              "model": "gpt-oss-120b"
+              "model": "openai/gpt-oss-120b",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "exclude": true
+              }
             },
             "request_timeout": 45000
           },
@@ -324,7 +360,7 @@
       }
     },
     "fleet-cc-fast": {
-      "description": "Interactive fast route: intended primary Cerebras GLM-4.7, then Fireworks GLM-5.1 and Z.AI fallback.",
+      "description": "Interactive fast route: primary OpenRouter BYOK -> Cerebras GLM-4.7, then Fireworks GLM-5.1 and Z.AI fallback.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -354,10 +390,23 @@
         "request_timeout": 75000,
         "targets": [
           {
-            "provider": "cerebras",
-            "api_key_env": "CEREBRAS_API_KEY",
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
             "override_params": {
-              "model": "zai-glm-4.7"
+              "model": "z-ai/glm-4.7",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "effort": "none",
+                "exclude": true
+              }
             },
             "request_timeout": 45000
           },
@@ -468,7 +517,109 @@
       "x-portkey-config",
       "x-portkey-config-version",
       "x-portkey-metadata"
-    ]
+    ],
+    "aliases": {
+      "ccfw": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-happy": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-pk": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-pk-happy": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-happy": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-pk": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-pk-happy": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-pk": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-pk-happy": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "portkey-probe-fleet-cc-fast": [
+        "fleet-cc-fast"
+      ],
+      "portkey-probe-stream-fleet-cc-fast": [
+        "fleet-cc-fast"
+      ],
+      "portkey-probe-fleet-ccz": [
+        "fleet-ccz"
+      ],
+      "portkey-probe-stream-fleet-ccz": [
+        "fleet-ccz"
+      ],
+      "portkey-probe-fleet-count-tokens": [
+        "fleet-count-tokens"
+      ],
+      "portkey-probe-stream-fleet-count-tokens": [
+        "fleet-count-tokens"
+      ],
+      "portkey-probe-fleet-haiku": [
+        "fleet-haiku"
+      ],
+      "portkey-probe-stream-fleet-haiku": [
+        "fleet-haiku"
+      ],
+      "portkey-probe-fleet-opus": [
+        "fleet-opus"
+      ],
+      "portkey-probe-stream-fleet-opus": [
+        "fleet-opus"
+      ],
+      "portkey-probe-fleet-small-fast": [
+        "fleet-small-fast"
+      ],
+      "portkey-probe-stream-fleet-small-fast": [
+        "fleet-small-fast"
+      ],
+      "portkey-probe-fleet-sonnet": [
+        "fleet-sonnet"
+      ],
+      "portkey-probe-stream-fleet-sonnet": [
+        "fleet-sonnet"
+      ]
+    }
   },
   "integrations": []
 }

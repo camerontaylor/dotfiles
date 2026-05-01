@@ -1,6 +1,6 @@
 # Portkey AI Gateway: self-hosted OSS gateway helpers.
-# Portkey now backs the ccfw/ccz alias families. Bifrost remains available for
-# cc-fast until the Cerebras Anthropic Messages routes pass validation.
+# Portkey now backs the ccfw/ccz alias families. Production cc-fast remains
+# Bifrost-backed; cc-fast-pk validates Portkey -> OpenRouter BYOK -> Cerebras.
 
 # Endpoint convention: Portkey serves Anthropic-compatible /v1/messages at the
 # gateway root. Set ANTHROPIC_BASE_URL to http://host:8787 (no /anthropic suffix).
@@ -453,15 +453,18 @@ if (( ${+commands[claude]} )); then
     _portkey_ensure_service || return 1
     local route="${1:-fleet-opus}"
     local prompt="${2:-reply with the single word ready}"
+    local max_tokens="${PORTKEY_PROBE_MAX_TOKENS:-256}"
     local headers
     headers="$(_portkey_headers "portkey-probe-${route}" "$route")" || return $?
     local -a header_args
     header_args=("${(@f)$(_portkey_header_args "$headers")}")
+    local body
+    body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, messages: [{role: "user", content: $prompt}]}')" || return $?
     curl -sS "$_PORTKEY_BASE_URL/v1/messages" \
       -H "Content-Type: application/json" \
       -H "anthropic-version: 2023-06-01" \
       "${header_args[@]}" \
-      -d "{\"model\":\"$route\",\"max_tokens\":64,\"messages\":[{\"role\":\"user\",\"content\":\"$prompt\"}]}" \
+      -d "$body" \
       | jq . 2>/dev/null || cat
   }
 
