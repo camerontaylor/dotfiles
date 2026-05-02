@@ -28,6 +28,57 @@ XDG_CONFIG_HOME=$HOME/.config
 XDG_DATA_HOME=$HOME/.local/share
 XDG_STATE_HOME=$HOME/.local/state
 
+local DOTFILES_OS=$(uname -s)
+local DOTFILES_ARCH=$(uname -m)
+
+ensure_homebrew_path() {
+    if (( ${+commands[brew]} )); then
+        return 0
+    fi
+
+    local brew_bin
+    for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+        if [[ -x $brew_bin ]]; then
+            eval "$($brew_bin shellenv zsh)"
+            rehash
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+brew_install_or_upgrade() {
+    local formula=$1
+    local binary=${2:-$formula}
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $formula"
+        return 1
+    fi
+
+    if (( ! ${+commands[$binary]} )); then
+        if brew install $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $formula"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade $formula > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$formula already at latest or upgrade failed"
+        return 0
+    fi
+}
+
+if [[ $DOTFILES_OS == Darwin ]]; then
+    ensure_homebrew_path || true
+fi
+
 # Create required directories
 print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
@@ -174,8 +225,8 @@ fi
 
 if (( ! ${+commands[gh]} )); then
     print "Installing gh (GitHub CLI)..."
-    local gh_arch=$(uname -m)
-    local gh_os=$(uname -s)
+    local gh_arch=$DOTFILES_ARCH
+    local gh_os=$DOTFILES_OS
     if [[ $gh_os == Linux && ($gh_arch == x86_64 || $gh_arch == aarch64) ]]; then
         [[ $gh_arch == x86_64 ]] && gh_arch=amd64
         [[ $gh_arch == aarch64 ]] && gh_arch=arm64
@@ -195,6 +246,8 @@ if (( ! ${+commands[gh]} )); then
         else
             print "  ...failed to determine latest gh version, skipping"
         fi
+    elif [[ $gh_os == Darwin ]]; then
+        brew_install_or_upgrade gh gh || true
     else
         print "  ...unsupported platform for gh auto-install, skipping"
     fi
@@ -208,8 +261,8 @@ fi
 
 if (( ! ${+commands[glab]} )); then
     print "Installing glab..."
-    local glab_arch=$(uname -m)
-    local glab_os=$(uname -s)
+    local glab_arch=$DOTFILES_ARCH
+    local glab_os=$DOTFILES_OS
     if [[ $glab_os == Linux && ($glab_arch == x86_64 || $glab_arch == aarch64) ]]; then
         [[ $glab_arch == aarch64 ]] && glab_arch=arm64
         [[ $glab_arch == x86_64 ]] && glab_arch=amd64
@@ -229,6 +282,8 @@ if (( ! ${+commands[glab]} )); then
         else
             print "  ...failed to determine latest glab version, skipping"
         fi
+    elif [[ $glab_os == Darwin ]]; then
+        brew_install_or_upgrade glab glab || true
     else
         print "  ...unsupported platform for glab auto-install, skipping"
     fi
@@ -237,9 +292,11 @@ fi
 # Install AWS CLI v2 if not present
 if (( ! ${+commands[aws]} )); then
     print "Installing AWS CLI v2..."
-    local aws_arch=$(uname -m)
-    local aws_os=$(uname -s)
-    if [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
+    local aws_arch=$DOTFILES_ARCH
+    local aws_os=$DOTFILES_OS
+    if [[ $aws_os == Darwin ]]; then
+        brew_install_or_upgrade awscli aws || true
+    elif [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
         print "  ...unsupported platform for AWS CLI auto-install, skipping"
     elif (( ! ${+commands[unzip]} )); then
         print "  ...unzip not available, skipping (install via build-deps)"
@@ -256,8 +313,10 @@ if (( ! ${+commands[aws]} )); then
     fi
 elif $upgrade_mode; then
     print "Upgrading AWS CLI v2..."
-    local aws_arch=$(uname -m)
-    if [[ $(uname -s) == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
+    local aws_arch=$DOTFILES_ARCH
+    if [[ $DOTFILES_OS == Darwin ]]; then
+        brew_install_or_upgrade awscli aws || true
+    elif [[ $DOTFILES_OS == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
         local aws_tmp=$(mktemp -d)
         if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip" -o $aws_tmp/awscliv2.zip \
             && unzip -q $aws_tmp/awscliv2.zip -d $aws_tmp \
@@ -282,8 +341,8 @@ fi
 
 if (( ! ${+commands[mise]} )); then
     print "Installing mise..."
-    local mise_arch=$(uname -m)
-    local mise_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    local mise_arch=$DOTFILES_ARCH
+    local mise_os=${DOTFILES_OS:l}
     if [[ $mise_os == linux && ($mise_arch == x86_64 || $mise_arch == aarch64) ]]; then
         [[ $mise_arch == x86_64 ]] && mise_arch=x64
         [[ $mise_arch == aarch64 ]] && mise_arch=arm64
@@ -299,6 +358,11 @@ if (( ! ${+commands[mise]} )); then
             fi
         else
             print "  ...failed to determine latest mise version, skipping"
+        fi
+    elif [[ $mise_os == darwin ]]; then
+        brew_install_or_upgrade mise mise || true
+        if (( ${+commands[mise]} )); then
+            export PATH=$HOME/.local/bin:$PATH
         fi
     else
         print "  ...unsupported platform for mise auto-install, skipping"
@@ -629,6 +693,49 @@ WantedBy=timers.target"
        print "  ...done"
     else
        print "Failed to install systemd timer. Check permissions and systemd setup"
+    fi
+elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID != 0 )); then
+    print "  ...launchd detected, installing user LaunchAgent..."
+
+    local launchd_dir=$HOME/Library/LaunchAgents
+    local launchd_label=com.ctaylor.dotfiles.pull
+    local launchd_plist=$launchd_dir/$launchd_label.plist
+    zf_mkdir -p $launchd_dir
+
+    local launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    local launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+    <key>Label</key>
+    <string>$launchd_label</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>$launchd_command</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>$XDG_STATE_HOME/dotfiles-pull.log</string>
+    <key>StandardErrorPath</key>
+    <string>$XDG_STATE_HOME/dotfiles-pull.err</string>
+</dict>
+</plist>"
+    print -r -- $launchd_content > $launchd_plist
+
+    launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
+    if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
+        && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
+       print "  ...done"
+    else
+       print "Failed to install launchd task. Check $launchd_plist"
     fi
 elif (( ${+commands[crontab]} )); then
     print "  ...cron detected, installing job for periodic updates..."

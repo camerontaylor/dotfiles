@@ -7,8 +7,55 @@ set -euo pipefail
 BINDIR="${1:-$HOME/.local/bin}"
 mkdir -p "$BINDIR"
 
+OS=$(uname -s)
+
+ensure_homebrew_path() {
+  if command -v brew &>/dev/null; then
+    return 0
+  fi
+
+  local brew_bin
+  for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+    if [[ -x "$brew_bin" ]]; then
+      eval "$("$brew_bin" shellenv zsh)"
+      hash -r
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+brew_install_if_missing() {
+  local formula="$1"
+  local binary="${2:-$formula}"
+
+  if ! ensure_homebrew_path; then
+    echo "Homebrew not found; skipping $formula."
+    return 0
+  fi
+
+  if command -v "$binary" &>/dev/null; then
+    echo "$binary already installed: $("$binary" --version 2>/dev/null | head -1)"
+    return 0
+  fi
+
+  echo "Installing $formula with Homebrew..."
+  brew install "$formula"
+}
+
 # ── Neovim (AppImage) ────────────────────────────────────────────────
 install_nvim() {
+  if [[ "$OS" == "Darwin" ]]; then
+    brew_install_if_missing neovim nvim
+    return
+  fi
+
+  if [[ "$OS" != "Linux" ]]; then
+    echo "Unsupported OS for nvim auto-install: $OS"
+    return
+  fi
+
   local current=""
   if command -v nvim &>/dev/null; then
     current=$(nvim --version 2>/dev/null | head -1 | awk '{print $2}')
@@ -33,6 +80,11 @@ install_nvim() {
 
 # ── Moor ─────────────────────────────────────────────────────────────
 install_moor() {
+  if [[ "$OS" == "Darwin" ]]; then
+    brew_install_if_missing moor moor
+    return
+  fi
+
   if command -v moor &>/dev/null; then
     echo "moor already installed: $(moor --version)"
     return
@@ -43,6 +95,16 @@ install_moor() {
 
 # ── Ripgrep ──────────────────────────────────────────────────────────
 install_rg() {
+  if [[ "$OS" == "Darwin" ]]; then
+    brew_install_if_missing ripgrep rg
+    return
+  fi
+
+  if [[ "$OS" != "Linux" ]]; then
+    echo "Unsupported OS for rg auto-install: $OS"
+    return
+  fi
+
   local current=""
   if command -v rg &>/dev/null; then
     current=$(rg --version 2>/dev/null | head -1 | awk '{print $2}')
@@ -69,6 +131,16 @@ install_rg() {
 
 # ── ast-grep ─────────────────────────────────────────────────────────
 install_sg() {
+  if [[ "$OS" == "Darwin" ]]; then
+    brew_install_if_missing ast-grep sg
+    return
+  fi
+
+  if [[ "$OS" != "Linux" ]]; then
+    echo "Unsupported OS for sg auto-install: $OS"
+    return
+  fi
+
   local current=""
   if command -v sg &>/dev/null; then
     current=$(sg --version 2>/dev/null | awk '{print $2}')

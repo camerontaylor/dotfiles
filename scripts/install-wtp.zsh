@@ -40,7 +40,33 @@ fi
 local wtp_arch=$(uname -m)
 local wtp_os=$(uname -s)
 
-if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
+ensure_homebrew_path() {
+    if (( ${+commands[brew]} )); then
+        return 0
+    fi
+
+    local brew_bin
+    for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+        if [[ -x $brew_bin ]]; then
+            eval "$($brew_bin shellenv zsh)"
+            rehash
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
+    if brew install satococoa/tap/wtp > /dev/null 2>&1; then
+        rehash
+        print "  ...done"
+        exit 0
+    fi
+    print "  ...Homebrew install failed, trying direct release asset"
+fi
+
+if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[ $wtp_os == Darwin && $wtp_arch == arm64 ]]; then
     [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
     local wtp_version
     wtp_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/satococoa/wtp/releases/latest | sed 's|.*/tag/v||')
@@ -52,7 +78,7 @@ if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
         chmod +x $target
         print "  ...done"
     else
-        print "  ...failed to download wtp, skipping"
+        print "  ...failed to download wtp release asset, skipping"
         exit 1
     fi
 else
