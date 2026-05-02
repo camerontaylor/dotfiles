@@ -300,6 +300,15 @@ if (( ! ${+commands[mise]} )); then
 fi
 
 if (( ${+commands[mise]} )); then
+    if $upgrade_mode; then
+        print "Upgrading mise..."
+        if mise self-update --yes --no-plugins > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...mise self-update had issues"
+        fi
+    fi
+
     print "Installing mise tools (node, bun, ruby, etc.)..."
     if mise install > /dev/null 2>&1; then
         print "  ...done"
