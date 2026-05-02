@@ -34,10 +34,11 @@ zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
 zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm,systemd/user,opencode}
-zf_mkdir -p $HOME/{.claude,.codex,.omx}
+zf_mkdir -p $HOME/{.claude,.codex,.omx,.ssh}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
+zf_chmod 700 $HOME/.ssh
 print "  ...done"
 
 # Link zshenv if needed
@@ -84,6 +85,8 @@ zf_ln -sfn $SCRIPT_DIR/yazi/plugins $XDG_CONFIG_HOME/yazi/plugins
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg.conf $XDG_CONFIG_HOME/gnupg/gpg.conf
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg-agent.conf $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
 zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
+zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
+zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
 # Claude Code + OMC
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/RTK.md $HOME/.claude/RTK.md
@@ -107,6 +110,9 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/op
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
+for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
+    zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
+done
 print "  ...done"
 
 # Make sure submodules are installed
@@ -373,7 +379,7 @@ if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
         elif ! grep -Fq "$age_public_key" $SCRIPT_DIR/.sops.yaml; then
             print ""
             print "WARNING: this machine's age key is not registered for sops decryption."
-            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, configs/portless/*.pem.enc) cannot be read."
+            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, ssh/*.enc, configs/portless/*.pem.enc) cannot be read."
             print ""
             print "  This machine's public key:"
             print "    $age_public_key"
@@ -386,8 +392,28 @@ if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
     fi
 fi
 
-# Decrypt portless certs into configs/portless/ (symlinked to ~/.portless)
+# Decrypt encrypted dotfiles into their ignored plaintext locations.
 if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
+    print "Restoring ssh files..."
+    local _ssh_enc _ssh_target _ssh_tmp
+    for _ssh_enc in $SCRIPT_DIR/ssh/*.enc(N); do
+        _ssh_target=$SCRIPT_DIR/ssh/${${_ssh_enc:t}%.enc}
+        _ssh_tmp=$(mktemp)
+        if sops --decrypt $_ssh_enc > $_ssh_tmp 2>/dev/null; then
+            if [[ $_ssh_target == *.pub ]]; then
+                chmod 644 $_ssh_tmp
+            else
+                chmod 600 $_ssh_tmp
+            fi
+            mv $_ssh_tmp $_ssh_target
+            zf_ln -sfn $_ssh_target $HOME/.ssh/${_ssh_target:t}
+        else
+            rm -f $_ssh_tmp
+            print "  WARNING: failed to decrypt ${_ssh_enc:t}"
+        fi
+    done
+    print "  ...done"
+
     print "Restoring portless certs..."
     local _pless_enc _pless_target _pless_tmp
     for _pless_enc in $SCRIPT_DIR/configs/portless/*.pem.enc(N); do

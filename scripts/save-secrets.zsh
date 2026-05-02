@@ -67,6 +67,34 @@ for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
     fi
 done
 
+# SSH config and managed keys
+local -a ssh_plaintexts ssh_enc_files
+ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub)
+ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc)
+local i
+for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
+    plaintext=${ssh_plaintexts[i]}
+    enc_file=${ssh_enc_files[i]}
+    [[ -f $plaintext ]] || continue
+
+    mkdir -p ssh
+
+    if ! $force && [[ -f $enc_file && $enc_file -nt $plaintext ]]; then
+        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
+    else
+        print "Encrypting ${plaintext} -> ${enc_file}..."
+        if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
+            if $git_add; then
+                git add $enc_file
+            fi
+            print "  ...done"
+        else
+            print "  ...failed to encrypt $plaintext" >&2
+            exit 1
+        fi
+    fi
+done
+
 # Portless CA and server certs
 local portless_dir=$HOME/.portless
 for f (ca.pem ca-key.pem server.pem server-key.pem); do

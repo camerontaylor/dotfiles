@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# commit-conventional
+#
+# Generates a conventional commit message from staged changes, presents it
+# for review, then commits. Uses generate-commit-msg for the actual generation.
+#
+# Usage:
+#   commit-conventional              # Generate with body, auto-commit
+#   commit-conventional --no-yes     # Review before committing
+#   commit-conventional --edit       # Open in $EDITOR after generation
+#   commit-conventional --dry-run    # Print message, don't commit
+#   commit-conventional --no-body    # Subject line only (no body)
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$SOURCE_DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+GENERATOR="$SCRIPT_DIR/generate-commit-msg"
+
+MODEL="${COMMIT_MODEL:-haiku}"
+AUTO_ACCEPT=true
+OPEN_EDITOR=false
+DRY_RUN=false
+INCLUDE_BODY=true
+GENERATOR_ARGS=()
+
+# ── Colors ──────────────────────────────────────────────────────────────────
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+DIM='\033[2m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# ── Usage ───────────────────────────────────────────────────────────────────
+
+usage() {
+  cat <<'EOF'
+Usage: commit-conventional [options] [-- extra context...]
+
+Generate a conventional commit message from staged changes and commit.
+
+Options:
+  --model <model>    Claude model for generation (default: haiku)
+  --no-yes           Review the message before committing (disables auto-accept)
+  --edit, -e         Open the message in $EDITOR before committing
+  --dry-run          Print the generated message without committing
+  --no-body          Omit the detailed commit body (subject line only)
+  --context, -c <text>  Extra context to help the AI (e.g., "this fixes the login bug")
+  -h, --help         Show this help message
+
+Examples:
+  commit-conventional                     # Generate with body, commit immediately
+  commit-conventional --no-yes            # Generate with body, review before commit
+  commit-conventional --edit              # Generate, edit in $EDITOR, commit
+  commit-conventional --dry-run --no-body # Preview subject only, no commit
+  commit-conventional -c "auth refactor"  # Provide extra context
+EOF
+}
+
+# ── Parse arguments ─────────────────────────────────────────────────────────
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --model)       MODEL="$2"; GENERATOR_ARGS+=(--model "$2"); shift 2 ;;
+    --yes|-y)      AUTO_ACCEPT=true; shift ;;
+    --no-yes)      AUTO_ACCEPT=false; shift ;;
+    --edit|-e)     OPEN_EDITOR=true; shift ;;
+    --dry-run)     DRY_RUN=true; shift ;;
+    --body)        INCLUDE_BODY=true; shift ;;
+    --no-body)     INCLUDE_BODY=false; shift ;;
+    --context|-c)  GENERATOR_ARGS+=(--context "$2"); shift 2 ;;
+    -h|--help)     usage; exit 0 ;;
+    --)            shift; GENERATOR_ARGS+=(--context "$*"); break ;;
+    *)             echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+# Apply body flag to generator args
+if [[ "$INCLUDE_BODY" == true ]]; then
+  GENERATOR_ARGS+=(--body)
+fi
+
+# ── Preflight checks ───────────────────────────────────────────────────────
+
+git add -A
+
+if [[ ! -x "$GENERATOR" ]]; then
+  echo -e "${RED}ERROR: generate-commit-msg not found at $GENERATOR${NC}" >&2
+  exit 1
+fi
+
+# Check for staged changes
+STAGED_FILES="$(git diff --cached --name-only)"
+if [[ -z "$STAGED_FILES" ]]; then
+  echo -e "${RED}ERROR: No staged changes. Stage files with 'git add' first.${NC}" >&2
+  exit 1
+fi
+
+# ── Gather diff ────────────────────────────────────────────────────────────
+# Plumbing commands avoid pager/color/config interference.
+# Empty tree fallback for initial commits (no HEAD).
+
+if git rev-parse --verify HEAD &>/dev/null; then
+  DIFF_REF="HEAD"
+else
+  DIFF_REF="$(git hash-object -t tree /dev/null)"
+fi
+
+# Stat + minimal-context patch with rename/copy detection.
+DIFF_STAT="$(git diff-index --cached --stat "$DIFF_REF")"
+
+get_diff() {
+  git diff-index --cached --stat "$DIFF_REF"
+  echo "---"
+  git diff-index --cached -p -U1 --no-color --minimal --diff-algorithm=histogram -M -C "$DIFF_REF"
+}
+
+# ── Show staged summary ────────────────────────────────────────────────────
+
+FILE_COUNT="$(echo "$STAGED_FILES" | wc -l)"
+echo -e "${CYAN}${BOLD}Staged changes${NC} ${DIM}($FILE_COUNT file(s))${NC}"
+echo -e "${DIM}$DIFF_STAT${NC}"
+echo ""
+
+# ── Generate ───────────────────────────────────────────────────────────────
+
+generate() {
+  get_diff | "$GENERATOR" "${GENERATOR_ARGS[@]}"
+}
+
+echo -e "${CYAN}Generating commit message...${NC}"
+
+GENERATED_MSG="$(generate)" || {
+  echo -e "${RED}ERROR: Failed to generate commit message.${NC}" >&2
+  exit 1
+}
+
+# ── Present message ─────────────────────────────────────────────────────────
+
+show_message() {
+  local label="${1:-Generated commit message}"
+  echo ""
+  echo -e "${GREEN}${BOLD}${label}:${NC}"
+  echo -e "${GREEN}───────────────────────────────────────────${NC}"
+  echo -e "${BOLD}$GENERATED_MSG${NC}"
+  echo -e "${GREEN}───────────────────────────────────────────${NC}"
+  echo ""
+}
+
+show_message "Generated commit message"
+
+# ── Dry run exit ────────────────────────────────────────────────────────────
+
+if [[ "$DRY_RUN" == true ]]; then
+  echo -e "${DIM}[dry-run] No commit created.${NC}"
+  exit 0
+fi
+
+# ── Editor helper ──────────────────────────────────────────────────────────
+
+edit_message() {
+  local tmpfile
+  tmpfile="$(mktemp)"
+  echo "$GENERATED_MSG" > "$tmpfile"
+  ${EDITOR:-vi} "$tmpfile"
+  GENERATED_MSG="$(cat "$tmpfile")"
+  rm -f "$tmpfile"
+
+  if [[ -z "$(echo "$GENERATED_MSG" | tr -d '[:space:]')" ]]; then
+    echo -e "${YELLOW}Empty message — aborting commit.${NC}"
+    exit 1
+  fi
+}
+
+# ── Editor mode ─────────────────────────────────────────────────────────────
+
+if [[ "$OPEN_EDITOR" == true ]]; then
+  edit_message
+fi
+
+# ── Confirm and commit ──────────────────────────────────────────────────────
+
+if [[ "$AUTO_ACCEPT" == false && "$OPEN_EDITOR" == false ]]; then
+  echo -ne "Commit with this message? ${BOLD}[Y/n/e(dit)/r(egenerate)]${NC} "
+  read -r REPLY
+  REPLY="${REPLY:-Y}"
+
+  case "$REPLY" in
+    [Nn]*)
+      echo "Aborted."
+      exit 1
+      ;;
+    [Ee]*)
+      edit_message
+      ;;
+    [Rr]*)
+      echo -e "${CYAN}Regenerating...${NC}"
+      GENERATED_MSG="$(generate)" || {
+        echo -e "${RED}ERROR: Regeneration failed.${NC}" >&2
+        exit 1
+      }
+
+      show_message "Regenerated"
+
+      echo -ne "Commit with this message? ${BOLD}[Y/n/e(dit)]${NC} "
+      read -r REPLY2
+      REPLY2="${REPLY2:-Y}"
+
+      case "$REPLY2" in
+        [Nn]*) echo "Aborted."; exit 1 ;;
+        [Ee]*) edit_message ;;
+      esac
+      ;;
+  esac
+fi
+
+# ── Commit ──────────────────────────────────────────────────────────────────
+
+git commit -m "$GENERATED_MSG"
+
+echo ""
+echo -e "${GREEN}${BOLD}Committed.${NC}"

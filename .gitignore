@@ -16,6 +16,9 @@ zsh/.zlogin
 zsh/.zlogout
 zsh/.zcompdump*
 
+ssh/*
+!ssh/*.enc
+
 configs/ranger-plugins/__init__.py
 configs/ranger-plugins/__pycache__
 .omc

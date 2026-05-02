@@ -92,7 +92,9 @@ the initial clone. It also adds a cron job to pull updates every midnight and
 serves as a post-merge git hook, so you don't have to worry about updating
 submodules after a successful pull. Secret save/restore is now separate and
 manual via [`scripts/save-secrets.zsh`](scripts/save-secrets.zsh) and
-[`scripts/restore-secrets.zsh`](scripts/restore-secrets.zsh).
+[`scripts/restore-secrets.zsh`](scripts/restore-secrets.zsh). Managed SSH
+files are stored as `ssh/*.enc` and restored to ignored plaintext files under
+`ssh/`, which deploy symlinks into `~/.ssh/`.
 
 ## Zero Home Presence
 

@@ -1,0 +1,22 @@
+{
+	"data": "ENC[AES256_GCM,data:DRgS1UowcXCz7ek9/Wmi1GPxxi2PDOPEu72Oi1hjejILZD6DPIPoiVJCo40g6Nyc+R4Etw0oA2PF3aS3BFruIJQ6arED9b8z1wMG2Oe03PAMTTNq/4PupcEsZnt1lf8=,iv:4g+lGqorzU1/WOJD+RL7POj0KhM8agOWbv4FNz2btTw=,tag:d3gQSam93vwr5TwRq/rz/w==,type:str]",
+	"sops": {
+		"age": [
+			{
+				"recipient": "age10tfkkn5vt2a0r8n9qy4ycejx8rgxukrz9l96awdha2tm84g8dshsppn7em",
+				"enc": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBEWXhiNzhpUlpvTkRJczJ5\nZWhScUszM0p4ekdIU09MakV3bXRoeXlvNVRBCjZvMW0rVHBVckk2WFdoc2JsRjBu\nRHZGWnR2RFhnbmtadW1mczVvYk5ab00KLS0tIDNlUkJxS0dZRHZwbVNpMjg3RXJT\nZlFEaUVTc2ZXdjRXU1NobDhSMXlnY1kKp4EUy6WilyRfq/ONi+crjLzKJGMpnzMg\nQ1VHjrQP7QIog2XTWCS5ZYZ5F+iLyBOhv0x/2SbPkXOBbw6o9loZIA==\n-----END AGE ENCRYPTED FILE-----\n"
+			},
+			{
+				"recipient": "age1v0g45mn4ckksdv29suez9kt275lszel2nd4fs3n7d2ur9jn20p5sxvpw2e",
+				"enc": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBpVm0vQnFRR2xUUXJ4dEVQ\ncEUvY0haN0s0dXRmc1FhaFZvV253eExFTDJzCmRWQWFtTklBeWFTaEZGeHlNTm8x\nTTBYY3FaT0NaZVJxMkh5bXJIaU5TZmsKLS0tIExpMTg4elppSlQyeDA3QVR1emVG\nK1h3TGl3VmdnL3ZzMnAyTE50cm41ZmMKbL42nHfCBI0m1HSSLisLLp+QalSk4eGF\njnjVwtVgLCmhcHVy3+wjt1ABUryzUueSxuTwQ3RW9H2wCUA/zDmyuQ==\n-----END AGE ENCRYPTED FILE-----\n"
+			},
+			{
+				"recipient": "age1zlnxdpl9vwrj8d87w0gyqvp2nmcmf3zlg0tckj8kutfet5h6fu2qkfec6z",
+				"enc": "-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBWUllqeEJjUTE1VDYzQ1lL\nZFVqSFdIWXY4WE1DTWI1MGlrR1M1cUxNL2pNCkFTMXd0M05oMlk3WUl4RDRZcy9W\nZ000bkZVcUxSSUErYlZ2dHdVTGE1cEEKLS0tIGVHR3BzVWNWMmxqaUhES0NDK2dD\nKzlKSmJuMDJ6VTJYL1BQeFRKZ2t4amcKGDdIHzThQwCSfvuWkiiOGQWBRhaDgs/+\nN2V3q1boV0LmDb3+egMPn5EvmaYfzUYSzWyiIgLT310WVDwjBmcKLg==\n-----END AGE ENCRYPTED FILE-----\n"
+			}
+		],
+		"lastmodified": "2026-05-02T04:15:11Z",
+		"mac": "ENC[AES256_GCM,data:mC9vPp1vBKWSBOcVaLaYCX6OJxbcW1ETjdwoIPxF9opHeVraaB4KjI2ZS3qBkE3JAegJv4Ddtc6Z6vKduEAuMKZ0fmjI6acTRsxycxzhnvrlKCxwrGmJJqnpZjWAa3CNyhKw0ixi2jq9NhjoKTs48/Gw4KRWMHfh7/ys42F1G6w=,iv:kY6ftsjzFk2Fz4LIAvKnvcQCh7kpE/flw9Ig3bkIHTs=,tag:BfbVJF2W3GMY8BSmSD9tpQ==,type:str]",
+		"version": "3.12.2"
+	}
+}

@@ -62,6 +62,30 @@ for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
     fi
 done
 
+# SSH config and managed keys
+for enc_file in ssh/*.enc(N); do
+    target=ssh/${${enc_file:t}%.enc}
+    mkdir -p ssh
+    if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
+        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+    else
+        print "Decrypting ${enc_file}..."
+        temp_file=$(mktemp)
+        if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+            if [[ $target == *.pub ]]; then
+                chmod 644 $temp_file
+            else
+                chmod 600 $temp_file
+            fi
+            mv $temp_file $target
+            print "  ...done"
+        else
+            rm -f $temp_file
+            print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+        fi
+    fi
+done
+
 # Portless CA and server certs
 local portless_dir=$HOME/.portless
 mkdir -p $portless_dir
