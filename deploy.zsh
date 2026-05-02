@@ -246,8 +246,30 @@ if (( ! ${+commands[gh]} )); then
         else
             print "  ...failed to determine latest gh version, skipping"
         fi
-    elif [[ $gh_os == Darwin ]]; then
-        brew_install_or_upgrade gh gh || true
+    elif [[ $gh_os == Darwin && ($gh_arch == x86_64 || $gh_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade gh gh || true
+        fi
+        if (( ! ${+commands[gh]} )); then
+            local gh_dl_arch=$gh_arch
+            [[ $gh_dl_arch == x86_64 ]] && gh_dl_arch=amd64
+            local gh_version
+            gh_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/cli/cli/releases/latest | sed 's|.*/tag/v||')
+            if [[ -n $gh_version ]] && (( ${+commands[unzip]} )); then
+                local gh_tmp=$(mktemp -d)
+                if curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_macOS_${gh_dl_arch}.zip" -o $gh_tmp/gh.zip \
+                    && unzip -q $gh_tmp/gh.zip -d $gh_tmp; then
+                    zf_mv $gh_tmp/gh_${gh_version}_macOS_${gh_dl_arch}/bin/gh $HOME/.local/bin/gh
+                    chmod +x $HOME/.local/bin/gh
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download gh, try: brew install gh"
+                fi
+                rm -rf $gh_tmp
+            else
+                print "  ...need unzip + network, try: brew install gh"
+            fi
+        fi
     else
         print "  ...unsupported platform for gh auto-install, skipping"
     fi
@@ -282,8 +304,29 @@ if (( ! ${+commands[glab]} )); then
         else
             print "  ...failed to determine latest glab version, skipping"
         fi
-    elif [[ $glab_os == Darwin ]]; then
-        brew_install_or_upgrade glab glab || true
+    elif [[ $glab_os == Darwin && ($glab_arch == x86_64 || $glab_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade glab glab || true
+        fi
+        if (( ! ${+commands[glab]} )); then
+            local glab_dl_arch=$glab_arch
+            [[ $glab_dl_arch == x86_64 ]] && glab_dl_arch=amd64
+            local glab_version
+            glab_version=$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['tag_name'].lstrip('v'))" 2>/dev/null)
+            if [[ -n $glab_version ]]; then
+                local glab_tmp=$(mktemp -d)
+                if curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_version}/downloads/glab_${glab_version}_darwin_${glab_dl_arch}.tar.gz" | tar xz -C $glab_tmp; then
+                    zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
+                    chmod +x $HOME/.local/bin/glab
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download glab, try: brew install glab"
+                fi
+                rm -rf $glab_tmp
+            else
+                print "  ...failed to determine latest glab version, try: brew install glab"
+            fi
+        fi
     else
         print "  ...unsupported platform for glab auto-install, skipping"
     fi
@@ -295,7 +338,23 @@ if (( ! ${+commands[aws]} )); then
     local aws_arch=$DOTFILES_ARCH
     local aws_os=$DOTFILES_OS
     if [[ $aws_os == Darwin ]]; then
-        brew_install_or_upgrade awscli aws || true
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade awscli aws || true
+        fi
+        if (( ! ${+commands[aws]} )); then
+            local aws_tmp=$(mktemp -d)
+            if curl -fsSL "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o $aws_tmp/AWSCLIV2.pkg; then
+                print "  ...downloaded AWSCLIV2.pkg; installing requires sudo"
+                if sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / > /dev/null 2>&1; then
+                    print "  ...done (pkg installer)"
+                else
+                    print "  ...sudo installer failed; install manually: sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / (or: brew install awscli)"
+                fi
+            else
+                print "  ...failed to download AWSCLIV2.pkg, try: brew install awscli"
+            fi
+            rm -rf $aws_tmp
+        fi
     elif [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
         print "  ...unsupported platform for AWS CLI auto-install, skipping"
     elif (( ! ${+commands[unzip]} )); then
@@ -315,7 +374,18 @@ elif $upgrade_mode; then
     print "Upgrading AWS CLI v2..."
     local aws_arch=$DOTFILES_ARCH
     if [[ $DOTFILES_OS == Darwin ]]; then
-        brew_install_or_upgrade awscli aws || true
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade awscli aws || true
+        else
+            local aws_tmp=$(mktemp -d)
+            if curl -fsSL "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o $aws_tmp/AWSCLIV2.pkg \
+                && sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / > /dev/null 2>&1; then
+                print "  ...done (pkg installer)"
+            else
+                print "  ...AWS CLI upgrade failed"
+            fi
+            rm -rf $aws_tmp
+        fi
     elif [[ $DOTFILES_OS == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
         local aws_tmp=$(mktemp -d)
         if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip" -o $aws_tmp/awscliv2.zip \
@@ -359,9 +429,27 @@ if (( ! ${+commands[mise]} )); then
         else
             print "  ...failed to determine latest mise version, skipping"
         fi
-    elif [[ $mise_os == darwin ]]; then
-        brew_install_or_upgrade mise mise || true
-        if (( ${+commands[mise]} )); then
+    elif [[ $mise_os == darwin && ($mise_arch == x86_64 || $mise_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade mise mise || true
+        fi
+        if (( ! ${+commands[mise]} )); then
+            local mise_dl_arch=$mise_arch
+            [[ $mise_dl_arch == x86_64 ]] && mise_dl_arch=x64
+            local mise_version
+            mise_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/jdx/mise/releases/latest | sed 's|.*/tag/v||')
+            if [[ -n $mise_version ]]; then
+                if curl -fsSL "https://github.com/jdx/mise/releases/download/v${mise_version}/mise-v${mise_version}-macos-${mise_dl_arch}" -o $HOME/.local/bin/mise; then
+                    chmod +x $HOME/.local/bin/mise
+                    export PATH=$HOME/.local/bin:$PATH
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download mise, try: brew install mise"
+                fi
+            else
+                print "  ...failed to determine latest mise version, try: brew install mise"
+            fi
+        else
             export PATH=$HOME/.local/bin:$PATH
         fi
     else
