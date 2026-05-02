@@ -1,6 +1,6 @@
 # Portkey AI Gateway: self-hosted OSS gateway helpers.
-# Portkey now backs the ccfw/ccz alias families. Production cc-fast remains
-# Bifrost-backed; cc-fast-pk validates Portkey -> OpenRouter BYOK -> Cerebras.
+# Portkey backs the ccfw/ccz/cc-fast alias families. The cc-fast-pk names are
+# kept as compatibility wrappers over the same Portkey route.
 
 # Endpoint convention: Portkey serves Anthropic-compatible /v1/messages at the
 # gateway root. Set ANTHROPIC_BASE_URL to http://host:8787 (no /anthropic suffix).
@@ -360,6 +360,58 @@ if (( ${+commands[claude]} )); then
     esac
   }
 
+  _portkey_run_cc_fast() {
+    emulate -L zsh
+    local alias_name="${1:?usage: _portkey_run_cc_fast <alias> <claude|happy> [args...]}"
+    local runner="${2:?usage: _portkey_run_cc_fast <alias> <claude|happy> [args...]}"
+    shift 2
+    _portkey_ensure_service || return 1
+    local glm_model="fleet-cc-fast"
+    local opus_model="fleet-opus"
+    local sonnet_model="fleet-sonnet"
+    local haiku_model="fleet-haiku"
+    local small_fast_model="fleet-small-fast"
+    local headers
+    headers="$(_portkey_headers "$alias_name" "$glm_model" "$opus_model" "$sonnet_model" "$haiku_model" "$small_fast_model")" || return $?
+
+    case "$runner" in
+      claude)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$glm_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          claude --model "$glm_model" "$@"
+        ;;
+      happy)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$glm_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          happy yolo --dangerously-skip-permissions "$@"
+        ;;
+      *)
+        print -u2 -- "unsupported Portkey runner: $runner"
+        return 1
+        ;;
+    esac
+  }
+
   ccfw() {
     _portkey_run_ccfw ccfw claude "$@"
   }
@@ -392,54 +444,20 @@ if (( ${+commands[claude]} )); then
     _portkey_run_ccz ccz-pk-happy happy "$@"
   }
 
+  cc-fast() {
+    _portkey_run_cc_fast cc-fast claude "$@"
+  }
+
+  cc-fast-happy() {
+    _portkey_run_cc_fast cc-fast-happy happy "$@"
+  }
+
   cc-fast-pk() {
-    emulate -L zsh
-    _portkey_ensure_service || return 1
-    local glm_model="fleet-cc-fast"
-    local opus_model="fleet-opus"
-    local sonnet_model="fleet-sonnet"
-    local haiku_model="fleet-haiku"
-    local small_fast_model="fleet-small-fast"
-    local headers
-    headers="$(_portkey_headers cc-fast-pk "$glm_model" "$opus_model" "$sonnet_model" "$haiku_model" "$small_fast_model")" || return $?
-    CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-    ANTHROPIC_API_KEY="" \
-    ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
-    ANTHROPIC_CUSTOM_HEADERS="$headers" \
-    ANTHROPIC_MODEL="$glm_model" \
-    ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model" \
-    ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model" \
-    ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
-    ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
-    API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
-      claude --model "$glm_model" "$@"
+    _portkey_run_cc_fast cc-fast-pk claude "$@"
   }
 
   cc-fast-pk-happy() {
-    emulate -L zsh
-    _portkey_ensure_service || return 1
-    local glm_model="fleet-cc-fast"
-    local opus_model="fleet-opus"
-    local sonnet_model="fleet-sonnet"
-    local haiku_model="fleet-haiku"
-    local small_fast_model="fleet-small-fast"
-    local headers
-    headers="$(_portkey_headers cc-fast-pk-happy "$glm_model" "$opus_model" "$sonnet_model" "$haiku_model" "$small_fast_model")" || return $?
-    CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-    ANTHROPIC_API_KEY="" \
-    ANTHROPIC_AUTH_TOKEN="" \
-    ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
-    ANTHROPIC_CUSTOM_HEADERS="$headers" \
-    ANTHROPIC_MODEL="$glm_model" \
-    ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model" \
-    ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model" \
-    ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
-    ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
-    API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
-      happy yolo --dangerously-skip-permissions "$@"
+    _portkey_run_cc_fast cc-fast-pk-happy happy "$@"
   }
 
   portkey-health() {

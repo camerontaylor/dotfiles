@@ -5,77 +5,133 @@ emulate -L zsh
 typeset -ga AGENT_ALIAS_ENV_NAMES
 typeset -gA AGENT_ALIAS_ENV
 
-# Bifrost proxy lives on ceres.local:4242, with CCR on ceres:3456 as the
-# legacy rollback path when USE_CCR=1. Default hostname is ceres.local so
-# background tasks on pluto/make/ceres all share the same proxy via mDNS.
-# Override with LITELLM_HOST / CCR_HOST or the AGENT_ALIAS_* variants.
-typeset -g AGENT_ALIAS_LITELLM_HOST="${AGENT_ALIAS_LITELLM_HOST:-${LITELLM_HOST:-ceres.local}}"
-typeset -g AGENT_ALIAS_LITELLM_PORT="${AGENT_ALIAS_LITELLM_PORT:-${LITELLM_PORT:-4242}}"
-typeset -g AGENT_ALIAS_LITELLM_BASE_URL="http://${AGENT_ALIAS_LITELLM_HOST}:${AGENT_ALIAS_LITELLM_PORT}/anthropic"
-typeset -g AGENT_ALIAS_CCR_HOST="${AGENT_ALIAS_CCR_HOST:-${CCR_HOST:-ceres.local}}"
-typeset -g AGENT_ALIAS_CCR_PORT="${AGENT_ALIAS_CCR_PORT:-${CCR_PORT:-3456}}"
-typeset -g AGENT_ALIAS_CCR_BASE_URL="http://${AGENT_ALIAS_CCR_HOST}:${AGENT_ALIAS_CCR_PORT}"
+# Portkey gateway lives on ceres:8787 and serves Anthropic-compatible
+# /v1/messages at the gateway root. The real provider secrets stay on the
+# gateway host; aliases send only local control headers.
+typeset -g AGENT_ALIAS_PORTKEY_HOST="${AGENT_ALIAS_PORTKEY_HOST:-${PORTKEY_HOST:-ceres.local}}"
+typeset -g AGENT_ALIAS_PORTKEY_PORT="${AGENT_ALIAS_PORTKEY_PORT:-${PORTKEY_PORT:-8787}}"
+typeset -g AGENT_ALIAS_PORTKEY_BASE_URL="http://${AGENT_ALIAS_PORTKEY_HOST}:${AGENT_ALIAS_PORTKEY_PORT}"
+typeset -g AGENT_ALIAS_PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
+typeset -g AGENT_ALIAS_PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
+typeset -g AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$AGENT_ALIAS_PORTKEY_STATE/local-api-key}"
 
-# Resolve the proxy master key once. Prefers env var (e.g., set by
-# mise via .env.agent during background tasks), falls back to the
-# self-managed file written by _litellm_ensure_service. Returns "" if neither
-# is available — caller decides whether that's a hard error.
-agent_alias_litellm_master_key() {
+agent_alias_portkey_config_version() {
     emulate -L zsh
-    if [[ -n "${LITELLM_MASTER_KEY:-}" ]]; then
-        print -r -- "$LITELLM_MASTER_KEY"
+    (( $# > 0 )) || {
+        print -u2 -- "usage: agent_alias_portkey_config_version <route> [route...]"
+        return 1
+    }
+
+    local routes_json hash
+    routes_json="$(printf '%s\n' "$@" | jq -R . | jq -sc .)" || return $?
+    hash="$(
+        jq -S -c --argjson route_names "$routes_json" '
+          def strip_secrets:
+            if type == "object" then
+              del(.api_key, .apiKey, .credentials, .key)
+              | with_entries(select(.key | test("(?i)(secret|token|password|authorization)$") | not))
+              | with_entries(.value |= strip_secrets)
+            elif type == "array" then map(strip_secrets)
+            else . end;
+          {
+            routes: (
+              .routes as $routes
+              | $route_names
+              | map({key: ., value: ($routes[.].portkey_config // error("unknown route: " + .))})
+              | from_entries
+            )
+          }
+          | strip_secrets
+        ' "$AGENT_ALIAS_PORTKEY_CONFIG_FILE" | sha256sum | awk '{print $1}'
+    )" || return $?
+
+    print -r -- "local-sha256:${hash[1,16]}"
+}
+
+agent_alias_portkey_config_slug() {
+    emulate -L zsh
+    local alias_name="${1:?usage: agent_alias_portkey_config_slug <alias> <route> [route...]}"
+    shift
+    (( $# > 0 )) || {
+        print -u2 -- "usage: agent_alias_portkey_config_slug <alias> <route> [route...]"
+        return 1
+    }
+
+    local version slug_hash safe_alias
+    version="$(agent_alias_portkey_config_version "$@")" || return $?
+    slug_hash="$(printf '%s:%s\n' "$alias_name" "$version" | sha256sum | awk '{print substr($1,1,12)}')" || return $?
+    safe_alias="${alias_name//[^A-Za-z0-9-]/-}"
+    print -r -- "pc-local-${safe_alias}-${slug_hash}"
+}
+
+agent_alias_portkey_local_token() {
+    emulate -L zsh
+    if [[ -n "${PORTKEY_LOCAL_API_KEY:-}" ]]; then
+        print -r -- "$PORTKEY_LOCAL_API_KEY"
         return 0
     fi
-    local key_file="${XDG_STATE_HOME:-$HOME/.local/state}/litellm/master-key"
-    if [[ -r "$key_file" ]]; then
-        # Strip any trailing newline; print -r preserves the rest verbatim
-        local key
-        key="$(< "$key_file")"
-        print -r -- "${key%$'\n'}"
+
+    if [[ -r "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE" ]]; then
+        <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
         return 0
     fi
-    print -u2 -- "agent-aliases: LITELLM_MASTER_KEY env unset and $key_file unreadable; ccfw/ccz auth will fail"
-    print -r -- ""
+
+    [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
+    local token
+    if (( ${+commands[openssl]} )); then
+        token="$(openssl rand -hex 32)" || return $?
+    elif (( ${+commands[uuidgen]} )); then
+        token="$(uuidgen)$(uuidgen)" || return $?
+    else
+        token="$(printf '%s-%s-%s\n' "$(date +%s)" "$RANDOM" "$RANDOM")"
+    fi
+    umask 077
+    print -rn -- "$token" >"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+    print -r -- "$token"
     return 0
 }
 
-agent_alias_use_ccr() {
+agent_alias_portkey_session_id() {
     emulate -L zsh
-    local alias_name="$1"
-    local value
-
-    case "$alias_name" in
-        ccfw)
-            value="${USE_CCR_CCFW:-${USE_CCR:-0}}"
-            ;;
-        ccz)
-            value="${USE_CCR_CCZ:-${USE_CCR:-0}}"
-            ;;
-        cc-fast)
-            value="${USE_CCR_CC_FAST:-${USE_CCR:-0}}"
-            ;;
-        *)
-            value="${USE_CCR:-0}"
-            ;;
-    esac
-
-    [[ "$value" == "1" ]]
-}
-
-agent_alias_proxy_base_url() {
-    emulate -L zsh
-    local alias_name="$1"
-
-    if agent_alias_use_ccr "$alias_name"; then
-        print -r -- "$AGENT_ALIAS_CCR_BASE_URL"
-    else
-        print -r -- "$AGENT_ALIAS_LITELLM_BASE_URL"
+    local session="${PORTKEY_STICKY_SESSION:-${OMX_SESSION_ID:-${CODEX_SESSION_ID:-${TMUX_PANE:-}}}}"
+    if [[ -n "$session" ]]; then
+        print -r -- "$session"
+        return 0
     fi
+
+    [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
+    local session_file="$AGENT_ALIAS_PORTKEY_STATE/sticky-session-id"
+    if [[ ! -r "$session_file" ]]; then
+        umask 077
+        if (( ${+commands[uuidgen]} )); then
+            uuidgen >"$session_file"
+        else
+            printf '%s-%s\n' "$(date +%s)" "$RANDOM" >"$session_file"
+        fi
+    fi
+    <"$session_file"
 }
 
-agent_alias_proxy_model() {
+agent_alias_portkey_headers() {
     emulate -L zsh
-    print -r -- "$2"
+    local alias_name="${1:?usage: agent_alias_portkey_headers <alias> <route> [route...]}"
+    shift
+    (( $# > 0 )) || {
+        print -u2 -- "usage: agent_alias_portkey_headers <alias> <route> [route...]"
+        return 1
+    }
+
+    local token config_slug config_version session_id metadata
+    token="$(agent_alias_portkey_local_token)" || return $?
+    config_slug="$(agent_alias_portkey_config_slug "$alias_name" "$@")" || return $?
+    config_version="$(agent_alias_portkey_config_version "$@")" || return $?
+    session_id="$(agent_alias_portkey_session_id)" || return $?
+    metadata="$(jq -cn --arg portkey_session "${alias_name}:${session_id}" '{portkey_session: $portkey_session}')" || return $?
+
+    print -r -- "x-portkey-api-key: ${token}"
+    print -r -- "x-portkey-config: ${config_slug}"
+    print -r -- "x-portkey-config-version: ${config_version}"
+    print -r -- "x-portkey-metadata: ${metadata}"
 }
 
 agent_alias_normalize_args() {
@@ -97,6 +153,7 @@ agent_alias_define_env() {
 
     case "$alias_name" in
         ccm)
+            # Direct MiniMax via their Anthropic-compat endpoint. Bypasses Portkey.
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
@@ -122,10 +179,9 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
-        ccm-happy)
-            agent_alias_define_env ccm
-            ;;
         ccz-direct)
+            # Direct Z.AI via their Anthropic-compat endpoint. Bypasses Portkey.
+            # Kept as fallback in case proxy-routed `ccz` misbehaves.
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
@@ -153,10 +209,130 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
-        ccz-direct-happy)
-            agent_alias_define_env ccz-direct
+        ccfw|ccfw-happy)
+            # Portkey fleet with fallback chains encoded in
+            # ~/.local/dotfiles/configs/portkey/config.json:
+            #   fleet-opus       → Fireworks Kimi-K2.6 [→ Z.AI → MiniMax]
+            #   fleet-sonnet     → Fireworks GLM-5.1   [→ Kimi → MiniMax M2.7]
+            #   fleet-haiku      → OpenRouter BYOK → Cerebras openai/gpt-oss-120b
+            #   fleet-small-fast → OpenRouter BYOK → Cerebras openai/gpt-oss-120b
+            local _ccfw_opus_model="fleet-opus"
+            local _ccfw_sonnet_model="fleet-sonnet"
+            local _ccfw_haiku_model="fleet-haiku"
+            local _ccfw_small_fast_model="fleet-small-fast"
+            local _ccfw_headers
+            _ccfw_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccfw_opus_model" "$_ccfw_sonnet_model" "$_ccfw_haiku_model" "$_ccfw_small_fast_model")" || return $?
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_sonnet_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
+                ANTHROPIC_MODEL "$_ccfw_opus_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccfw_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
+                ANTHROPIC_CUSTOM_HEADERS "$_ccfw_headers"
+                API_TIMEOUT_MS 75000
+            )
             ;;
-        cc|yolo)
+        ccz|ccz-happy)
+            # Z.AI foreground tier via Portkey. The fleet-ccz config keeps Z.AI
+            # primary and preserves Fireworks/MiniMax fallback capacity.
+            local _ccz_zai_model="fleet-ccz"
+            local _ccz_haiku_model="fleet-haiku"
+            local _ccz_small_fast_model="fleet-small-fast"
+            local _ccz_headers
+            _ccz_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccz_zai_model" "$_ccz_haiku_model" "$_ccz_small_fast_model")" || return $?
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccz_zai_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccz_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccz_zai_model"
+                ANTHROPIC_MODEL "$_ccz_zai_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccz_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
+                ANTHROPIC_CUSTOM_HEADERS "$_ccz_headers"
+                API_TIMEOUT_MS 75000
+            )
+            ;;
+        cc-fast|cc-fast-happy)
+            # Portkey fast foreground route. The route pins Cerebras GLM-4.7
+            # primary and falls back to Fireworks GPT-OSS-120B reasoning.
+            # Sub-agents and tier-coded requests stay on the regular fleet-* rules.
+            local _ccfast_glm_model="fleet-cc-fast"
+            local _ccfast_opus_model="fleet-opus"
+            local _ccfast_sonnet_model="fleet-sonnet"
+            local _ccfast_haiku_model="fleet-haiku"
+            local _ccfast_small_fast_model="fleet-small-fast"
+            local _ccfast_headers
+            _ccfast_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccfast_glm_model" "$_ccfast_opus_model" "$_ccfast_sonnet_model" "$_ccfast_haiku_model" "$_ccfast_small_fast_model")" || return $?
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfast_sonnet_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfast_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfast_opus_model"
+                ANTHROPIC_MODEL "$_ccfast_glm_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccfast_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
+                ANTHROPIC_CUSTOM_HEADERS "$_ccfast_headers"
+                API_TIMEOUT_MS 75000
+            )
+            ;;
+        yolo)
+            # Plain `happy yolo` with no Anthropic env overrides. Useful when
+            # you want happy's permissive mode but real Anthropic auth.
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
@@ -179,127 +355,6 @@ agent_alias_define_env() {
                 ANTHROPIC_BASE_URL ""
                 API_TIMEOUT_MS ""
             )
-            ;;
-        ccfw)
-            # Fireworks-fronted fleet via Bifrost proxy.
-            # Routes via fleet-* role aliases (Claude Code's client-side
-            # subscription gate rejects bare opus/sonnet/haiku).
-            local _ccfw_master_key _ccfw_opus_model
-            _ccfw_master_key="$(agent_alias_litellm_master_key)"
-            _ccfw_opus_model="$(agent_alias_proxy_model ccfw fleet-opus)"
-            AGENT_ALIAS_ENV_NAMES=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ANTHROPIC_DEFAULT_SONNET_MODEL
-                ANTHROPIC_DEFAULT_HAIKU_MODEL
-                ANTHROPIC_DEFAULT_OPUS_MODEL
-                ANTHROPIC_MODEL
-                ANTHROPIC_SMALL_FAST_MODEL
-                ANTHROPIC_API_KEY
-                ANTHROPIC_AUTH_TOKEN
-                ANTHROPIC_BASE_URL
-                ANTHROPIC_CUSTOM_HEADERS
-                API_TIMEOUT_MS
-            )
-            AGENT_ALIAS_ENV=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER 0
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ANTHROPIC_DEFAULT_SONNET_MODEL "$(agent_alias_proxy_model ccfw fleet-sonnet)"
-                ANTHROPIC_DEFAULT_HAIKU_MODEL "$(agent_alias_proxy_model ccfw fleet-haiku)"
-                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
-                ANTHROPIC_MODEL "$_ccfw_opus_model"
-                ANTHROPIC_SMALL_FAST_MODEL "$(agent_alias_proxy_model ccfw fleet-small-fast)"
-                ANTHROPIC_API_KEY ""
-                ANTHROPIC_AUTH_TOKEN "$_ccfw_master_key"
-                ANTHROPIC_BASE_URL "$(agent_alias_proxy_base_url ccfw)"
-                ANTHROPIC_CUSTOM_HEADERS ""
-                API_TIMEOUT_MS 3000000
-            )
-            ;;
-        ccfw-happy)
-            agent_alias_define_env ccfw
-            ;;
-        ccz)
-            # Z.AI single-stream foreground tier via Bifrost proxy.
-            # Foreground/opus/sonnet pin to glm-5.1-bg (max_parallel_requests=1)
-            # for subscription-saturation discipline; haiku-level work routes to
-            # fleet-haiku and small-fast routes to fleet-small-fast.
-            local _ccz_master_key _ccz_zai_model
-            _ccz_master_key="$(agent_alias_litellm_master_key)"
-            _ccz_zai_model="$(agent_alias_proxy_model ccz glm-5.1-bg)"
-            AGENT_ALIAS_ENV_NAMES=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
-                ANTHROPIC_DEFAULT_SONNET_MODEL
-                ANTHROPIC_DEFAULT_HAIKU_MODEL
-                ANTHROPIC_DEFAULT_OPUS_MODEL
-                ANTHROPIC_MODEL
-                ANTHROPIC_SMALL_FAST_MODEL
-                ANTHROPIC_API_KEY
-                ANTHROPIC_AUTH_TOKEN
-                ANTHROPIC_BASE_URL
-                ANTHROPIC_CUSTOM_HEADERS
-                API_TIMEOUT_MS
-            )
-            AGENT_ALIAS_ENV=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER 0
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ENABLE_TOOL_SEARCH "false"
-                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccz_zai_model"
-                ANTHROPIC_DEFAULT_HAIKU_MODEL "$(agent_alias_proxy_model ccz fleet-haiku)"
-                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccz_zai_model"
-                ANTHROPIC_MODEL "$_ccz_zai_model"
-                ANTHROPIC_SMALL_FAST_MODEL "$(agent_alias_proxy_model ccz fleet-small-fast)"
-                ANTHROPIC_API_KEY ""
-                ANTHROPIC_AUTH_TOKEN "$_ccz_master_key"
-                ANTHROPIC_BASE_URL "$(agent_alias_proxy_base_url ccz)"
-                ANTHROPIC_CUSTOM_HEADERS ""
-                API_TIMEOUT_MS 3000000
-            )
-            ;;
-        ccz-happy)
-            agent_alias_define_env ccz
-            ;;
-        cc-fast)
-            # Foreground hits cerebras-paid-glm-4.7 (~3000 t/s GLM 4.7 on
-            # Cerebras's wafer-scale silicon). Sub-agents and tier-coded
-            # requests stay on the regular fleet — glm-4.7 is NEVER selected
-            # for background work, only the interactive thread.
-            local _ccfast_master_key _ccfast_glm_model
-            _ccfast_master_key="$(agent_alias_litellm_master_key)"
-            _ccfast_glm_model="$(agent_alias_proxy_model cc-fast glm-4.7-cerebras)"
-            AGENT_ALIAS_ENV_NAMES=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ANTHROPIC_DEFAULT_SONNET_MODEL
-                ANTHROPIC_DEFAULT_HAIKU_MODEL
-                ANTHROPIC_DEFAULT_OPUS_MODEL
-                ANTHROPIC_MODEL
-                ANTHROPIC_SMALL_FAST_MODEL
-                ANTHROPIC_API_KEY
-                ANTHROPIC_AUTH_TOKEN
-                ANTHROPIC_BASE_URL
-                ANTHROPIC_CUSTOM_HEADERS
-                API_TIMEOUT_MS
-            )
-            AGENT_ALIAS_ENV=(
-                CLAUDE_CODE_ATTRIBUTION_HEADER 0
-                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ANTHROPIC_DEFAULT_SONNET_MODEL "$(agent_alias_proxy_model cc-fast fleet-sonnet)"
-                ANTHROPIC_DEFAULT_HAIKU_MODEL "$(agent_alias_proxy_model cc-fast fleet-haiku)"
-                ANTHROPIC_DEFAULT_OPUS_MODEL "$(agent_alias_proxy_model cc-fast fleet-opus)"
-                ANTHROPIC_MODEL "$_ccfast_glm_model"
-                ANTHROPIC_SMALL_FAST_MODEL "$(agent_alias_proxy_model cc-fast fleet-small-fast)"
-                ANTHROPIC_API_KEY ""
-                ANTHROPIC_AUTH_TOKEN "$_ccfast_master_key"
-                ANTHROPIC_BASE_URL "$(agent_alias_proxy_base_url cc-fast)"
-                ANTHROPIC_CUSTOM_HEADERS ""
-                API_TIMEOUT_MS 3000000
-            )
-            ;;
-        cc-fast-happy)
-            agent_alias_define_env cc-fast
             ;;
         *)
             print -u2 -- "Unsupported agent alias: $alias_name"

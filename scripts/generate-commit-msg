@@ -168,19 +168,28 @@ run_commit_cli() {
 }
 
 CLI_STDERR_FILE="$(mktemp -t generate-commit-msg.stderr.XXXXXX)"
+CLI_STDOUT_FILE="$(mktemp -t generate-commit-msg.stdout.XXXXXX)"
 cleanup() {
-  rm -f "$CLI_STDERR_FILE"
+  rm -f "$CLI_STDERR_FILE" "$CLI_STDOUT_FILE"
 }
 trap cleanup EXIT
 
 run_commit_cli_capture() {
   : > "$CLI_STDERR_FILE"
-  run_commit_cli "$@" 2>"$CLI_STDERR_FILE"
+  : > "$CLI_STDOUT_FILE"
+  run_commit_cli "$@" >"$CLI_STDOUT_FILE" 2>"$CLI_STDERR_FILE"
 }
 
-print_cli_stderr() {
+read_cli_stdout() {
+  cat "$CLI_STDOUT_FILE"
+}
+
+print_cli_output() {
   if [[ "$QUIET" == false && -s "$CLI_STDERR_FILE" ]]; then
     cat "$CLI_STDERR_FILE" >&2
+  fi
+  if [[ "$QUIET" == false && -s "$CLI_STDOUT_FILE" ]]; then
+    cat "$CLI_STDOUT_FILE" >&2
   fi
 }
 
@@ -290,8 +299,8 @@ log() {
 }
 
 CLI_ARGS=(-p "$PROMPT" --model "$MODEL")
-if [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; then
-  CLI_ARGS+=(--bare)
+if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
+  CLI_ARGS+=(--bare --tools "")
 fi
 
 if [[ "$CLI_MODE" == "alias" ]]; then
@@ -300,11 +309,12 @@ else
   log "Generating commit message (cli: $CLI_LABEL, model: $MODEL)..."
 fi
 
-GENERATED_MSG="$(run_commit_cli_capture "${CLI_ARGS[@]}")" || {
+if ! run_commit_cli_capture "${CLI_ARGS[@]}"; then
   echo "ERROR: Claude CLI failed to generate a message." >&2
-  print_cli_stderr
+  print_cli_output
   exit 1
-}
+fi
+GENERATED_MSG="$(read_cli_stdout)"
 
 GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
 
@@ -333,15 +343,16 @@ Valid types: feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert
 No markdown fences, no explanation — just the commit message."
 
   RETRY_ARGS=(-p "$CORRECTION" --model "$MODEL")
-  if [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; then
-    RETRY_ARGS+=(--bare)
+  if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
+    RETRY_ARGS+=(--bare --tools "")
   fi
 
-  GENERATED_MSG="$(run_commit_cli_capture "${RETRY_ARGS[@]}")" || {
+  if ! run_commit_cli_capture "${RETRY_ARGS[@]}"; then
     echo "ERROR: Retry $ATTEMPT failed." >&2
-    print_cli_stderr
+    print_cli_output
     break
-  }
+  fi
+  GENERATED_MSG="$(read_cli_stdout)"
   GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
 done
 

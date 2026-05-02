@@ -52,7 +52,7 @@
       }
     },
     "fleet-opus": {
-      "description": "Frontier coder route: intended primary Fireworks Kimi-K2.6, with Z.AI/MiniMax fallback matching the Bifrost fleet policy.",
+      "description": "Frontier coder route: intended primary Fireworks Kimi-K2.6, with Z.AI/MiniMax fallback preserving the fleet policy.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -340,7 +340,7 @@
       }
     },
     "fleet-cc-fast": {
-      "description": "Interactive fast route: primary OpenRouter BYOK -> Cerebras GLM-4.7, then Fireworks GLM-5.1 and Z.AI fallback.",
+      "description": "Interactive fast route: primary OpenRouter BYOK -> Cerebras GLM-4.7, then Fireworks gpt-oss-120b reasoning fallback.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -374,6 +374,7 @@
             "api_key_env": "OPENROUTER_API_KEY",
             "override_params": {
               "model": "z-ai/glm-4.7",
+              "max_tokens": 96000,
               "provider": {
                 "only": [
                   "Cerebras"
@@ -394,19 +395,11 @@
             "provider": "anthropic",
             "api_key_env": "FIREWORKS_API_KEY",
             "override_params": {
-              "model": "accounts/fireworks/models/glm-5p1"
+              "model": "accounts/fireworks/models/gpt-oss-120b",
+              "max_tokens": 96000
             },
             "request_timeout": 45000,
             "custom_host": "https://api.fireworks.ai/inference/v1"
-          },
-          {
-            "provider": "anthropic",
-            "api_key_env": "Z_AI_API_KEY",
-            "custom_host": "https://api.z.ai/api/anthropic/v1",
-            "override_params": {
-              "model": "glm-4.7"
-            },
-            "request_timeout": 45000
           }
         ]
       }
@@ -540,6 +533,20 @@
       ],
       "ccz-pk-happy": [
         "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-happy": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
         "fleet-haiku",
         "fleet-small-fast"
       ],
