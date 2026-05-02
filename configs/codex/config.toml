@@ -1,10 +1,10 @@
 # oh-my-codex top-level settings (must be before any [table])
 notify = ["node", "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.15.1/lib/node_modules/oh-my-codex/dist/scripts/notify-hook.js"]
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 developer_instructions = "You have oh-my-codex installed. AGENTS.md is the orchestration brain and main control surface. Follow AGENTS.md for skill/keyword routing, $name workflow invocation, and role-specialized subagents. Native subagents live in .codex/agents and may handle independent parallel subtasks within one Codex session or team pane. Skills load from .codex/skills, not native-agent TOMLs. Treat installed prompts as narrower execution surfaces under AGENTS.md authority."
 
 suppress_unstable_features_warning = true
-model = "gpt-5.4-mini"
+model = "gpt-5.5"
 model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"

@@ -269,7 +269,7 @@
       }
     },
     "fleet-small-fast": {
-      "description": "Fast cheap route: primary OpenRouter BYOK -> Cerebras Llama 3.1 8B, then OpenRouter BYOK -> Cerebras gpt-oss-120b, Fireworks gpt-oss-120b, and MiniMax fallback.",
+      "description": "Fast cheap route: primary OpenRouter BYOK -> Cerebras gpt-oss-120b, then Fireworks gpt-oss-120b and MiniMax fallback.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -298,26 +298,6 @@
         },
         "request_timeout": 75000,
         "targets": [
-          {
-            "provider": "openrouter",
-            "api_key_env": "OPENROUTER_API_KEY",
-            "override_params": {
-              "model": "meta-llama/llama-3.1-8b-instruct",
-              "provider": {
-                "only": [
-                  "Cerebras"
-                ],
-                "allow_fallbacks": false
-              },
-              "usage": {
-                "include": true
-              },
-              "reasoning": {
-                "exclude": true
-              }
-            },
-            "request_timeout": 45000
-          },
           {
             "provider": "openrouter",
             "api_key_env": "OPENROUTER_API_KEY",
