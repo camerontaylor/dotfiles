@@ -664,6 +664,17 @@ if (( ${+commands[cargo]} )); then
     done
 fi
 
+# Find Homebrew on fresh macOS shells before running brew-managed setup.
+if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
+    for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+        if [[ -x $brew_bin ]]; then
+            path=(${brew_bin:h} $path)
+            break
+        fi
+    done
+    unset brew_bin
+fi
+
 # Update/upgrade Homebrew packages if brew is available (upgrade mode only)
 if (( ${+commands[brew]} )) && $upgrade_mode; then
     print "Updating Homebrew..."
@@ -677,6 +688,60 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
         print "  ...done"
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
+    fi
+fi
+
+# Install and register latest Homebrew zsh on macOS
+if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
+    print "Setting up latest zsh via Homebrew..."
+    print "  ...Homebrew not found, skipping"
+elif [[ $(uname -s) == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Setting up latest zsh via Homebrew..."
+    if brew list --formula zsh > /dev/null 2>&1; then
+        if $upgrade_mode; then
+            if brew upgrade zsh > /dev/null 2>&1; then
+                print "  ...zsh upgraded"
+            else
+                print "  ...zsh already latest or upgrade failed"
+            fi
+        else
+            print "  ...zsh already installed"
+        fi
+    elif brew install zsh > /dev/null 2>&1; then
+        print "  ...zsh installed"
+    else
+        print "  ...failed to install zsh"
+    fi
+
+    local brew_zsh="$(brew --prefix)/bin/zsh"
+    if [[ -x $brew_zsh ]]; then
+        if ! grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null; then
+            if (( EUID == 0 )); then
+                print -r -- "$brew_zsh" >> /etc/shells
+                print "  ...registered $brew_zsh in /etc/shells"
+            elif (( ${+commands[sudo]} )) && sudo -n true 2>/dev/null; then
+                print -r -- "$brew_zsh" | sudo tee -a /etc/shells > /dev/null
+                print "  ...registered $brew_zsh in /etc/shells"
+            else
+                print "  ...$brew_zsh is not in /etc/shells"
+                print "     run: echo $brew_zsh | sudo tee -a /etc/shells"
+            fi
+        fi
+
+        local current_shell
+        current_shell=$(dscl . -read /Users/$USER UserShell 2>/dev/null | awk '{print $2}')
+        [[ -z $current_shell ]] && current_shell=$SHELL
+        if [[ $current_shell != $brew_zsh ]]; then
+            if grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null \
+                && chsh -s "$brew_zsh" "$USER" < /dev/null > /dev/null 2>&1; then
+                print "  ...login shell changed to $brew_zsh"
+            else
+                print "  ...login shell is still $current_shell"
+                print "     run: chsh -s $brew_zsh"
+            fi
+        else
+            print "  ...login shell already uses $brew_zsh"
+        fi
     fi
 fi
 
