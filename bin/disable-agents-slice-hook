@@ -1,0 +1,25 @@
+#!/bin/sh
+# disable-agents-slice-hook — recovery: disable agents.slice hooks.
+#
+# Run from any working shell, including a bare virtual TTY (Ctrl+Alt+F3).
+# POSIX sh; no zsh, no rc.d, no PATH games. Idempotent: safe to run multiple times.
+#
+# Use this if the zsh hook ever locks out every Ghostty tab. After running:
+#   1. Open a new shell (any kind).
+#   2. To re-enable later: rename .zsh.disabled -> .zsh, rerun install-agents-slice.sh.
+
+mv "$HOME/.local/dotfiles/zsh/rc.d/00b_agents_slice.zsh" \
+   "$HOME/.local/dotfiles/zsh/rc.d/00b_agents_slice.zsh.disabled" 2>/dev/null
+mv "$HOME/.local/dotfiles/zsh/rc.d/04c_worktree_scope.zsh" \
+   "$HOME/.local/dotfiles/zsh/rc.d/04c_worktree_scope.zsh.disabled" 2>/dev/null
+
+# Stop the slice and all transient scopes under it. This kills any fork-bombing
+# child shells inside agents.slice.
+systemctl --user stop agents.slice 2>/dev/null
+
+# Belt-and-suspenders: if any process is mid-`exec systemd-run` and somehow
+# escapes the slice stop, kill it explicitly.
+pkill -KILL -f 'systemd-run.*agents.slice' 2>/dev/null
+
+echo "agents.slice hooks disabled. Open a new shell."
+echo "To re-enable: rename .zsh.disabled -> .zsh and run install-agents-slice.sh"
