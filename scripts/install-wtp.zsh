@@ -82,6 +82,10 @@ if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[
         exit 1
     fi
 else
-    print "  ...unsupported platform for wtp auto-install, skipping"
+    if [[ $wtp_os == Darwin ]]; then
+        print "  ...wtp upstream only ships Darwin arm64 binaries; install Homebrew then: brew install satococoa/tap/wtp"
+    else
+        print "  ...unsupported platform for wtp auto-install, skipping"
+    fi
     exit 1
 fi
