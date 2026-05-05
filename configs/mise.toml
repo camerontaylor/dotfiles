@@ -24,6 +24,7 @@ age = "latest"
 "npm:gsd-pi" = "latest"
 "npm:@oh-my-pi/pi-coding-agent" = "latest"
 uv = "latest"
+"npm:@aoagents/ao" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions
