@@ -40,6 +40,11 @@ fi
 # Only apply to interactive shells.
 [[ -o interactive ]] || return 0
 
+# `zsh -ic '...'` is technically interactive, but it is still a command-string
+# shell whose caller expects the command to return. Re-execing it into a fresh
+# prompt makes script-style checks look frozen.
+[[ -z "${ZSH_EXECUTION_STRING:-}" ]] || return 0
+
 # Need systemd user tools for the scope handoff. SSH or early-login shells can
 # lack a reachable user manager; in that case, keep the shell usable.
 if (( ! ${+commands[systemctl]} || ! ${+commands[systemd-run]} )); then

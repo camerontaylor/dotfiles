@@ -17,6 +17,10 @@ _agents_worktree_scope_enter() {
   # Must be in an interactive shell.
   [[ -o interactive ]] || return 0
 
+  # Do not replace command-string shells (`zsh -ic 'cd worktree && ...'`) with
+  # a fresh prompt; callers use that form specifically because it should return.
+  [[ -z "${ZSH_EXECUTION_STRING:-}" ]] || return 0
+
   # Must be inside a git working tree (not non-git dir).
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
 
