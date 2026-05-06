@@ -45,6 +45,14 @@ fi
 # prompt makes script-style checks look frozen.
 [[ -z "${ZSH_EXECUTION_STRING:-}" ]] || return 0
 
+# Bare SSH login shells are transport/bootstrap shells in this setup: .zshrc
+# attaches or creates tmux before the normal rc.d loop. Keep that path free of
+# systemd-run so SSH remains reliable even when the remote user manager is in a
+# bad state. New tmux panes still run this hook inside TMUX and join agents.slice.
+if [[ -n "${SSH_TTY:-}" && -z "${TMUX:-}" ]]; then
+  return 0
+fi
+
 # Need systemd user tools for the scope handoff. SSH or early-login shells can
 # lack a reachable user manager; in that case, keep the shell usable.
 if (( ! ${+commands[systemctl]} || ! ${+commands[systemd-run]} )); then

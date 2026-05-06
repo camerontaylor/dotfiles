@@ -75,6 +75,32 @@ brew_install_or_upgrade() {
     fi
 }
 
+brew_formula_install_or_upgrade() {
+    local formula=$1
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $formula"
+        return 1
+    fi
+
+    if ! brew list --formula $formula > /dev/null 2>&1; then
+        if brew install $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $formula"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade $formula > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$formula already at latest or upgrade failed"
+        return 0
+    fi
+}
+
 if [[ $DOTFILES_OS == Darwin ]]; then
     ensure_homebrew_path || true
 fi
@@ -620,25 +646,27 @@ fi
 
 # Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli)
+    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli linear-cli)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg
+        local -a cargo_install_args=($tool_pkg)
         case $tool_pkg in
             git-delta) tool_bin=delta ;;
             fd-find) tool_bin=fd ;;
             tree-sitter-cli) tool_bin=tree-sitter ;;
+            linear-cli) cargo_install_args=(--git https://github.com/Finesssee/linear-cli.git --branch master --locked) ;;
         esac
         if (( ! ${+commands[$tool_bin]} )); then
             print "Installing $tool_pkg via cargo..."
-            if cargo install $tool_pkg > /dev/null 2>&1; then
+            if cargo install $cargo_install_args > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to install $tool_pkg"
             fi
         elif $upgrade_mode; then
             print "Upgrading $tool_pkg via cargo..."
-            if cargo install $tool_pkg --force > /dev/null 2>&1; then
+            if cargo install $cargo_install_args --force > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to upgrade $tool_pkg"
@@ -661,6 +689,12 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
     fi
+fi
+
+# Install newer ncurses on macOS for Ghostty terminfo compilation.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing ncurses via brew..."
+    brew_formula_install_or_upgrade ncurses || true
 fi
 
 # Install engram via brew if not present
