@@ -11,9 +11,31 @@
 # Why this slot (04c_): runs after 04_autoload.zsh so add-zsh-hook is available,
 # and before 05_keys.zsh under en_AU.UTF-8.
 
+# Enabled by default. Set AGENTS_WORKTREE_SCOPE=0 before shell startup to skip
+# the cd-entry cgroup hook if the user systemd manager is unhealthy.
+case "${AGENTS_WORKTREE_SCOPE:-}" in
+  0|false|FALSE|no|NO|off|OFF) return 0 2>/dev/null || exit 0 ;;
+esac
+
 autoload -Uz add-zsh-hook
 
+_agents_worktree_scope_bounded() {
+  (( ${+commands[timeout]} )) || return 1
+  timeout 2s "$@"
+}
+
+_agents_worktree_scope_resolve_path() {
+  local path=$1
+  [[ -n "$path" ]] || return 1
+  [[ "$path" == /* ]] || path="$PWD/$path"
+  print -r -- "${path:A}"
+}
+
 _agents_worktree_scope_enter() {
+  [[ -z "${_AGENTS_WORKTREE_SCOPE_ACTIVE:-}" ]] || return 0
+  typeset -g _AGENTS_WORKTREE_SCOPE_ACTIVE=1
+
+  {
   # Must be in an interactive shell.
   [[ -o interactive ]] || return 0
 
@@ -26,12 +48,12 @@ _agents_worktree_scope_enter() {
 
   # Distinguish worktree from main checkout. In main: git-dir == git-common-dir.
   # In worktrees: git-dir is <main>/.git/worktrees/<name>, git-common-dir is <main>/.git.
-  # Use cd -P + pwd -P for portability (no realpath dependency).
+  # Do not run `cd` inside this chpwd hook: nested cd calls re-enter chpwd.
   local git_dir git_common_dir resolved_git resolved_common
   git_dir=$(git rev-parse --git-dir 2>/dev/null) || return 0
   git_common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || return 0
-  resolved_git=$(cd -P -- "$git_dir" 2>/dev/null && pwd -P) || return 0
-  resolved_common=$(cd -P -- "$git_common_dir" 2>/dev/null && pwd -P) || return 0
+  resolved_git=$(_agents_worktree_scope_resolve_path "$git_dir") || return 0
+  resolved_common=$(_agents_worktree_scope_resolve_path "$git_common_dir") || return 0
   [[ "$resolved_git" != "$resolved_common" ]] || return 0
 
   # Compute slug compatible with derive_session_name in cglauncher:60-74.
@@ -56,7 +78,7 @@ _agents_worktree_scope_enter() {
 
   # Read agents.slice cap to compute per-worktree cap = min(16G, agents.slice / 2).
   local agents_max cap_16g cap_half mem_max
-  agents_max=$(systemctl --user show agents.slice -p MemoryMax --value 2>/dev/null)
+  agents_max=$(_agents_worktree_scope_bounded systemctl --user show agents.slice -p MemoryMax --value 2>/dev/null)
   if [[ -z "$agents_max" || "$agents_max" == "infinity" ]]; then
     print -u2 "[worktree-scope] WARNING: cannot read agents.slice MemoryMax; skipping scope creation."
     return 0
@@ -71,7 +93,7 @@ _agents_worktree_scope_enter() {
 
   # Validate transient scope creation before replacing this shell. Do not use
   # --unit here: the real handoff gets a unique name below.
-  if ! systemd-run --user --scope --slice=agents.slice --quiet --collect -- true >/dev/null 2>&1; then
+  if ! _agents_worktree_scope_bounded systemd-run --user --scope --slice=agents.slice --quiet --collect -- true >/dev/null 2>&1; then
     print -u2 "[worktree-scope] WARNING: systemd-run scope handoff failed; skipping scope creation."
     return 0
   fi
@@ -79,6 +101,9 @@ _agents_worktree_scope_enter() {
   exec systemd-run --user --scope --slice=agents.slice --unit="$unit" \
     --property=MemoryMax=${mem_max} --property=MemorySwapMax=0 \
     --property=CPUQuota=200% --same-dir --quiet --collect -- "$SHELL" -i
+  } always {
+    unset _AGENTS_WORKTREE_SCOPE_ACTIVE
+  }
 }
 
 add-zsh-hook chpwd _agents_worktree_scope_enter
