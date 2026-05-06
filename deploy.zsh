@@ -187,6 +187,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/op
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
+zf_ln -sfn $SCRIPT_DIR/configs/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
 for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
     zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
 done
