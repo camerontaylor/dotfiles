@@ -75,6 +75,32 @@ brew_install_or_upgrade() {
     fi
 }
 
+brew_formula_install_or_upgrade() {
+    local formula=$1
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $formula"
+        return 1
+    fi
+
+    if ! brew list --formula $formula > /dev/null 2>&1; then
+        if brew install $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $formula"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade $formula > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$formula already at latest or upgrade failed"
+        return 0
+    fi
+}
+
 if [[ $DOTFILES_OS == Darwin ]]; then
     ensure_homebrew_path || true
 fi
@@ -84,7 +110,7 @@ print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
-zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm,systemd/user,opencode,agent-orchestrator}
+zf_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator}
 zf_mkdir -p $HOME/{.claude,.codex,.omx,.ssh,.agent-orchestrator,.worktrees}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
@@ -124,9 +150,6 @@ zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/config.yaml $XDG_CONFIG_HOME/litellm/config.yaml
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/litellm-proxy.service $XDG_CONFIG_HOME/systemd/user/litellm-proxy.service
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/proxy_wrapper.py $XDG_CONFIG_HOME/litellm/proxy_wrapper.py
 zf_mkdir -p $XDG_CONFIG_HOME/waveterm
 zf_ln -sfn $SCRIPT_DIR/configs/waveterm/settings.json $XDG_CONFIG_HOME/waveterm/settings.json
 zf_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
@@ -164,6 +187,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/op
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
+zf_ln -sfn $SCRIPT_DIR/configs/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
 for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
     zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
 done
@@ -585,24 +609,7 @@ if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
     print "  ...done"
 fi
 
-# Install LiteLLM proxy via uv tool
-if (( ${+commands[uv]} )) && (( ! ${+commands[litellm]} )); then
-    print "Installing litellm proxy..."
-    if uv tool install 'litellm[proxy]' > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...failed to install litellm, skipping"
-    fi
-elif (( ${+commands[uv]} )) && $upgrade_mode; then
-    print "Upgrading litellm proxy..."
-    if uv tool upgrade litellm > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...litellm already at latest or upgrade failed"
-    fi
-fi
-
-# Reload systemd to pick up litellm-proxy.service
+# Reload systemd to pick up any user units linked above
 if (( ${+commands[systemctl]} )); then
     systemctl --user daemon-reload 2>/dev/null
 fi
@@ -640,25 +647,27 @@ fi
 
 # Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli)
+    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli linear-cli)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg
+        local -a cargo_install_args=($tool_pkg)
         case $tool_pkg in
             git-delta) tool_bin=delta ;;
             fd-find) tool_bin=fd ;;
             tree-sitter-cli) tool_bin=tree-sitter ;;
+            linear-cli) cargo_install_args=(--git https://github.com/Finesssee/linear-cli.git --branch master --locked) ;;
         esac
         if (( ! ${+commands[$tool_bin]} )); then
             print "Installing $tool_pkg via cargo..."
-            if cargo install $tool_pkg > /dev/null 2>&1; then
+            if cargo install $cargo_install_args > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to install $tool_pkg"
             fi
         elif $upgrade_mode; then
             print "Upgrading $tool_pkg via cargo..."
-            if cargo install $tool_pkg --force > /dev/null 2>&1; then
+            if cargo install $cargo_install_args --force > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to upgrade $tool_pkg"
@@ -681,6 +690,12 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
     fi
+fi
+
+# Install newer ncurses on macOS for Ghostty terminfo compilation.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing ncurses via brew..."
+    brew_formula_install_or_upgrade ncurses || true
 fi
 
 # Install engram via brew if not present

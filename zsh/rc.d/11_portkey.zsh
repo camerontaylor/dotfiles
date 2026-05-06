@@ -144,6 +144,42 @@ _portkey_prepare_local_conf() {
   fi
 }
 
+_portkey_provider_env_names() {
+  emulate -L zsh
+  jq -r '.. | objects | .api_key_env? // empty' "$_PORTKEY_CONFIG_FILE" | sort -u
+}
+
+_portkey_write_provider_env_file() {
+  emulate -L zsh
+  local -a names missing
+  local name value tmp env_file="$_PORTKEY_STATE/env"
+
+  names=("${(@f)$(_portkey_provider_env_names)}") || return $?
+  (( ${#names} > 0 )) || return 0
+
+  for name in $names; do
+    if [[ -z ${(P)name:-} ]]; then
+      missing+=("$name")
+    fi
+  done
+
+  if (( ${#missing} > 0 )); then
+    print "Portkey provider env file not updated; missing: ${(j:, :)missing}" >&2
+    return 1
+  fi
+
+  [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
+  tmp="$(mktemp)" || return $?
+  {
+    for name in $names; do
+      value="${(P)name}"
+      printf '%s=%s\n' "$name" "$value"
+    done
+  } >"$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$env_file"
+}
+
 _portkey_ensure_local_token_file() {
   emulate -L zsh
   [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
@@ -192,6 +228,7 @@ _portkey_ensure_service() {
 
   _portkey_ensure_local_token_file || return $?
   _portkey_prepare_local_conf || return $?
+  _portkey_write_provider_env_file || return $?
 
   local start_script="$_PORTKEY_FORK_DIR/build/start-server.js"
   [[ -r $start_script ]] || {

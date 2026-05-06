@@ -70,3 +70,14 @@ export PORTLESS_NAME="$(hostname)"
 if [[ $TERM == xterm-ghostty && ! -v COLORTERM ]]; then
     export COLORTERM=truecolor
 fi
+
+# Remote hosts without Ghostty's terminfo decode keys poorly under xterm-ghostty.
+if [[ $TERM == xterm-ghostty && ( -n ${SSH_TTY:-} || -n ${SSH_CONNECTION:-} ) ]]; then
+    if (( ${+commands[infocmp]} )); then
+        infocmp xterm-ghostty >/dev/null 2>&1 || export TERM=xterm-256color
+    elif (( ${+commands[tput]} )); then
+        tput -T xterm-ghostty longname >/dev/null 2>&1 || export TERM=xterm-256color
+    else
+        export TERM=xterm-256color
+    fi
+fi
