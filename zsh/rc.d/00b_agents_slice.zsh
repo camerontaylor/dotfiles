@@ -51,13 +51,18 @@ if (( ! ${+commands[systemctl]} || ! ${+commands[systemd-run]} )); then
   return 0
 fi
 
+_agents_slice_bounded() {
+  (( ${+commands[timeout]} )) || return 1
+  timeout 2s "$@"
+}
+
 # If agents.slice is not active, attempt to start it once. Guards against the
 # hook running in early-init contexts (e.g., before the user's default.target
 # has fully come up after login). If the start fails, degrade gracefully —
 # do NOT exec systemd-run (would fail loudly), do NOT lock out the tab.
-if ! systemctl --user is-active agents.slice >/dev/null 2>&1; then
-  systemctl --user start agents.slice >/dev/null 2>&1 || true
-  if ! systemctl --user is-active agents.slice >/dev/null 2>&1; then
+if ! _agents_slice_bounded systemctl --user is-active agents.slice >/dev/null 2>&1; then
+  _agents_slice_bounded systemctl --user start agents.slice >/dev/null 2>&1 || true
+  if ! _agents_slice_bounded systemctl --user is-active agents.slice >/dev/null 2>&1; then
     print -u2 "[agents.slice] WARNING: agents.slice not active and start failed; skipping membership."
     print -u2 "[agents.slice] Run ~/.local/dotfiles/bin/install-agents-slice.sh to (re)install."
     return 0
@@ -67,7 +72,7 @@ fi
 # Validate transient scope creation before replacing this shell. This is
 # especially important for SSH sessions where the user manager can be active
 # but still unable to accept a new interactive scope from this environment.
-if ! systemd-run --user --scope --slice=agents.slice --quiet --collect -- true >/dev/null 2>&1; then
+if ! _agents_slice_bounded systemd-run --user --scope --slice=agents.slice --quiet --collect -- true >/dev/null 2>&1; then
   print -u2 "[agents.slice] WARNING: systemd-run scope handoff failed; skipping membership."
   return 0
 fi
