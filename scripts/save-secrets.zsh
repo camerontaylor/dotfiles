@@ -69,8 +69,8 @@ done
 
 # SSH config and managed keys
 local -a ssh_plaintexts ssh_enc_files
-ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub)
-ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc)
+ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub)
+ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc ssh/id_ed25519.enc ssh/id_ed25519.pub.enc)
 local i
 for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
     plaintext=${ssh_plaintexts[i]}

@@ -15,6 +15,37 @@ typeset -g AGENT_ALIAS_PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/port
 typeset -g AGENT_ALIAS_PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
 typeset -g AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$AGENT_ALIAS_PORTKEY_STATE/local-api-key}"
 
+agent_alias_portkey_is_host() {
+    emulate -L zsh
+    [[ "$(hostname -s 2>/dev/null)" == "${AGENT_ALIAS_PORTKEY_HOST%%.*}" ]]
+}
+
+agent_alias_portkey_remote_token_host() {
+    emulate -L zsh
+    print -r -- "${PORTKEY_SSH_HOST:-$AGENT_ALIAS_PORTKEY_HOST}"
+}
+
+agent_alias_portkey_fetch_remote_token_file() {
+    emulate -L zsh
+    ! agent_alias_portkey_is_host || return 1
+    (( ${+commands[ssh]} )) || return 1
+
+    local ssh_host token tmp
+    ssh_host="$(agent_alias_portkey_remote_token_host)" || return $?
+    token="$(
+        ssh -o BatchMode=yes -o ConnectTimeout="${PORTKEY_SSH_CONNECT_TIMEOUT:-5}" \
+            "$ssh_host" 'cat ~/.local/state/portkey/local-api-key' 2>/dev/null
+    )" || return $?
+    [[ -n "$token" ]] || return 1
+
+    [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
+    tmp="$(mktemp "$AGENT_ALIAS_PORTKEY_STATE/local-api-key.tmp.XXXXXX")" || return $?
+    umask 077
+    print -rn -- "$token" >"$tmp"
+    chmod 600 "$tmp"
+    mv "$tmp" "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+}
+
 agent_alias_portkey_config_version() {
     emulate -L zsh
     (( $# > 0 )) || {
@@ -72,6 +103,15 @@ agent_alias_portkey_local_token() {
     fi
 
     if [[ -r "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE" ]]; then
+        <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+        return 0
+    fi
+
+    if ! agent_alias_portkey_is_host; then
+        agent_alias_portkey_fetch_remote_token_file || {
+            print -u2 -- "Portkey local token missing at $AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(agent_alias_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN."
+            return 1
+        }
         <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
         return 0
     fi
