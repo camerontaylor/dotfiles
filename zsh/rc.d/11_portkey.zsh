@@ -18,6 +18,32 @@ _portkey_is_host() {
   [[ "$(hostname -s 2>/dev/null)" == "ceres" ]]
 }
 
+_portkey_remote_token_host() {
+  emulate -L zsh
+  print -r -- "${PORTKEY_SSH_HOST:-$_PORTKEY_HOST}"
+}
+
+_portkey_fetch_remote_token_file() {
+  emulate -L zsh
+  ! _portkey_is_host || return 1
+  (( ${+commands[ssh]} )) || return 1
+
+  local ssh_host token tmp
+  ssh_host="$(_portkey_remote_token_host)" || return $?
+  token="$(
+    ssh -o BatchMode=yes -o ConnectTimeout="${PORTKEY_SSH_CONNECT_TIMEOUT:-5}" \
+      "$ssh_host" 'cat ~/.local/state/portkey/local-api-key' 2>/dev/null
+  )" || return $?
+  [[ -n $token ]] || return 1
+
+  [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
+  tmp="$(mktemp "$_PORTKEY_STATE/local-api-key.tmp.XXXXXX")" || return $?
+  umask 077
+  print -rn -- "$token" >"$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$_PORTKEY_LOCAL_TOKEN_FILE"
+}
+
 _portkey_config_version() {
   emulate -L zsh
   (( $# > 0 )) || {
@@ -187,6 +213,12 @@ _portkey_ensure_local_token_file() {
     umask 077
     print -rn -- "$PORTKEY_LOCAL_API_KEY" >"$_PORTKEY_LOCAL_TOKEN_FILE"
   elif [[ ! -r $_PORTKEY_LOCAL_TOKEN_FILE ]]; then
+    if ! _portkey_is_host; then
+      _portkey_fetch_remote_token_file && return 0
+      print -u2 -- "Portkey local token missing at $_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN."
+      return 1
+    fi
+
     local token
     if (( ${+commands[openssl]} )); then
       token="$(openssl rand -hex 32)" || return $?
@@ -198,6 +230,20 @@ _portkey_ensure_local_token_file() {
     umask 077
     print -rn -- "$token" >"$_PORTKEY_LOCAL_TOKEN_FILE"
   fi
+}
+
+portkey-sync-token() {
+  emulate -L zsh
+  if _portkey_is_host; then
+    print -u2 -- "portkey-sync-token: this host owns $_PORTKEY_LOCAL_TOKEN_FILE"
+    return 0
+  fi
+
+  _portkey_fetch_remote_token_file || {
+    print -u2 -- "portkey-sync-token: failed to fetch token from $(_portkey_remote_token_host)"
+    return 1
+  }
+  print -r -- "Portkey local token synced from $(_portkey_remote_token_host)"
 }
 
 _portkey_gateway_env() {

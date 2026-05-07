@@ -183,6 +183,5 @@
   "editorMode": "vim",
   "teammateMode": "tmux",
   "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true,
-  "model": "opus"
+  "agentPushNotifEnabled": true
 }
