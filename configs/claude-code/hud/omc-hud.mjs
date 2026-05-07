@@ -1,98 +1,241 @@
 #!/usr/bin/env node
+// Canonical path / env-var constants live in src/lib/env-vars.ts and src/lib/paths.ts — keep in sync (see src/__tests__/paths-consistency.test.ts).
 /**
  * OMC HUD - Statusline Script
- * Wrapper that imports from dev paths, plugin cache, or npm package
+ * Wrapper that imports from OMC_PLUGIN_ROOT, plugin cache, marketplace, or npm package.
+ * Generated from scripts/lib/hud-wrapper-template.txt — do not edit by hand.
  */
 
-import { existsSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, "lib", "config-dir.mjs")).href);
+
+function uniquePaths(paths) {
+  return [...new Set(paths.filter(Boolean).map((candidate) => resolve(candidate)))];
+}
+
+function getGlobalNodeModuleRoots() {
+  const roots = [];
+  const addPrefixRoots = (prefix) => {
+    if (!prefix) return;
+    if (process.platform === "win32") {
+      roots.push(join(prefix, "node_modules"));
+      return;
+    }
+    roots.push(join(prefix, "lib", "node_modules"));
+    roots.push(join(prefix, "node_modules"));
+  };
+
+  addPrefixRoots(process.env.npm_config_prefix);
+  addPrefixRoots(process.env.PREFIX);
+
+  const nodeBinDir = dirname(process.execPath);
+  roots.push(join(nodeBinDir, "node_modules"));
+  roots.push(join(nodeBinDir, "..", "node_modules"));
+  roots.push(join(nodeBinDir, "..", "lib", "node_modules"));
+
+  if (process.platform === "win32" && process.env.APPDATA) {
+    roots.push(join(process.env.APPDATA, "npm", "node_modules"));
+  }
+
+  try {
+    const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+    const npmRoot = String(execFileSync(npmCommand, ["root", "-g"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 1500,
+    })).trim();
+    if (npmRoot) roots.unshift(npmRoot);
+  } catch { /* continue */ }
+
+  return uniquePaths(roots);
+}
+
+async function importHudPackage(hudPackage) {
+  try {
+    const wrapperRequire = createRequire(import.meta.url);
+    const resolvedHudPath = wrapperRequire.resolve(hudPackage);
+    await import(pathToFileURL(resolvedHudPath).href);
+    return true;
+  } catch { /* continue */ }
+
+  try {
+    const cwdRequire = createRequire(join(process.cwd(), "__omc_hud__.cjs"));
+    const resolvedHudPath = cwdRequire.resolve(hudPackage);
+    await import(pathToFileURL(resolvedHudPath).href);
+    return true;
+  } catch { /* continue */ }
+
+  for (const nodeModulesRoot of getGlobalNodeModuleRoots()) {
+    const resolvedHudPath = join(nodeModulesRoot, hudPackage);
+    if (!existsSync(resolvedHudPath)) continue;
+    try {
+      await import(pathToFileURL(resolvedHudPath).href);
+      return true;
+    } catch { /* continue */ }
+  }
+
+  return false;
+}
 
 async function main() {
-  const home = homedir();
   let pluginCacheVersion = null;
   let pluginCacheDir = null;
-  
-  // 1. Development paths (only when OMC_DEV=1)
-  if (process.env.OMC_DEV === "1") {
-    const devPaths = [
-      join(home, "Workspace/oh-my-claudecode/dist/hud/index.js"),
-      join(home, "workspace/oh-my-claudecode/dist/hud/index.js"),
-      join(home, "projects/oh-my-claudecode/dist/hud/index.js"),
-    ];
-    
-    for (const devPath of devPaths) {
-      if (existsSync(devPath)) {
+  let lastHudLoadError = null;
+  let lastHudLoadTarget = null;
+
+  // 1. OMC_PLUGIN_ROOT — highest priority (set by `omc --plugin-dir <path>`)
+  try {
+    const pluginRootEnv = process.env.OMC_PLUGIN_ROOT;
+    if (pluginRootEnv && pluginRootEnv.trim().length > 0) {
+      const envHudPath = join(pluginRootEnv, "dist/hud/index.js");
+      if (existsSync(envHudPath)) {
         try {
-          await import(pathToFileURL(devPath).href);
+          await import(pathToFileURL(envHudPath).href);
           return;
-        } catch { /* continue */ }
+        } catch (error) {
+          lastHudLoadError = error;
+          lastHudLoadTarget = envHudPath;
+        }
       }
     }
-  }
-  
+  } catch { /* fall through to next resolution step */ }
+
   // 2. Plugin cache (for production installs)
   // Respect CLAUDE_CONFIG_DIR so installs under a custom config dir are found
-  const configDir = process.env.CLAUDE_CONFIG_DIR || join(home, ".claude");
+  const configDir = getClaudeConfigDir();
   const pluginCacheBase = join(configDir, "plugins", "cache", "omc", "oh-my-claudecode");
   if (existsSync(pluginCacheBase)) {
     try {
       const versions = readdirSync(pluginCacheBase);
       if (versions.length > 0) {
-        const sortedVersions = versions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).reverse();
+        // Semver-aware descending sort. Stable (no prerelease tag) ranks above any
+        // prerelease with the same [major.minor.patch] so `1.0.1` beats `1.0.1-alpha`.
+        // Falls back to localeCompare(numeric) when a segment is not numeric.
+        const parseSemver = (v) => {
+          const [core, pre = ""] = String(v).split("-", 2);
+          const parts = core.split(".").map((p) => {
+            const n = Number(p);
+            return Number.isFinite(n) ? n : p;
+          });
+          return { parts, pre };
+        };
+        const compareSemverDesc = (a, b) => {
+          const pa = parseSemver(a);
+          const pb = parseSemver(b);
+          const len = Math.max(pa.parts.length, pb.parts.length);
+          for (let i = 0; i < len; i++) {
+            const ai = pa.parts[i];
+            const bi = pb.parts[i];
+            if (ai === bi) continue;
+            if (ai === undefined) return 1;
+            if (bi === undefined) return -1;
+            if (typeof ai === "number" && typeof bi === "number") return bi - ai;
+            return String(bi).localeCompare(String(ai), undefined, { numeric: true });
+          }
+          // Same [M.m.p]: stable (empty pre) wins over any prerelease.
+          if (pa.pre === pb.pre) return 0;
+          if (pa.pre === "") return -1;
+          if (pb.pre === "") return 1;
+          // numeric: true so `rc.10` sorts above `rc.2`.
+          return pb.pre.localeCompare(pa.pre, undefined, { numeric: true });
+        };
+        const sortedVersions = [...versions].sort(compareSemverDesc);
         const latestInstalledVersion = sortedVersions[0];
         pluginCacheVersion = latestInstalledVersion;
         pluginCacheDir = join(pluginCacheBase, latestInstalledVersion);
-        
+
         // Filter to only versions with built dist/hud/index.js
         // This prevents picking an unbuilt new version after plugin update
         const builtVersions = sortedVersions.filter(version => {
           const pluginPath = join(pluginCacheBase, version, "dist/hud/index.js");
           return existsSync(pluginPath);
         });
-        
+
         if (builtVersions.length > 0) {
-          const latestVersion = builtVersions[0];
-          pluginCacheVersion = latestVersion;
-          pluginCacheDir = join(pluginCacheBase, latestVersion);
-          const pluginPath = join(pluginCacheDir, "dist/hud/index.js");
-          await import(pathToFileURL(pluginPath).href);
-          return;
+          const attemptedTargets = new Set();
+          for (const version of builtVersions) {
+            pluginCacheVersion = version;
+            pluginCacheDir = join(pluginCacheBase, version);
+            const pluginPath = join(pluginCacheDir, "dist/hud/index.js");
+            let dedupeKey = resolve(pluginPath);
+            try {
+              dedupeKey = realpathSync(pluginPath);
+            } catch { /* continue with resolved path fallback */ }
+
+            if (attemptedTargets.has(dedupeKey)) continue;
+            attemptedTargets.add(dedupeKey);
+
+            try {
+              await import(pathToFileURL(pluginPath).href);
+              return;
+            } catch (error) {
+              lastHudLoadError = error;
+              lastHudLoadTarget = pluginPath;
+              // continue trying older built versions
+            }
+          }
         }
       }
     } catch { /* continue */ }
   }
-  
+
   // 3. Marketplace clone (for marketplace installs without a populated cache)
   const marketplaceHudPath = join(configDir, "plugins", "marketplaces", "omc", "dist/hud/index.js");
   if (existsSync(marketplaceHudPath)) {
     try {
       await import(pathToFileURL(marketplaceHudPath).href);
       return;
-    } catch { /* continue */ }
+    } catch (error) {
+      lastHudLoadError = error;
+      lastHudLoadTarget = marketplaceHudPath;
+      /* continue */
+    }
   }
-  
-  // 4. npm package (global or local install)
-  try {
-    await import("oh-my-claudecode/dist/hud/index.js");
-    return;
-  } catch { /* continue */ }
-  
+
+  // 4. npm package (current project, global install, or branded fallback)
+  // Tests can disable this fallback to avoid host-global package nondeterminism.
+  if (process.env.OMC_HUD_DISABLE_NPM_FALLBACK !== "1") {
+    const npmHudPackages = [
+      "oh-my-claude-sisyphus/dist/hud/index.js",
+      "oh-my-claudecode/dist/hud/index.js",
+    ];
+    for (const hudPackage of npmHudPackages) {
+      if (await importHudPackage(hudPackage)) {
+        return;
+      }
+    }
+  }
+
   // 5. Fallback: provide detailed error message with fix instructions
+  if (lastHudLoadError) {
+    const detail = typeof lastHudLoadError?.message === "string"
+      ? lastHudLoadError.message
+      : String(lastHudLoadError);
+    const targetDetail = lastHudLoadTarget ? ` from ${lastHudLoadTarget}` : "";
+    console.log(`[OMC HUD] HUD import failed${targetDetail}: ${detail}`);
+  }
+
   if (pluginCacheDir && existsSync(pluginCacheDir)) {
-    // Plugin exists but HUD could not be loaded
     const distDir = join(pluginCacheDir, "dist");
     if (!existsSync(distDir)) {
       console.log(`[OMC HUD] Plugin installed but not built. Run: cd "${pluginCacheDir}" && npm install && npm run build`);
     } else {
-      console.log(`[OMC HUD] Plugin HUD load failed. Run: cd "${pluginCacheDir}" && npm install && npm run build`);
+      const detail = lastHudLoadError && typeof lastHudLoadError.message === "string"
+        ? ` (${lastHudLoadError.message})`
+        : "";
+      console.log(`[OMC HUD] Plugin HUD load failed${detail}. Run: cd "${pluginCacheDir}" && npm install && npm run build`);
     }
   } else if (existsSync(pluginCacheBase)) {
-    // Plugin cache directory exists but no versions
     console.log(`[OMC HUD] Plugin cache found but no versions installed. Run: /oh-my-claudecode:omc-setup`);
   } else {
-    // No plugin installation found at all
     console.log("[OMC HUD] Plugin not installed. Run: /oh-my-claudecode:omc-setup");
   }
 }
