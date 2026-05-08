@@ -129,7 +129,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/find-node.sh ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
+    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
   },
   "enabledPlugins": {
     "code-review@claude-plugins-official": true,
@@ -143,8 +143,7 @@
     "skill-creator@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
-    "claude-code-setup@claude-plugins-official": false,
-    "ck@cavekit-local": true
+    "claude-code-setup@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "engram": {

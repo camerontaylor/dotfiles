@@ -1,4 +1,4 @@
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "medium"
 suppress_unstable_features_warning = true
 model = "gpt-5.5"
 model_context_window = 1000000
@@ -72,3 +72,6 @@ enabled = false
 [marketplaces.oh-my-codex-local]
 source_type = "local"
 source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.16.1/lib/node_modules/oh-my-codex"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 1
