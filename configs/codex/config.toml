@@ -38,7 +38,7 @@ trust_level = "trusted"
 
 js_repl = true
 image_detail_original = true
-codex_hooks = true
+hooks = true
 goals = true
 [agents]
 max_threads = 12
@@ -71,4 +71,4 @@ enabled = false
 
 [marketplaces.oh-my-codex-local]
 source_type = "local"
-source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.16.0/lib/node_modules/oh-my-codex"
+source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.16.1/lib/node_modules/oh-my-codex"
