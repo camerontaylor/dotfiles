@@ -227,7 +227,7 @@ if code_files:
 else:
     Path('graphify-out/.graphify_ast.json').write_text(json.dumps({'nodes':[],'edges':[],'input_tokens':0,'output_tokens':0}))
     print('No code files - skipping AST extraction')
-"
+	"
 ```
 
 #### Part B - Semantic extraction (parallel subagents)
@@ -931,7 +931,7 @@ merged_out = {
 }
 Path('graphify-out/.graphify_extract.json').write_text(json.dumps(merged_out))
 print(f'[graphify update] Merged extraction written ({len(merged_out[\"nodes\"])} nodes, {len(merged_out[\"edges\"])} edges)')
-" 
+"
 ```
 
 Then run Steps 4–8 on the merged graph as normal.

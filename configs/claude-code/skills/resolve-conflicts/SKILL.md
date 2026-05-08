@@ -135,7 +135,7 @@ For each remaining conflicted file (class `code-logic`, `binary`, or downgraded 
    ```
    Conflict in {path} (class: code-logic, confidence: {score}, threshold: {threshold})
    Upstream context: {commit subjects}
-   
+
    (1) Take HEAD version: {one-line description}
    (2) Take other-side version: {one-line description}
    (3) Apply proposed merge: {one-line description}
