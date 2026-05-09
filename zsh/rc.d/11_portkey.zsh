@@ -555,33 +555,54 @@ if (( ${+commands[claude]} )); then
     local route="${1:-fleet-opus}"
     local prompt="${2:-reply with the single word ready}"
     local max_tokens="${PORTKEY_PROBE_MAX_TOKENS:-256}"
+    if [[ "$max_tokens" != <-> ]]; then
+      print -u2 -- "portkey-probe: PORTKEY_PROBE_MAX_TOKENS must be an integer"
+      return 2
+    fi
     local headers
     headers="$(_portkey_headers "portkey-probe-${route}" "$route")" || return $?
     local -a header_args
     header_args=("${(@f)$(_portkey_header_args "$headers")}")
     local body
-    body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, messages: [{role: "user", content: $prompt}]}')" || return $?
-    curl -sS "$_PORTKEY_BASE_URL/v1/messages" \
-      -H "Content-Type: application/json" \
-      -H "anthropic-version: 2023-06-01" \
-      "${header_args[@]}" \
-      -d "$body" \
-      | jq . 2>/dev/null || cat
+    if (( max_tokens > 4096 )); then
+      body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, stream: true, messages: [{role: "user", content: $prompt}]}')" || return $?
+      curl -sSN "$_PORTKEY_BASE_URL/v1/messages" \
+        -H "Content-Type: application/json" \
+        -H "anthropic-version: 2023-06-01" \
+        "${header_args[@]}" \
+        -d "$body"
+    else
+      body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, messages: [{role: "user", content: $prompt}]}')" || return $?
+      curl -sS "$_PORTKEY_BASE_URL/v1/messages" \
+        -H "Content-Type: application/json" \
+        -H "anthropic-version: 2023-06-01" \
+        "${header_args[@]}" \
+        -d "$body" \
+        | jq . 2>/dev/null || cat
+    fi
   }
 
   portkey-probe-stream() {
     emulate -L zsh
     _portkey_ensure_service || return 1
     local route="${1:-fleet-opus}"
+    local prompt="${2:-count from 1 to 10}"
+    local max_tokens="${PORTKEY_PROBE_MAX_TOKENS:-256}"
+    if [[ "$max_tokens" != <-> ]]; then
+      print -u2 -- "portkey-probe-stream: PORTKEY_PROBE_MAX_TOKENS must be an integer"
+      return 2
+    fi
     local headers
     headers="$(_portkey_headers "portkey-probe-stream-${route}" "$route")" || return $?
     local -a header_args
     header_args=("${(@f)$(_portkey_header_args "$headers")}")
+    local body
+    body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, stream: true, messages: [{role: "user", content: $prompt}]}')" || return $?
     curl -sSN "$_PORTKEY_BASE_URL/v1/messages" \
       -H "Content-Type: application/json" \
       -H "anthropic-version: 2023-06-01" \
       "${header_args[@]}" \
-      -d "{\"model\":\"$route\",\"max_tokens\":256,\"stream\":true,\"messages\":[{\"role\":\"user\",\"content\":\"count from 1 to 10\"}]}"
+      -d "$body"
   }
 
   portkey-stop() {
