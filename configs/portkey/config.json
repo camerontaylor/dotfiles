@@ -417,7 +417,20 @@
             503,
             504,
             529
-          ]
+          ],
+          "cb_config": {
+            "failure_threshold": 1,
+            "cooldown_interval": 60000,
+            "failure_status_codes": [
+              408,
+              429,
+              500,
+              502,
+              503,
+              504,
+              529
+            ]
+          }
         },
         "retry": {
           "attempts": 2,
@@ -468,6 +481,15 @@
                 "weight": 1
               }
             ]
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "custom_host": "https://api.fireworks.ai/inference/v1",
+            "override_params": {
+              "model": "accounts/fireworks/models/glm-5p1"
+            },
+            "request_timeout": 45000
           },
           {
             "provider": "anthropic",
