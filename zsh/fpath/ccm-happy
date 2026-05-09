@@ -1,7 +1,7 @@
 emulate -L zsh
 
 local root
-root="$(_webfront_root)" || { _ccm-happy "$@"; return }
+root="$(_webfront_root)" || { _portkey_run_ccm ccm-happy happy "$@"; return }
 
 command zsh "$root/scripts/run-agent-alias.sh" ccm-happy "$@"
 

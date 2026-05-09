@@ -30,6 +30,7 @@ projects:
     registeredAt: 1777975095
     displayName: webfront
     sessionPrefix: webfront
+    orchestratorSessionStrategy: delete
 
 notifiers:
   desktop:

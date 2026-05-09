@@ -509,11 +509,14 @@ if (( ${+commands[mise]} )); then
     fi
 fi
 
-# Install hook to call deploy script after successful pull
+# Install hooks. The post-merge wrapper runs deploy only for git pull, not for
+# manual merges or checkout-based conflict resolution.
 print "Installing git hooks..."
 zf_mkdir -p .git/hooks
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-merge
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
+zf_ln -sfn ../../scripts/post-merge .git/hooks/post-merge
+if [[ -L .git/hooks/post-checkout && "$(readlink .git/hooks/post-checkout)" == ../../deploy.zsh ]]; then
+    rm .git/hooks/post-checkout
+fi
 zf_ln -sfn ../../scripts/pre-commit .git/hooks/pre-commit
 print "  ...done"
 

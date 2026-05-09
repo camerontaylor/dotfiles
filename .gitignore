@@ -29,3 +29,4 @@ configs/ranger-plugins/__pycache__
 proxy.lan
 proxy.tld
 .omx/
+.conflicts/
