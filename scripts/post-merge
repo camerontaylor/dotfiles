@@ -1,0 +1,18 @@
+#!/usr/bin/env zsh
+
+# Run deploy only for git pull initiated merges. Plain `git merge` and checkout
+# conflict-resolution operations should not trigger a full dotfiles deploy.
+case "${GIT_REFLOG_ACTION:-}" in
+    pull|pull\ *) ;;
+    *)
+        reflog_action="$(git reflog -1 --pretty=%gs 2>/dev/null || :)"
+        case "$reflog_action" in
+            pull|pull\ *|pull:*) ;;
+            *) exit 0 ;;
+        esac
+        ;;
+esac
+
+repo_root="${0:A:h:h}"
+exec "$repo_root/deploy.zsh" "$@"
+

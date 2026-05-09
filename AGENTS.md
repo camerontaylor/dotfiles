@@ -8,7 +8,7 @@ XDG-compliant zsh/neovim/vim/tmux dotfiles. All external code is git submodules 
 - `./deploy.zsh` — full install: create dirs, symlink configs, sync submodules, install tools
 - `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
 - `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
-- Deploy runs automatically on `git pull` (post-merge/post-checkout hooks)
+- Deploy runs automatically on `git pull` via the guarded post-merge hook
 - `sudo bash scripts/install-build-deps.sh` — install APT deps for compiling Ruby, Python, Node via env-wrappers
 - `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function)
 
