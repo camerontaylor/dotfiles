@@ -77,4 +77,4 @@ source_type = "local"
 source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.16.1/lib/node_modules/oh-my-codex"
 
 [tui.model_availability_nux]
-"gpt-5.5" = 1
+"gpt-5.5" = 2
