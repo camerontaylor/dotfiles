@@ -1,5 +1,5 @@
 # Portkey AI Gateway: self-hosted OSS gateway helpers.
-# Portkey backs the ccfw/ccz/cc-fast alias families. The cc-fast-pk names are
+# Portkey backs the ccm/ccfw/ccz/cc-fast alias families. The cc-fast-pk names are
 # kept as compatibility wrappers over the same Portkey route.
 
 # Endpoint convention: Portkey serves Anthropic-compatible /v1/messages at the
@@ -391,6 +391,56 @@ if (( ${+commands[claude]} )); then
     esac
   }
 
+  _portkey_run_ccm() {
+    emulate -L zsh
+    local alias_name="${1:?usage: _portkey_run_ccm <alias> <claude|happy> [args...]}"
+    local runner="${2:?usage: _portkey_run_ccm <alias> <claude|happy> [args...]}"
+    shift 2
+    _portkey_ensure_service || return 1
+    local minimax_model="fleet-ccm"
+    local haiku_model="fleet-haiku"
+    local small_fast_model="fleet-small-fast"
+    local headers
+    headers="$(_portkey_headers "$alias_name" "$minimax_model" "$haiku_model" "$small_fast_model")" || return $?
+
+    case "$runner" in
+      claude)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          claude --model "$minimax_model" "$@"
+        ;;
+      happy)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          happy yolo --dangerously-skip-permissions "$@"
+        ;;
+      *)
+        print -u2 -- "unsupported Portkey runner: $runner"
+        return 1
+        ;;
+    esac
+  }
+
   _portkey_run_ccz() {
     emulate -L zsh
     local alias_name="${1:?usage: _portkey_run_ccz <alias> <claude|happy> [args...]}"
@@ -509,6 +559,14 @@ if (( ${+commands[claude]} )); then
 
   ccfw-pk-happy() {
     _portkey_run_ccfw ccfw-pk-happy happy "$@"
+  }
+
+  ccm() {
+    _portkey_run_ccm ccm claude "$@"
+  }
+
+  ccm-happy() {
+    _portkey_run_ccm ccm-happy happy "$@"
   }
 
   ccz() {
