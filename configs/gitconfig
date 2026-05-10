@@ -40,7 +40,7 @@
 [pager]
 	diff = git-diff-pager
 [submodule]
-	fetchJobs = 0
+	fetchJobs = 32
 	recurse = true
 [status]
 	submoduleSummary = true
@@ -65,3 +65,7 @@
 	postbuffer = 524288000
 [advice]
 	diverging = true
+[fetch]
+	parallel = 32
+[checkout]
+	workers = 16
