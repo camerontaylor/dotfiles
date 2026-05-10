@@ -130,6 +130,18 @@ _portkey_session_id() {
   <"$session_file"
 }
 
+_portkey_claude_api_key_for_args() {
+  emulate -L zsh
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "--bare" ]]; then
+      print -r -- "${PORTKEY_CLAUDE_BARE_API_KEY:-dummy-api-key}"
+      return 0
+    fi
+  done
+  print -r -- ""
+}
+
 _portkey_headers() {
   emulate -L zsh
   local alias_name="${1:?usage: _portkey_headers <alias> <route> [route...]}"
@@ -505,13 +517,15 @@ if (( ${+commands[claude]} )); then
     local haiku_model="fleet-haiku"
     local small_fast_model="fleet-small-fast"
     local headers
+    local api_key
     headers="$(_portkey_headers "$alias_name" "$glm_model" "$opus_model" "$sonnet_model" "$haiku_model" "$small_fast_model")" || return $?
+    api_key="$(_portkey_claude_api_key_for_args "$@")" || return $?
 
     case "$runner" in
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_API_KEY="$api_key" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
         ANTHROPIC_CUSTOM_HEADERS="$headers" \

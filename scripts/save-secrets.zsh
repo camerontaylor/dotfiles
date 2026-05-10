@@ -117,13 +117,3 @@ for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
 
     encrypt_if_changed "$plaintext" "$enc_file"
 done
-
-# Portless CA and server certs
-local portless_dir=$HOME/.portless
-for f (ca.pem ca-key.pem server.pem server-key.pem); do
-    plaintext=$portless_dir/$f
-    enc_file=configs/portless/${f}.enc
-    [[ -f $plaintext ]] || continue
-
-    encrypt_if_changed "$plaintext" "$enc_file"
-done
