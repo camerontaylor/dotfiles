@@ -8,8 +8,9 @@
 #   mise's `experimental=true` flag set, the mise hook subprocess can't reach
 #   the parent shell.)
 #
-# Why this slot (04c_): runs after 04_autoload.zsh so add-zsh-hook is available,
-# and before 05_keys.zsh under en_AU.UTF-8.
+# Why this slot (04c_): defines the hook function after 04_autoload.zsh so the
+# helper is available, while registration itself happens later so other chpwd
+# hooks (notably zoxide) can run first.
 
 # Enabled by default. Set AGENTS_WORKTREE_SCOPE=0 before shell startup to skip
 # the cd-entry cgroup hook if the user systemd manager is unhealthy.
@@ -105,5 +106,3 @@ _agents_worktree_scope_enter() {
     unset _AGENTS_WORKTREE_SCOPE_ACTIVE
   }
 }
-
-add-zsh-hook chpwd _agents_worktree_scope_enter

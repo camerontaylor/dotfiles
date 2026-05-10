@@ -10,7 +10,7 @@ fi
 
 local dir_list
 if (( $+commands[zoxide] )); then
-    dir_list=$(zoxide query -l $*)
+    dir_list=$(zoxide query -l -- "$@")
 else
     dir_list=$(z -l "$*" | sed 's/^[0-9. ]*//')
 fi

@@ -1,11 +1,11 @@
 suppress_unstable_features_warning = true
-model = "gpt-5.5"
+model = "gpt-5.4-mini"
 model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
 developer_instructions = "You have oh-my-codex installed through Codex plugin mode. AGENTS.md is the orchestration brain and main control surface. Follow AGENTS.md for skill/keyword routing and $name workflow invocation. Registered Codex plugin marketplace surfaces supply OMX workflows, prompts, and native-agent roles when the plugin is installed. User-installed skills may still live under ~/.codex/skills. Setup-owned prompt files and native-agent TOML defaults are intentionally omitted unless explicitly installed. Use outcome-first, concise progress updates: state the target result, constraints, validation evidence, and stop condition before adding process detail."
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 
 [projects."/home/ctaylor/repos/webfront"]
 trust_level = "trusted"
