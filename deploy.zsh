@@ -499,7 +499,7 @@ elif command -v nvim &>/dev/null; then
 fi
 
 nvim_latest=$(curl -sI https://github.com/neovim/neovim/releases/latest \
-    | grep -i ^location: | sed 's|.*/tag/||' | tr -d '\r')
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
 
 if [[ -n $nvim_latest && "$nvim_current" == "$nvim_latest" ]]; then
     print "  ...nvim $nvim_current is already up to date."
@@ -524,7 +524,7 @@ elif command -v rg &>/dev/null; then
 fi
 
 rg_latest=$(curl -sI https://github.com/BurntSushi/ripgrep/releases/latest \
-    | grep -i ^location: | sed 's|.*/tag/||' | tr -d '\r')
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
 
 if [[ -n $rg_latest && "$rg_current" == "$rg_latest" ]]; then
     print "  ...rg $rg_current is already up to date."
@@ -551,7 +551,7 @@ elif command -v sg &>/dev/null; then
 fi
 
 sg_latest=$(curl -sI https://github.com/ast-grep/ast-grep/releases/latest \
-    | grep -i ^location: | sed 's|.*/tag/||' | tr -d '\r')
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
 
 if [[ -n $sg_latest && "$sg_current" == "$sg_latest" ]]; then
     print "  ...sg $sg_current is already up to date."
