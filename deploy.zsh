@@ -28,16 +28,94 @@ XDG_CONFIG_HOME=$HOME/.config
 XDG_DATA_HOME=$HOME/.local/share
 XDG_STATE_HOME=$HOME/.local/state
 
+local DOTFILES_OS=$(uname -s)
+local DOTFILES_ARCH=$(uname -m)
+
+ensure_homebrew_path() {
+    if (( ${+commands[brew]} )); then
+        return 0
+    fi
+
+    local brew_bin
+    for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
+        if [[ -x $brew_bin ]]; then
+            eval "$($brew_bin shellenv zsh)"
+            rehash
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+brew_install_or_upgrade() {
+    local formula=$1
+    local binary=${2:-$formula}
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $formula"
+        return 1
+    fi
+
+    if (( ! ${+commands[$binary]} )); then
+        if brew install $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $formula"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade $formula > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$formula already at latest or upgrade failed"
+        return 0
+    fi
+}
+
+brew_formula_install_or_upgrade() {
+    local formula=$1
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $formula"
+        return 1
+    fi
+
+    if ! brew list --formula $formula > /dev/null 2>&1; then
+        if brew install $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $formula"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade $formula > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$formula already at latest or upgrade failed"
+        return 0
+    fi
+}
+
+if [[ $DOTFILES_OS == Darwin ]]; then
+    ensure_homebrew_path || true
+fi
+
 # Create required directories
 print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi}
 zf_mkdir -p $XDG_CACHE_HOME/{vim/{backup,swap,undo},zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv,rbenv}/plugins,zsh,man/man1,vim/spell,nvim/site/pack/plugins}
-zf_mkdir -p $XDG_CONFIG_HOME/{mise,litellm,systemd/user,opencode}
-zf_mkdir -p $HOME/{.claude,.codex,.omx}
+zf_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator}
+zf_mkdir -p $HOME/{.claude,.codex,.omx,.ssh,.agent-orchestrator,.worktrees}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
+zf_chmod 700 $HOME/.ssh
 print "  ...done"
 
 # Link zshenv if needed
@@ -69,9 +147,9 @@ zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/config.yaml $XDG_CONFIG_HOME/litellm/config.yaml
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/litellm-proxy.service $XDG_CONFIG_HOME/systemd/user/litellm-proxy.service
-zf_ln -sfn $SCRIPT_DIR/configs/litellm/proxy_wrapper.py $XDG_CONFIG_HOME/litellm/proxy_wrapper.py
+zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
+zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
+zf_ln -sfn $SCRIPT_DIR/configs/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
 zf_mkdir -p $XDG_CONFIG_HOME/waveterm
 zf_ln -sfn $SCRIPT_DIR/configs/waveterm/settings.json $XDG_CONFIG_HOME/waveterm/settings.json
 zf_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
@@ -84,6 +162,8 @@ zf_ln -sfn $SCRIPT_DIR/yazi/plugins $XDG_CONFIG_HOME/yazi/plugins
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg.conf $XDG_CONFIG_HOME/gnupg/gpg.conf
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg-agent.conf $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
 zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
+zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
+zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
 # Claude Code + OMC
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/RTK.md $HOME/.claude/RTK.md
@@ -107,6 +187,10 @@ zf_ln -sfn $SCRIPT_DIR/configs/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/op
 zf_ln -sfn $SCRIPT_DIR/configs/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
+zf_ln -sfn $SCRIPT_DIR/configs/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
+for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
+    zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
+done
 print "  ...done"
 
 # Make sure submodules are installed
@@ -163,31 +247,13 @@ fi
 
 # Install wtp if not present
 if (( ! ${+commands[wtp]} )); then
-    print "Installing wtp..."
-    local wtp_arch=$(uname -m)
-    local wtp_os=$(uname -s)
-    if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]]; then
-        [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
-        local wtp_version
-        wtp_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/satococoa/wtp/releases/latest | sed 's|.*/tag/v||')
-        local wtp_tmp=$(mktemp -d)
-        if [[ -n $wtp_version ]] && curl -fsSL "https://github.com/satococoa/wtp/releases/download/v${wtp_version}/wtp_${wtp_version}_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
-            zf_mv $wtp_tmp/wtp $HOME/.local/bin/wtp
-            chmod +x $HOME/.local/bin/wtp
-            print "  ...done"
-        else
-            print "  ...failed to download wtp, skipping"
-        fi
-        rm -rf $wtp_tmp
-    else
-        print "  ...unsupported platform for wtp auto-install, skipping"
-    fi
+    $SCRIPT_DIR/scripts/install-wtp.zsh || true
 fi
 
 if (( ! ${+commands[gh]} )); then
     print "Installing gh (GitHub CLI)..."
-    local gh_arch=$(uname -m)
-    local gh_os=$(uname -s)
+    local gh_arch=$DOTFILES_ARCH
+    local gh_os=$DOTFILES_OS
     if [[ $gh_os == Linux && ($gh_arch == x86_64 || $gh_arch == aarch64) ]]; then
         [[ $gh_arch == x86_64 ]] && gh_arch=amd64
         [[ $gh_arch == aarch64 ]] && gh_arch=arm64
@@ -207,6 +273,30 @@ if (( ! ${+commands[gh]} )); then
         else
             print "  ...failed to determine latest gh version, skipping"
         fi
+    elif [[ $gh_os == Darwin && ($gh_arch == x86_64 || $gh_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade gh gh || true
+        fi
+        if (( ! ${+commands[gh]} )); then
+            local gh_dl_arch=$gh_arch
+            [[ $gh_dl_arch == x86_64 ]] && gh_dl_arch=amd64
+            local gh_version
+            gh_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/cli/cli/releases/latest | sed 's|.*/tag/v||')
+            if [[ -n $gh_version ]] && (( ${+commands[unzip]} )); then
+                local gh_tmp=$(mktemp -d)
+                if curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_macOS_${gh_dl_arch}.zip" -o $gh_tmp/gh.zip \
+                    && unzip -q $gh_tmp/gh.zip -d $gh_tmp; then
+                    zf_mv $gh_tmp/gh_${gh_version}_macOS_${gh_dl_arch}/bin/gh $HOME/.local/bin/gh
+                    chmod +x $HOME/.local/bin/gh
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download gh, try: brew install gh"
+                fi
+                rm -rf $gh_tmp
+            else
+                print "  ...need unzip + network, try: brew install gh"
+            fi
+        fi
     else
         print "  ...unsupported platform for gh auto-install, skipping"
     fi
@@ -220,8 +310,8 @@ fi
 
 if (( ! ${+commands[glab]} )); then
     print "Installing glab..."
-    local glab_arch=$(uname -m)
-    local glab_os=$(uname -s)
+    local glab_arch=$DOTFILES_ARCH
+    local glab_os=$DOTFILES_OS
     if [[ $glab_os == Linux && ($glab_arch == x86_64 || $glab_arch == aarch64) ]]; then
         [[ $glab_arch == aarch64 ]] && glab_arch=arm64
         [[ $glab_arch == x86_64 ]] && glab_arch=amd64
@@ -241,6 +331,29 @@ if (( ! ${+commands[glab]} )); then
         else
             print "  ...failed to determine latest glab version, skipping"
         fi
+    elif [[ $glab_os == Darwin && ($glab_arch == x86_64 || $glab_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade glab glab || true
+        fi
+        if (( ! ${+commands[glab]} )); then
+            local glab_dl_arch=$glab_arch
+            [[ $glab_dl_arch == x86_64 ]] && glab_dl_arch=amd64
+            local glab_version
+            glab_version=$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" | python3 -c "import json,sys; print(json.load(sys.stdin)[0]['tag_name'].lstrip('v'))" 2>/dev/null)
+            if [[ -n $glab_version ]]; then
+                local glab_tmp=$(mktemp -d)
+                if curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_version}/downloads/glab_${glab_version}_darwin_${glab_dl_arch}.tar.gz" | tar xz -C $glab_tmp; then
+                    zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
+                    chmod +x $HOME/.local/bin/glab
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download glab, try: brew install glab"
+                fi
+                rm -rf $glab_tmp
+            else
+                print "  ...failed to determine latest glab version, try: brew install glab"
+            fi
+        fi
     else
         print "  ...unsupported platform for glab auto-install, skipping"
     fi
@@ -249,9 +362,27 @@ fi
 # Install AWS CLI v2 if not present
 if (( ! ${+commands[aws]} )); then
     print "Installing AWS CLI v2..."
-    local aws_arch=$(uname -m)
-    local aws_os=$(uname -s)
-    if [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
+    local aws_arch=$DOTFILES_ARCH
+    local aws_os=$DOTFILES_OS
+    if [[ $aws_os == Darwin ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade awscli aws || true
+        fi
+        if (( ! ${+commands[aws]} )); then
+            local aws_tmp=$(mktemp -d)
+            if curl -fsSL "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o $aws_tmp/AWSCLIV2.pkg; then
+                print "  ...downloaded AWSCLIV2.pkg; installing requires sudo"
+                if sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / > /dev/null 2>&1; then
+                    print "  ...done (pkg installer)"
+                else
+                    print "  ...sudo installer failed; install manually: sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / (or: brew install awscli)"
+                fi
+            else
+                print "  ...failed to download AWSCLIV2.pkg, try: brew install awscli"
+            fi
+            rm -rf $aws_tmp
+        fi
+    elif [[ $aws_os != Linux || ($aws_arch != x86_64 && $aws_arch != aarch64) ]]; then
         print "  ...unsupported platform for AWS CLI auto-install, skipping"
     elif (( ! ${+commands[unzip]} )); then
         print "  ...unzip not available, skipping (install via build-deps)"
@@ -268,8 +399,21 @@ if (( ! ${+commands[aws]} )); then
     fi
 elif $upgrade_mode; then
     print "Upgrading AWS CLI v2..."
-    local aws_arch=$(uname -m)
-    if [[ $(uname -s) == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
+    local aws_arch=$DOTFILES_ARCH
+    if [[ $DOTFILES_OS == Darwin ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade awscli aws || true
+        else
+            local aws_tmp=$(mktemp -d)
+            if curl -fsSL "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o $aws_tmp/AWSCLIV2.pkg \
+                && sudo installer -pkg $aws_tmp/AWSCLIV2.pkg -target / > /dev/null 2>&1; then
+                print "  ...done (pkg installer)"
+            else
+                print "  ...AWS CLI upgrade failed"
+            fi
+            rm -rf $aws_tmp
+        fi
+    elif [[ $DOTFILES_OS == Linux && ($aws_arch == x86_64 || $aws_arch == aarch64) ]] && (( ${+commands[unzip]} )); then
         local aws_tmp=$(mktemp -d)
         if curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-${aws_arch}.zip" -o $aws_tmp/awscliv2.zip \
             && unzip -q $aws_tmp/awscliv2.zip -d $aws_tmp \
@@ -294,8 +438,8 @@ fi
 
 if (( ! ${+commands[mise]} )); then
     print "Installing mise..."
-    local mise_arch=$(uname -m)
-    local mise_os=$(uname -s | tr '[:upper:]' '[:lower:]')
+    local mise_arch=$DOTFILES_ARCH
+    local mise_os=${DOTFILES_OS:l}
     if [[ $mise_os == linux && ($mise_arch == x86_64 || $mise_arch == aarch64) ]]; then
         [[ $mise_arch == x86_64 ]] && mise_arch=x64
         [[ $mise_arch == aarch64 ]] && mise_arch=arm64
@@ -311,6 +455,29 @@ if (( ! ${+commands[mise]} )); then
             fi
         else
             print "  ...failed to determine latest mise version, skipping"
+        fi
+    elif [[ $mise_os == darwin && ($mise_arch == x86_64 || $mise_arch == arm64) ]]; then
+        if ensure_homebrew_path 2>/dev/null; then
+            brew_install_or_upgrade mise mise || true
+        fi
+        if (( ! ${+commands[mise]} )); then
+            local mise_dl_arch=$mise_arch
+            [[ $mise_dl_arch == x86_64 ]] && mise_dl_arch=x64
+            local mise_version
+            mise_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/jdx/mise/releases/latest | sed 's|.*/tag/v||')
+            if [[ -n $mise_version ]]; then
+                if curl -fsSL "https://github.com/jdx/mise/releases/download/v${mise_version}/mise-v${mise_version}-macos-${mise_dl_arch}" -o $HOME/.local/bin/mise; then
+                    chmod +x $HOME/.local/bin/mise
+                    export PATH=$HOME/.local/bin:$PATH
+                    print "  ...done (direct download)"
+                else
+                    print "  ...failed to download mise, try: brew install mise"
+                fi
+            else
+                print "  ...failed to determine latest mise version, try: brew install mise"
+            fi
+        else
+            export PATH=$HOME/.local/bin:$PATH
         fi
     else
         print "  ...unsupported platform for mise auto-install, skipping"
@@ -401,20 +568,38 @@ else
 fi
 
 if (( ${+commands[mise]} )); then
+    if $upgrade_mode; then
+        print "Upgrading mise..."
+        if mise self-update --yes --no-plugins > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...mise self-update had issues"
+        fi
+    fi
+
     print "Installing mise tools (node, bun, ruby, etc.)..."
-    mise install > /dev/null 2>&1
-    if $upgrade_mode && mise upgrade > /dev/null 2>&1; then
+    if mise install > /dev/null 2>&1; then
         print "  ...done"
     else
-        print "  ...done (run with --upgrade to also upgrade existing tools)"
+        print "  ...mise install had issues"
+    fi
+
+    print "Upgrading mise tools..."
+    if mise upgrade --yes > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...mise upgrade had issues"
     fi
 fi
 
-# Install hook to call deploy script after successful pull
+# Install hooks. The post-merge wrapper runs deploy only for git pull, not for
+# manual merges or checkout-based conflict resolution.
 print "Installing git hooks..."
 zf_mkdir -p .git/hooks
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-merge
-zf_ln -sfn ../../deploy.zsh .git/hooks/post-checkout
+zf_ln -sfn ../../scripts/post-merge .git/hooks/post-merge
+if [[ -L .git/hooks/post-checkout && "$(readlink .git/hooks/post-checkout)" == ../../deploy.zsh ]]; then
+    rm .git/hooks/post-checkout
+fi
 zf_ln -sfn ../../scripts/pre-commit .git/hooks/pre-commit
 print "  ...done"
 
@@ -443,56 +628,60 @@ if [[ ! -f $age_key_dir/keys.txt ]]; then
     fi
 fi
 
-# Configure .sops.yaml with age public key
+# Verify this machine's age public key is registered in the committed .sops.yaml.
+# .sops.yaml is the source of truth for which keys can decrypt; deploy.zsh never
+# rewrites it. If this machine isn't registered, print actionable instructions.
 if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
     age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
     if [[ -n $age_public_key ]]; then
-        print "Configuring .sops.yaml..."
-        cat > $SCRIPT_DIR/.sops.yaml << EOF
-creation_rules:
-  - path_regex: \.enc$
-    age: $age_public_key
-EOF
-        print "  ...done"
+        if [[ ! -f $SCRIPT_DIR/.sops.yaml ]]; then
+            print ""
+            print "WARNING: .sops.yaml not found in repo root."
+            print "  This machine's age public key:"
+            print "    $age_public_key"
+            print "  Add it to .sops.yaml on a registered machine and re-encrypt secrets."
+            print ""
+        elif ! grep -Fq "$age_public_key" $SCRIPT_DIR/.sops.yaml; then
+            print ""
+            print "WARNING: this machine's age key is not registered for sops decryption."
+            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, ssh/*.enc) cannot be read."
+            print ""
+            print "  This machine's public key:"
+            print "    $age_public_key"
+            print ""
+            print "  To register, on an already-registered machine run:"
+            print "    scripts/sops-add-recipient.zsh $age_public_key"
+            print "  then commit and push. Pull here to pick up the re-encrypted secrets."
+            print ""
+        fi
     fi
 fi
 
-# Decrypt portless certs into configs/portless/ (symlinked to ~/.portless)
+# Decrypt encrypted dotfiles into their ignored plaintext locations.
 if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
-    print "Restoring portless certs..."
-    local _pless_enc _pless_target _pless_tmp
-    for _pless_enc in $SCRIPT_DIR/configs/portless/*.pem.enc(N); do
-        _pless_target=$SCRIPT_DIR/configs/portless/${${_pless_enc:t}%.enc}
-        _pless_tmp=$(mktemp)
-        if sops --decrypt $_pless_enc > $_pless_tmp 2>/dev/null; then
-            chmod 600 $_pless_tmp
-            mv $_pless_tmp $_pless_target
+    print "Restoring ssh files..."
+    local _ssh_enc _ssh_target _ssh_tmp
+    for _ssh_enc in $SCRIPT_DIR/ssh/*.enc(N); do
+        _ssh_target=$SCRIPT_DIR/ssh/${${_ssh_enc:t}%.enc}
+        _ssh_tmp=$(mktemp)
+        if sops --decrypt $_ssh_enc > $_ssh_tmp 2>/dev/null; then
+            if [[ $_ssh_target == *.pub ]]; then
+                chmod 644 $_ssh_tmp
+            else
+                chmod 600 $_ssh_tmp
+            fi
+            mv $_ssh_tmp $_ssh_target
+            zf_ln -sfn $_ssh_target $HOME/.ssh/${_ssh_target:t}
         else
-            rm -f $_pless_tmp
-            print "  WARNING: failed to decrypt ${_pless_enc:t}"
+            rm -f $_ssh_tmp
+            print "  WARNING: failed to decrypt ${_ssh_enc:t}"
         fi
     done
     print "  ...done"
+
 fi
 
-# Install LiteLLM proxy via uv tool
-if (( ${+commands[uv]} )) && (( ! ${+commands[litellm]} )); then
-    print "Installing litellm proxy..."
-    if uv tool install 'litellm[proxy]' > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...failed to install litellm, skipping"
-    fi
-elif (( ${+commands[uv]} )) && $upgrade_mode; then
-    print "Upgrading litellm proxy..."
-    if uv tool upgrade litellm > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...litellm already at latest or upgrade failed"
-    fi
-fi
-
-# Reload systemd to pick up litellm-proxy.service
+# Reload systemd to pick up any user units linked above
 if (( ${+commands[systemctl]} )); then
     systemctl --user daemon-reload 2>/dev/null
 fi
@@ -530,25 +719,27 @@ fi
 
 # Install/upgrade Rust CLI tools if cargo is available
 if (( ${+commands[cargo]} )); then
-    local -a rust_tools=(git-delta bat eza fd-find zoxide tree-sitter-cli)
+    local -a rust_tools=(git-delta bat eza fd-find sd zoxide tree-sitter-cli linear-cli)
     for tool_pkg in $rust_tools[@]; do
         # Map package name to binary name
         local tool_bin=$tool_pkg
+        local -a cargo_install_args=($tool_pkg)
         case $tool_pkg in
             git-delta) tool_bin=delta ;;
             fd-find) tool_bin=fd ;;
             tree-sitter-cli) tool_bin=tree-sitter ;;
+            linear-cli) cargo_install_args=(--git https://github.com/Finesssee/linear-cli.git --branch master --locked) ;;
         esac
         if (( ! ${+commands[$tool_bin]} )); then
             print "Installing $tool_pkg via cargo..."
-            if cargo install $tool_pkg > /dev/null 2>&1; then
+            if cargo install $cargo_install_args > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to install $tool_pkg"
             fi
         elif $upgrade_mode; then
             print "Upgrading $tool_pkg via cargo..."
-            if cargo install $tool_pkg --force > /dev/null 2>&1; then
+            if cargo install $cargo_install_args --force > /dev/null 2>&1; then
                 print "  ...done"
             else
                 print "  ...failed to upgrade $tool_pkg"
@@ -571,6 +762,12 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
     fi
+fi
+
+# Install newer ncurses on macOS for Ghostty terminfo compilation.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing ncurses via brew..."
+    brew_formula_install_or_upgrade ncurses || true
 fi
 
 # Install engram via brew if not present
@@ -653,7 +850,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/git -c user.name=systemd.update -c user.email=systemd@localhost pull
+ExecStart=/usr/bin/git -c user.name=systemd.update -c user.email=systemd@localhost pull --force
 WorkingDirectory=$SCRIPT_DIR"
     print -r -- $service_content > $systemd_unit_dir/$service_name
 
@@ -675,9 +872,52 @@ WantedBy=timers.target"
     else
        print "Failed to install systemd timer. Check permissions and systemd setup"
     fi
+elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID != 0 )); then
+    print "  ...launchd detected, installing user LaunchAgent..."
+
+    local launchd_dir=$HOME/Library/LaunchAgents
+    local launchd_label=com.ctaylor.dotfiles.pull
+    local launchd_plist=$launchd_dir/$launchd_label.plist
+    zf_mkdir -p $launchd_dir
+
+    local launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    local launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+    <key>Label</key>
+    <string>$launchd_label</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>$launchd_command</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>$XDG_STATE_HOME/dotfiles-pull.log</string>
+    <key>StandardErrorPath</key>
+    <string>$XDG_STATE_HOME/dotfiles-pull.err</string>
+</dict>
+</plist>"
+    print -r -- $launchd_content > $launchd_plist
+
+    launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
+    if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
+        && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
+       print "  ...done"
+    else
+       print "Failed to install launchd task. Check $launchd_plist"
+    fi
 elif (( ${+commands[crontab]} )); then
     print "  ...cron detected, installing job for periodic updates..."
-    cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull"
+    cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
     cron_schedule="0 0 * * * $cron_task"
     if cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
         print "  ...done"

@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 require('codecompanion').setup({
   ignore_warnings = true,
   strategies = {

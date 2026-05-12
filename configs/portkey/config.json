@@ -1,0 +1,703 @@
+{
+  "routes": {
+    "fleet-count-tokens": {
+      "description": "Token counting validation route kept on Anthropic-compatible providers; Fireworks/Cerebras count_tokens remains a cutover gate.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 30000,
+        "targets": [
+          {
+            "provider": "anthropic",
+            "api_key_env": "Z_AI_API_KEY",
+            "custom_host": "https://api.z.ai/api/anthropic/v1",
+            "override_params": {
+              "model": "glm-5.1"
+            },
+            "request_timeout": 30000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.7"
+            },
+            "request_timeout": 30000
+          }
+        ]
+      }
+    },
+    "fleet-opus": {
+      "description": "Frontier coder route: intended primary Fireworks Kimi-K2.6, with Z.AI/MiniMax fallback preserving the fleet policy.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "override_params": {
+              "model": "accounts/fireworks/models/kimi-k2p6"
+            },
+            "request_timeout": 45000,
+            "custom_host": "https://api.fireworks.ai/inference/v1"
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "Z_AI_API_KEY",
+            "custom_host": "https://api.z.ai/api/anthropic/v1",
+            "override_params": {
+              "model": "glm-5.1"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.7"
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    },
+    "fleet-sonnet": {
+      "description": "Workhorse route: intended weighted Fireworks GLM-5.1 plus Z.AI, with MiniMax and Kimi fallbacks.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "strategy": {
+              "mode": "loadbalance",
+              "sticky": {
+                "enabled": true,
+                "hash_fields": [
+                  "metadata.portkey_session",
+                  "params.model"
+                ],
+                "ttl": 3600
+              }
+            },
+            "targets": [
+              {
+                "provider": "anthropic",
+                "api_key_env": "FIREWORKS_API_KEY",
+                "override_params": {
+                  "model": "accounts/fireworks/models/glm-5p1"
+                },
+                "weight": 3,
+                "request_timeout": 45000,
+                "custom_host": "https://api.fireworks.ai/inference/v1"
+              },
+              {
+                "provider": "anthropic",
+                "api_key_env": "Z_AI_API_KEY",
+                "custom_host": "https://api.z.ai/api/anthropic/v1",
+                "override_params": {
+                  "model": "glm-5.1"
+                },
+                "weight": 2,
+                "request_timeout": 45000
+              }
+            ]
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.7"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "override_params": {
+              "model": "accounts/fireworks/models/kimi-k2p6"
+            },
+            "request_timeout": 45000,
+            "custom_host": "https://api.fireworks.ai/inference/v1"
+          }
+        ]
+      }
+    },
+    "fleet-haiku": {
+      "description": "Sub-agent route: primary OpenRouter BYOK -> Cerebras gpt-oss-120b, with Fireworks MiniMax and direct MiniMax fallback.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "override_params": {
+              "model": "openai/gpt-oss-120b",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "exclude": true
+              }
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "override_params": {
+              "model": "accounts/fireworks/models/minimax-m2p7"
+            },
+            "request_timeout": 45000,
+            "custom_host": "https://api.fireworks.ai/inference/v1"
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.7"
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    },
+    "fleet-small-fast": {
+      "description": "Fast cheap route: primary OpenRouter BYOK -> Cerebras gpt-oss-120b, then Fireworks gpt-oss-120b and MiniMax fallback.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "override_params": {
+              "model": "openai/gpt-oss-120b",
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "exclude": true
+              }
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "override_params": {
+              "model": "accounts/fireworks/models/gpt-oss-120b"
+            },
+            "request_timeout": 45000,
+            "custom_host": "https://api.fireworks.ai/inference/v1"
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.5"
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    },
+    "fleet-cc-fast": {
+      "description": "Interactive fast route: primary OpenRouter BYOK -> Cerebras GLM-4.7, then Fireworks gpt-oss-120b reasoning fallback.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "override_params": {
+              "model": "z-ai/glm-4.7",
+              "max_tokens": 96000,
+              "provider": {
+                "only": [
+                  "Cerebras"
+                ],
+                "allow_fallbacks": false
+              },
+              "usage": {
+                "include": true
+              },
+              "reasoning": {
+                "effort": "none",
+                "exclude": true
+              }
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "override_params": {
+              "model": "accounts/fireworks/models/gpt-oss-120b",
+              "max_tokens": 96000
+            },
+            "request_timeout": 45000,
+            "custom_host": "https://api.fireworks.ai/inference/v1"
+          }
+        ]
+      }
+    },
+    "fleet-ccm": {
+      "description": "MiniMax foreground route: primary Fireworks MiniMax M2.7, then OpenRouter MiniMax M2.7 fallback.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "custom_host": "https://api.fireworks.ai/inference/v1",
+            "override_params": {
+              "model": "accounts/fireworks/models/minimax-m2p7"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "override_params": {
+              "model": "minimax/minimax-m2.7",
+              "usage": {
+                "include": true
+              }
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    },
+    "fleet-ccz": {
+      "description": "Z.AI foreground route with Fireworks and MiniMax fallbacks, matching the existing direct ccz intent while preserving non-Z.AI fallback capacity.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "cb_config": {
+            "failure_threshold": 1,
+            "cooldown_interval": 60000,
+            "failure_status_codes": [
+              408,
+              429,
+              500,
+              502,
+              503,
+              504,
+              529
+            ]
+          }
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "strategy": {
+              "mode": "loadbalance",
+              "sticky": {
+                "enabled": true,
+                "hash_fields": [
+                  "metadata.portkey_session",
+                  "params.model"
+                ],
+                "ttl": 3600
+              }
+            },
+            "targets": [
+              {
+                "provider": "anthropic",
+                "api_key_env": "Z_AI_API_KEY",
+                "custom_host": "https://api.z.ai/api/anthropic/v1",
+                "override_params": {
+                  "model": "glm-5.1"
+                },
+                "request_timeout": 45000,
+                "weight": 4
+              },
+              {
+                "provider": "anthropic",
+                "api_key_env": "FIREWORKS_API_KEY",
+                "override_params": {
+                  "model": "accounts/fireworks/models/glm-5p1"
+                },
+                "request_timeout": 45000,
+                "custom_host": "https://api.fireworks.ai/inference/v1",
+                "weight": 1
+              }
+            ]
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "custom_host": "https://api.fireworks.ai/inference/v1",
+            "override_params": {
+              "model": "accounts/fireworks/models/glm-5p1"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
+            "api_key_env": "MINIMAX_API_KEY",
+            "custom_host": "https://api.minimax.io/anthropic/v1",
+            "override_params": {
+              "model": "MiniMax-M2.7"
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    }
+  },
+  "local_config": {
+    "version_source": "routes",
+    "provider_secret_source": "gateway-env",
+    "request_header_contract": [
+      "x-portkey-api-key",
+      "x-portkey-config",
+      "x-portkey-config-version",
+      "x-portkey-metadata"
+    ],
+    "aliases": {
+      "ccm": [
+        "fleet-ccm",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccm-happy": [
+        "fleet-ccm",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-happy": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-pk": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccfw-pk-happy": [
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-happy": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-pk": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccz-pk-happy": [
+        "fleet-ccz",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-happy": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-pk": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "cc-fast-pk-happy": [
+        "fleet-cc-fast",
+        "fleet-opus",
+        "fleet-sonnet",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "portkey-probe-fleet-ccm": [
+        "fleet-ccm"
+      ],
+      "portkey-probe-stream-fleet-ccm": [
+        "fleet-ccm"
+      ],
+      "portkey-probe-fleet-cc-fast": [
+        "fleet-cc-fast"
+      ],
+      "portkey-probe-stream-fleet-cc-fast": [
+        "fleet-cc-fast"
+      ],
+      "portkey-probe-fleet-ccz": [
+        "fleet-ccz"
+      ],
+      "portkey-probe-stream-fleet-ccz": [
+        "fleet-ccz"
+      ],
+      "portkey-probe-fleet-count-tokens": [
+        "fleet-count-tokens"
+      ],
+      "portkey-probe-stream-fleet-count-tokens": [
+        "fleet-count-tokens"
+      ],
+      "portkey-probe-fleet-haiku": [
+        "fleet-haiku"
+      ],
+      "portkey-probe-stream-fleet-haiku": [
+        "fleet-haiku"
+      ],
+      "portkey-probe-fleet-opus": [
+        "fleet-opus"
+      ],
+      "portkey-probe-stream-fleet-opus": [
+        "fleet-opus"
+      ],
+      "portkey-probe-fleet-small-fast": [
+        "fleet-small-fast"
+      ],
+      "portkey-probe-stream-fleet-small-fast": [
+        "fleet-small-fast"
+      ],
+      "portkey-probe-fleet-sonnet": [
+        "fleet-sonnet"
+      ],
+      "portkey-probe-stream-fleet-sonnet": [
+        "fleet-sonnet"
+      ]
+    }
+  },
+  "integrations": []
+}

@@ -1,0 +1,377 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# generate-commit-msg
+#
+# Shared core: takes a diff on stdin, generates a conventional commit message
+# on stdout. Used by commit-conventional and rewrite-commits-conventional.
+#
+# Usage:
+#   git diff --cached | generate-commit-msg
+#   git diff-tree -p $hash | generate-commit-msg --context "auth refactor"
+#   generate-commit-msg --help
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$SOURCE_DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "$SOURCE")" && pwd)"
+
+DEFAULT_COMMIT_ALIAS="${COMMIT_ALIAS:-cc-fast}"
+MODEL="${COMMIT_MODEL:-}"
+INCLUDE_BODY=false
+EXTRA_CONTEXT=""
+ORIGINAL_MSG=""
+QUIET=false
+
+# ── Conventional commit helpers ────────────────────────────────────────────
+
+CC_PATTERN='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?!?:[[:space:]].+'
+
+is_conventional() {
+  local first_line
+  first_line="$(echo "$1" | sed '/^[[:space:]]*$/d' | head -n1)"
+  [[ "$first_line" =~ $CC_PATTERN ]]
+}
+
+strip_fences() {
+  echo "$1" | sed '/^```/d' | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba}'
+}
+
+diagnose_conventional_failure() {
+  local first_line
+  first_line="$(echo "$1" | sed '/^[[:space:]]*$/d' | head -n1)"
+  local reasons=()
+
+  if ! [[ "$first_line" =~ ^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert) ]]; then
+    reasons+=("missing or invalid type")
+  fi
+  if ! [[ "$first_line" =~ :[[:space:]] ]]; then
+    reasons+=("missing ': ' separator")
+  fi
+  if [[ "$first_line" =~ ^\`\`\` ]]; then
+    reasons+=("wrapped in markdown fences")
+  fi
+  if [[ "$first_line" =~ ^(Here|This|The|I\ ) ]]; then
+    reasons+=("starts with explanation text")
+  fi
+  if [[ ${#reasons[@]} -eq 0 ]]; then
+    reasons+=("first line does not match: type(scope)?: subject")
+  fi
+
+  local IFS='; '
+  echo "${reasons[*]}"
+}
+
+MAX_RETRIES=2
+
+# ── Usage ──────────────────────────────────────────────────────────────────
+
+usage() {
+  cat <<'EOF'
+Usage: <diff source> | generate-commit-msg [options]
+
+Generate a conventional commit message from a diff piped to stdin.
+Outputs the commit message on stdout. Diagnostics go to stderr.
+
+Options:
+  --model <model>       Claude model (default: alias model, then fleet-haiku)
+  --body                Include a detailed commit body
+  --context, -c <text>  Extra context to help the AI
+  --original-msg <msg>  Original commit message (for rewrites)
+  --quiet, -q           Suppress stderr diagnostics
+  -h, --help            Show this help message
+
+Environment:
+  COMMIT_CLI            Override the CLI command (bypasses alias env)
+  COMMIT_ALIAS          Override the default agent alias (default: cc-fast)
+  COMMIT_MODEL          Override the default model (default: alias model, then fleet-haiku)
+  COMMIT_BARE_API_KEY   Placeholder key for Claude --bare when proxy auth uses headers
+
+Examples:
+  git diff --cached | generate-commit-msg
+  git diff-tree -p abc123 | generate-commit-msg --original-msg "old msg"
+  git diff HEAD~1 | generate-commit-msg --body -c "perf optimization"
+EOF
+}
+
+# ── Parse arguments ────────────────────────────────────────────────────────
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --model)         MODEL="$2"; shift 2 ;;
+    --body)          INCLUDE_BODY=true; shift ;;
+    --context|-c)    EXTRA_CONTEXT="$2"; shift 2 ;;
+    --original-msg)  ORIGINAL_MSG="$2"; shift 2 ;;
+    --quiet|-q)      QUIET=true; shift ;;
+    -h|--help)       usage; exit 0 ;;
+    *)               echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+# ── Resolve CLI ────────────────────────────────────────────────────────────
+
+CLI_MODE=""
+CLI_LABEL=""
+CLI_CMD=()
+
+resolve_alias_model() {
+  zsh -c '
+    emulate -L zsh
+    set -euo pipefail
+    source "$1"
+    agent_alias_define_env "$2"
+    print -r -- "${AGENT_ALIAS_ENV[ANTHROPIC_MODEL]:-}"
+  ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
+}
+
+if [[ -n "${COMMIT_CLI:-}" ]]; then
+  CLI_MODE="custom"
+  CLI_LABEL="$COMMIT_CLI"
+  CLI_CMD=("$COMMIT_CLI")
+elif [[ -r "$SCRIPT_DIR/agent-aliases.zsh" ]] && command -v zsh &>/dev/null && command -v claude &>/dev/null; then
+  CLI_MODE="alias"
+  CLI_LABEL="$DEFAULT_COMMIT_ALIAS"
+elif command -v claude &>/dev/null; then
+  CLI_MODE="claude"
+  CLI_LABEL="claude"
+  CLI_CMD=("claude")
+else
+  echo "ERROR: 'claude' CLI not found in PATH. Set COMMIT_CLI to override." >&2
+  exit 1
+fi
+
+if [[ -z "$MODEL" ]]; then
+  if [[ "$CLI_MODE" == "alias" ]]; then
+    MODEL="$(resolve_alias_model "$DEFAULT_COMMIT_ALIAS")"
+  fi
+  MODEL="${MODEL:-fleet-haiku}"
+fi
+
+has_bare_arg() {
+  local arg
+  for arg in "$@"; do
+    [[ "$arg" == "--bare" ]] && return 0
+  done
+  return 1
+}
+
+bare_api_key() {
+  printf '%s\n' "${COMMIT_BARE_API_KEY:-dummy-api-key}"
+}
+
+run_commit_cli() {
+  if [[ "$CLI_MODE" == "alias" ]]; then
+    zsh -c '
+      emulate -L zsh
+      set -euo pipefail
+      local aliases_file="$1"
+      local alias_name="$2"
+      shift 2
+      source "$aliases_file"
+      agent_alias_export_env "$alias_name"
+      if (( ${argv[(Ie)--bare]} )) && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+        export ANTHROPIC_API_KEY="${COMMIT_BARE_API_KEY:-dummy-api-key}"
+      fi
+      exec claude "$@"
+    ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$DEFAULT_COMMIT_ALIAS" "$@"
+  elif has_bare_arg "$@" && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    ANTHROPIC_API_KEY="$(bare_api_key)" "${CLI_CMD[@]}" "$@"
+  else
+    "${CLI_CMD[@]}" "$@"
+  fi
+}
+
+CLI_STDERR_FILE="$(mktemp -t generate-commit-msg.stderr.XXXXXX)"
+CLI_STDOUT_FILE="$(mktemp -t generate-commit-msg.stdout.XXXXXX)"
+cleanup() {
+  rm -f "$CLI_STDERR_FILE" "$CLI_STDOUT_FILE"
+}
+trap cleanup EXIT
+
+run_commit_cli_capture() {
+  : > "$CLI_STDERR_FILE"
+  : > "$CLI_STDOUT_FILE"
+  run_commit_cli "$@" >"$CLI_STDOUT_FILE" 2>"$CLI_STDERR_FILE"
+}
+
+read_cli_stdout() {
+  cat "$CLI_STDOUT_FILE"
+}
+
+print_cli_output() {
+  if [[ "$QUIET" == false && -s "$CLI_STDERR_FILE" ]]; then
+    cat "$CLI_STDERR_FILE" >&2
+  fi
+  if [[ "$QUIET" == false && -s "$CLI_STDOUT_FILE" ]]; then
+    cat "$CLI_STDOUT_FILE" >&2
+  fi
+}
+
+# ── Read diff from stdin ───────────────────────────────────────────────────
+
+# Cap by characters — a single minified/lock file line can be 100K+.
+# ~32K chars ≈ ~8K tokens, safe for haiku while keeping cost/latency low.
+MAX_DIFF_CHARS=32000
+
+RAW_DIFF="$(cat)"
+
+if [[ -z "$RAW_DIFF" ]]; then
+  echo "ERROR: No diff provided on stdin." >&2
+  exit 1
+fi
+
+DIFF_BYTE_COUNT=${#RAW_DIFF}
+if [[ "$DIFF_BYTE_COUNT" -gt "$MAX_DIFF_CHARS" ]]; then
+  DIFF_CONTENT="${RAW_DIFF:0:$MAX_DIFF_CHARS}"
+  TRUNCATED_NOTE="(diff truncated from ${DIFF_BYTE_COUNT} to ${MAX_DIFF_CHARS} chars)"
+else
+  DIFF_CONTENT="$RAW_DIFF"
+  TRUNCATED_NOTE=""
+fi
+
+# ── Build prompt ───────────────────────────────────────────────────────────
+
+BODY_INSTRUCTION=""
+if [[ "$INCLUDE_BODY" == true ]]; then
+  BODY_INSTRUCTION="Include a commit body after the subject line (separated by a blank line). The body should explain WHY this change was made, not WHAT changed. Wrap at 72 characters."
+else
+  BODY_INSTRUCTION="Output ONLY the subject line. No body."
+fi
+
+CONTEXT_SECTION=""
+if [[ -n "$EXTRA_CONTEXT" ]]; then
+  CONTEXT_SECTION="
+Additional context from the developer:
+$EXTRA_CONTEXT"
+fi
+
+ORIGINAL_MSG_SECTION=""
+if [[ -n "$ORIGINAL_MSG" ]]; then
+  ORIGINAL_MSG_SECTION="
+Original commit message:
+$ORIGINAL_MSG"
+fi
+
+PROMPT="$(cat <<PROMPT
+You are a commit message generator. Given a git diff, produce a conventional commit message.
+
+## Format
+
+<type>(<scope>): <subject>
+
+[optional body]
+
+## Types
+
+| Type     | When to use                              |
+|----------|------------------------------------------|
+| feat     | New feature                              |
+| fix      | Bug fix                                  |
+| docs     | Documentation only                       |
+| style    | Code style (formatting, semicolons, etc.)|
+| refactor | Code change that neither fixes nor adds  |
+| test     | Adding or updating tests                 |
+| chore    | Build, tooling, dependencies             |
+| perf     | Performance improvement                  |
+| ci       | CI configuration changes                 |
+| build    | Build system or dependencies             |
+| revert   | Reverting a previous commit              |
+
+## Rules
+
+- Subject: imperative mood ("add" not "added"), lowercase start, no period, max 72 chars
+- Scope: optional, lowercase, the package or area most affected (e.g., app, core, dive, scripts)
+- Breaking changes: add ! after type/scope, e.g. feat(auth)!: change API
+- ${BODY_INSTRUCTION}
+- Preserve any "Co-Authored-By" or "Signed-off-by" trailers from the original
+- Do NOT add trailers that weren't in the original
+- Output ONLY the commit message — no markdown fences, no explanation, no quotes
+- If multiple types apply, choose the primary one. Prefer feat/fix over chore/refactor when both fit.
+
+## Examples
+
+fix(auth): resolve login timeout issue
+feat(api): add user profile endpoint
+refactor(grid): extract cell renderer into separate module
+chore(deps): upgrade vitest to v3.1
+
+## Input
+${ORIGINAL_MSG_SECTION}
+
+Diff: ${TRUNCATED_NOTE}
+$DIFF_CONTENT
+${CONTEXT_SECTION}
+PROMPT
+)"
+
+# ── Generate message ───────────────────────────────────────────────────────
+
+log() {
+  if [[ "$QUIET" == false ]]; then
+    echo "$@" >&2
+  fi
+}
+
+CLI_ARGS=(-p "$PROMPT" --model "$MODEL")
+if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
+  CLI_ARGS+=(--bare --tools "")
+fi
+
+if [[ "$CLI_MODE" == "alias" ]]; then
+  log "Generating commit message (alias: $CLI_LABEL, model: $MODEL)..."
+else
+  log "Generating commit message (cli: $CLI_LABEL, model: $MODEL)..."
+fi
+
+if ! run_commit_cli_capture "${CLI_ARGS[@]}"; then
+  echo "ERROR: Claude CLI failed to generate a message." >&2
+  print_cli_output
+  exit 1
+fi
+GENERATED_MSG="$(read_cli_stdout)"
+
+GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
+
+# Retry loop: if non-conventional, feed it back with a correction prompt
+ATTEMPT=0
+while ! is_conventional "$GENERATED_MSG"; do
+  ATTEMPT=$((ATTEMPT + 1))
+  DIAGNOSIS="$(diagnose_conventional_failure "$GENERATED_MSG")"
+
+  if [[ $ATTEMPT -gt $MAX_RETRIES ]]; then
+    log "WARNING: Not conventional after $MAX_RETRIES retries ($DIAGNOSIS)"
+    # Output what we have anyway — caller can decide what to do
+    break
+  fi
+
+  log "Retry $ATTEMPT/$MAX_RETRIES — $DIAGNOSIS"
+
+  CORRECTION="Your previous output was NOT a valid conventional commit message.
+Problem: $DIAGNOSIS
+Your output was:
+$GENERATED_MSG
+
+Fix it. Output ONLY the corrected conventional commit message.
+The first line MUST match: type(scope): subject
+Valid types: feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert
+No markdown fences, no explanation — just the commit message."
+
+  RETRY_ARGS=(-p "$CORRECTION" --model "$MODEL")
+  if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
+    RETRY_ARGS+=(--bare --tools "")
+  fi
+
+  if ! run_commit_cli_capture "${RETRY_ARGS[@]}"; then
+    echo "ERROR: Retry $ATTEMPT failed." >&2
+    print_cli_output
+    break
+  fi
+  GENERATED_MSG="$(read_cli_stdout)"
+  GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
+done
+
+# Output the message
+echo "$GENERATED_MSG"

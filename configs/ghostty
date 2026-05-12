@@ -1,7 +1,7 @@
 theme = iTerm2 Solarized Dark
 palette-generate = false
 shell-integration = none
-shell-integration-features = cursor,path,title,sudo,ssh-env,ssh-terminfo
+shell-integration-features = cursor,path,title,sudo,ssh-env,no-ssh-terminfo
 confirm-close-surface = false
 keybind = alt+left=unbind
 keybind = alt+right=unbind
@@ -21,4 +21,4 @@ keybind = global:ctrl+grave_accent=toggle_quick_terminal
 
 
 linux-cgroup = single-instance
-window-vsync = false
+window-vsync = true

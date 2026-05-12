@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 require('nvim-treesitter.config').setup({})
 
 DotfilesTreesitter = {}

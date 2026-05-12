@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 ---@diagnostic disable-next-line: missing-fields
 require('lazydev').setup({
   library = {
@@ -12,9 +14,8 @@ require('blink.cmp').setup({
   sources = {
     default = { 'lsp', 'path', 'buffer', 'snippets' },
     per_filetype = {
-      codecompanion = { 'codecompanion', 'markview' },
+      codecompanion = { 'codecompanion' },
       lua = { inherit_defaults = true, 'lazydev' },
-      markdown = { 'markview' },
     },
     providers = {
       lazydev = {

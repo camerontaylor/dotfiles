@@ -1,0 +1,30 @@
+[Unit]
+Description=claude-code-router (Anthropic frontend for LiteLLM)
+After=network-online.target litellm-proxy.service
+Wants=litellm-proxy.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+EnvironmentFile=%S/ccr-router/env
+Environment=PORT=3456
+# Bind to 0.0.0.0 to match LiteLLM (:4199) — peers reach CCR via mDNS
+# (ceres.local). LAN trust boundary is already established for the proxy
+# fleet; CCR adds no new attack surface vs LiteLLM.
+Environment=HOST=0.0.0.0
+Environment=NODE_ENV=production
+Environment=HOME=%h
+# mise-managed node version. If node version changes, update this path
+# (or run `mise reshim` and re-run `daemon-reload`).
+Environment=PATH=%h/.local/share/mise/installs/node/24.15.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/mise/installs/node/24.15.0/bin/ccr start
+ExecStartPost=/bin/sh -c 'for i in 1 2 3 4 5; do curl -fsS --max-time 3 http://127.0.0.1:3456/health >/dev/null && exit 0; sleep 1; done; exit 1'
+Restart=on-failure
+RestartSec=2s
+StateDirectory=ccr-router
+StandardOutput=append:%S/ccr-router/ccr.log
+StandardError=append:%S/ccr-router/ccr.log
+
+[Install]
+WantedBy=default.target

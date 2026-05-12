@@ -1,3 +1,5 @@
+if vim.g.vscode then return end
+
 vim.bo.bufhidden = 'unload'
 vim.wo.sidescrolloff = 0
 

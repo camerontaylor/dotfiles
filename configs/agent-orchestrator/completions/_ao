@@ -1,0 +1,1024 @@
+#compdef ao
+
+_ao_dynamic_describe() {
+  local tag="$1"
+  local label="$2"
+  local kind="$3"
+  shift 3
+
+  local -a items
+  local value description
+  while IFS=$'\t' read -r value description; do
+    [[ -n "$value" ]] || continue
+    if [[ -n "$description" ]]; then
+      description=${description//:/\\:}
+      items+=("${value}:${description}")
+    else
+      items+=("${value}")
+    fi
+  done < <(command ao __complete "$kind" "$@" 2>/dev/null)
+
+  (( ${#items[@]} )) || return 1
+  _describe -t "$tag" "$label" items
+}
+
+_ao_complete_projects() {
+  _ao_dynamic_describe projects "configured project" projects
+}
+
+_ao_complete_sessions() {
+  _ao_dynamic_describe sessions "active session" sessions
+}
+
+_ao_complete_all_sessions() {
+  _ao_dynamic_describe sessions "session" sessions --include-terminated
+}
+
+_ao_complete_open_targets() {
+  _ao_dynamic_describe targets "open target" open-targets
+}
+
+_ao_complete_start_target() {
+  _alternative \
+    'projects:configured project:_ao_complete_projects' \
+    'paths:path:_files'
+}
+
+_ao_complete_plugin_slots() {
+  local -a slots
+  slots=(
+        'runtime:Execution runtime plugins'
+        'agent:Worker/orchestrator agent plugins'
+        'workspace:Workspace isolation plugins'
+        'tracker:Issue tracker plugins'
+        'scm:Source control plugins'
+        'notifier:Notification plugins'
+        'terminal:Terminal attachment plugins'
+  )
+  _describe -t plugin-slots "plugin slot" slots
+}
+
+_ao_complete_report_states() {
+  local -a states
+  states=(
+        'started:Session picked up'
+        'working:Actively making progress'
+        'waiting:Waiting on an external dependency'
+        'needs-input:Needs human input'
+        'fixing-ci:Working on CI failures'
+        'addressing-reviews:Working on review feedback'
+        'pr-created:Created a PR'
+        'draft-pr-created:Created a draft PR'
+        'ready-for-review:PR is ready for review'
+        'completed:Finished non-PR work'
+  )
+  _describe -t report-states "report state" states
+}
+
+_ao() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'init' )
+      _ao_init
+      return
+      ;;
+    'start' )
+      _ao_start
+      return
+      ;;
+    'stop' )
+      _ao_stop
+      return
+      ;;
+    'status' )
+      _ao_status
+      return
+      ;;
+    'spawn' )
+      _ao_spawn
+      return
+      ;;
+    'batch-spawn' )
+      _ao_batch_spawn
+      return
+      ;;
+    'session' )
+      _ao_session
+      return
+      ;;
+    'send' )
+      _ao_send
+      return
+      ;;
+    'acknowledge' )
+      _ao_acknowledge
+      return
+      ;;
+    'report' )
+      _ao_report
+      return
+      ;;
+    'review-check' )
+      _ao_review_check
+      return
+      ;;
+    'dashboard' )
+      _ao_dashboard
+      return
+      ;;
+    'open' )
+      _ao_open
+      return
+      ;;
+    'verify' )
+      _ao_verify
+      return
+      ;;
+    'doctor' )
+      _ao_doctor
+      return
+      ;;
+    'update' )
+      _ao_update
+      return
+      ;;
+    'setup' )
+      _ao_setup
+      return
+      ;;
+    'plugin' )
+      _ao_plugin
+      return
+      ;;
+    'project' )
+      _ao_project
+      return
+      ;;
+    'migrate-storage' )
+      _ao_migrate_storage
+      return
+      ;;
+    'completion' )
+      _ao_completion
+      return
+      ;;
+    'events' )
+      _ao_events
+      return
+      ;;
+    'config-help' )
+      _ao_config_help
+      return
+      ;;
+  esac
+  _arguments -C \
+    '-V[output the version number]' \
+    '--version[output the version number]' \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'init:[deprecated] Use '\''ao start'\'' instead — it auto-creates config on first run'
+        'start:Start orchestrator agent and dashboard (auto-creates config on first run, adds projects by path/URL)'
+        'stop:Stop orchestrator agent and dashboard'
+        'status:Show all sessions with branch, activity, PR, and CI status'
+        'spawn:Spawn a single agent session'
+        'batch-spawn:Spawn sessions for multiple issues with duplicate detection'
+        'session:Session management (ls, kill, cleanup, restore, claim-pr)'
+        'send:Send a message to a session with busy detection and retry'
+        'acknowledge:Acknowledge session pickup — agents run this once after reading the initial prompt (Stage 3).'
+        'report:Declare a workflow transition (Stage 3). Allowed states\\: started, working, waiting, needs_input, fixing_ci, addressing_reviews, pr_created, draft_pr_created, ready_for_review, completed (hyphenated aliases accepted).'
+        'review-check:Check PRs for review comments and trigger agents to address them'
+        'dashboard:Start the web dashboard'
+        'open:Open session(s) in terminal tabs'
+        'verify:Mark an issue as verified (or failed) after checking the fix on staging'
+        'doctor:Run install, environment, and runtime health checks'
+        'update:Check for updates and upgrade AO to the latest version'
+        'setup:Set up integrations with external services'
+        'plugin:Browse and manage AO plugins'
+        'project:Manage portfolio projects'
+        'migrate-storage:Migrate storage from legacy hash-based layout to projects/{projectId}/ layout'
+        'completion:Generate shell completion scripts'
+        'events:Query activity event log (session spawns, transitions, CI failures)'
+        'config-help:Show config schema and guide for creating agent-orchestrator.yaml'
+      )
+      _describe -t commands 'ao command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_init() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  return 1
+}
+
+_ao_start() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--no-dashboard[Skip starting the dashboard server]' \
+    '--no-orchestrator[Skip starting the orchestrator agent]' \
+    '--rebuild[Clean and rebuild dashboard before starting]' \
+    '--dev[Use Next.js dev server with hot reload (for dashboard UI development)]' \
+    '--interactive[Prompt to configure config settings]' \
+    '1::project:_ao_complete_start_target'
+}
+
+_ao_stop() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--purge-session[Delete mapped OpenCode session when stopping]' \
+    '--all[Stop all running AO instances]' \
+    '1::project:_ao_complete_projects'
+}
+
+_ao_status() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-p[Filter by project ID]:project:_ao_complete_projects' \
+    '--project[Filter by project ID]:project:_ao_complete_projects' \
+    '--json[Output as JSON]' \
+    '-w[Refresh the status view continuously]' \
+    '--watch[Refresh the status view continuously]' \
+    '--interval[Refresh interval in seconds (default: 5)]:interval:' \
+    '--include-terminated[Include terminated sessions (killed/done/merged/terminated/errored/cleanup)]' \
+    '--reports[Show agent report history per session. "full" for all entries, or a number for last N entries.]:reports:'
+}
+
+_ao_spawn() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--open[Open session in terminal tab]' \
+    '--agent[Override the agent plugin (e.g. codex, claude-code)]:agent:' \
+    '--claim-pr[Immediately claim an existing PR for the spawned session]:claim-pr:' \
+    '--assign-on-github[Assign the claimed PR to the authenticated GitHub user]' \
+    '--prompt[Initial prompt/instructions for the agent (use instead of an issue)]:prompt:' \
+    '1::issue:'
+}
+
+_ao_batch_spawn() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--open[Open sessions in terminal tabs]' \
+    '*:issues:'
+}
+
+_ao_session() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'ls' )
+      _ao_session_ls
+      return
+      ;;
+    'attach' )
+      _ao_session_attach
+      return
+      ;;
+    'kill' )
+      _ao_session_kill
+      return
+      ;;
+    'cleanup' )
+      _ao_session_cleanup
+      return
+      ;;
+    'claim-pr' )
+      _ao_session_claim_pr
+      return
+      ;;
+    'restore' )
+      _ao_session_restore
+      return
+      ;;
+    'remap' )
+      _ao_session_remap
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'ls:List all sessions'
+        'attach:Attach to a session'\''s tmux window'
+        'kill:Kill a session and remove its worktree'
+        'cleanup:Kill cleanup-eligible sessions with closed work or dead runtimes'
+        'claim-pr:Attach an existing PR to a session'
+        'restore:Restore a terminated/crashed session in-place'
+        'remap:Re-discover and persist OpenCode session mapping for an AO session'
+      )
+      _describe -t commands 'session command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_session_ls() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-p[Filter by project ID]:project:_ao_complete_projects' \
+    '--project[Filter by project ID]:project:_ao_complete_projects' \
+    '-a[Include orchestrator sessions]' \
+    '--all[Include orchestrator sessions]' \
+    '--include-terminated[Include terminated sessions (killed/done/merged/terminated/errored/cleanup)]' \
+    '--json[Output as JSON]'
+}
+
+_ao_session_attach() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:session:_ao_complete_sessions'
+}
+
+_ao_session_kill() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--purge-session[Delete mapped OpenCode session during kill]' \
+    '1:session:_ao_complete_sessions'
+}
+
+_ao_session_cleanup() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-p[Filter by project ID]:project:_ao_complete_projects' \
+    '--project[Filter by project ID]:project:_ao_complete_projects' \
+    '--dry-run[Show what would be cleaned up without doing it]'
+}
+
+_ao_session_claim_pr() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--assign-on-github[Assign the PR to the authenticated GitHub user]' \
+    '1:pr:' \
+    '2::session:_ao_complete_sessions'
+}
+
+_ao_session_restore() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:session:_ao_complete_all_sessions'
+}
+
+_ao_session_remap() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-f[Force fresh remap by re-discovering the OpenCode session]' \
+    '--force[Force fresh remap by re-discovering the OpenCode session]' \
+    '1:session:_ao_complete_all_sessions'
+}
+
+_ao_send() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-f[Send contents of a file instead]:file:_files' \
+    '--file[Send contents of a file instead]:file:_files' \
+    '--no-wait[Don'\''t wait for session to become idle before sending]' \
+    '--timeout[Max seconds to wait for idle]:timeout:' \
+    '1:session:_ao_complete_sessions' \
+    '*::message:'
+}
+
+_ao_acknowledge() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--note[Optional brief note to include with the acknowledgment]:note:' \
+    '1::session:'
+}
+
+_ao_report() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-s[Session ID (defaults to AO_SESSION_ID)]:session:' \
+    '--session[Session ID (defaults to AO_SESSION_ID)]:session:' \
+    '--note[Optional brief note to include with the report]:note:' \
+    '--pr-url[Attach a PR URL to pr-created / draft-pr-created / ready-for-review reports]:pr-url:' \
+    '--pr-number[Attach a PR number to pr-created / draft-pr-created / ready-for-review reports]:pr-number:' \
+    '1:state:_ao_complete_report_states'
+}
+
+_ao_review_check() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--dry-run[Show what would be done without sending messages]' \
+    '1::project:'
+}
+
+_ao_dashboard() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-p[Port to listen on]:port:' \
+    '--port[Port to listen on]:port:' \
+    '--no-open[Don'\''t open browser automatically]' \
+    '--rebuild[Clean stale build artifacts and rebuild before starting]'
+}
+
+_ao_open() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-w[Open in a new terminal window]' \
+    '--new-window[Open in a new terminal window]' \
+    '1::target:_ao_complete_open_targets'
+}
+
+_ao_verify() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '-p[Project ID (required if multiple projects)]:project:_ao_complete_projects' \
+    '--project[Project ID (required if multiple projects)]:project:_ao_complete_projects' \
+    '--fail[Mark verification as failed instead of passing]' \
+    '-c[Custom comment to add]:comment:' \
+    '--comment[Custom comment to add]:comment:' \
+    '-l[List all issues with merged-unverified label]' \
+    '--list[List all issues with merged-unverified label]' \
+    '1::issue:'
+}
+
+_ao_doctor() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--fix[Apply safe fixes for launcher and stale temp issues]' \
+    '--test-notify[Send a test notification through each configured notifier]'
+}
+
+_ao_update() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--skip-smoke[Skip smoke tests after rebuilding (git installs only)]' \
+    '--smoke-only[Run smoke tests without fetching or rebuilding (git installs only)]' \
+    '--check[Print version info as JSON without upgrading]'
+}
+
+_ao_setup() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'openclaw' )
+      _ao_setup_openclaw
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'openclaw:Connect AO notifications to an OpenClaw gateway'
+      )
+      _describe -t commands 'setup command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_setup_openclaw() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--url[OpenClaw webhook URL (e.g. http://127.0.0.1:18789/hooks/agent)]:url:' \
+    '--token[OpenClaw hooks auth token]:token:' \
+    '--routing-preset[OpenClaw routing preset: urgent-only | urgent-action | all]:routing-preset:' \
+    '--non-interactive[Skip prompts — auto-detects OpenClaw if --url not provided (token auto-generated if not provided)]'
+}
+
+_ao_plugin() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'list' )
+      _ao_plugin_list
+      return
+      ;;
+    'search' )
+      _ao_plugin_search
+      return
+      ;;
+    'create' )
+      _ao_plugin_create
+      return
+      ;;
+    'install' )
+      _ao_plugin_install
+      return
+      ;;
+    'update' )
+      _ao_plugin_update
+      return
+      ;;
+    'uninstall' )
+      _ao_plugin_uninstall
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'list:List bundled marketplace plugins'
+        'search:Search the bundled marketplace catalog'
+        'create:Scaffold a new AO plugin package'
+        'install:Install a plugin into the current config'
+        'update:Update installer-managed plugins in the current config'
+        'uninstall:Remove a plugin from the current config'
+      )
+      _describe -t commands 'plugin command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_plugin_list() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--installed[Show only plugins installed in the current config]' \
+    '--type[Filter by plugin slot (e.g. agent, notifier, tracker)]:type:_ao_complete_plugin_slots' \
+    '--refresh[Fetch the latest registry and update the local marketplace cache]'
+}
+
+_ao_plugin_search() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:query:'
+}
+
+_ao_plugin_create() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--name[Display/plugin name]:name:' \
+    '--slot[Plugin slot: runtime | agent | workspace | tracker | scm | notifier | terminal]:slot:_ao_complete_plugin_slots' \
+    '--description[Short plugin description]:description:' \
+    '--author[Package author]:author:' \
+    '--package-name[npm package name]:package-name:' \
+    '--non-interactive[Skip prompts and require explicit values for required fields]' \
+    '1::directory:_files'
+}
+
+_ao_plugin_install() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--url[OpenClaw webhook URL (passed to setup when installing notifier-openclaw)]:url:' \
+    '--token[OpenClaw hooks auth token (passed to setup when installing notifier-openclaw)]:token:' \
+    '1:reference:'
+}
+
+_ao_plugin_update() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '--all[Update all installer-managed plugins in the current config]' \
+    '1::reference:'
+}
+
+_ao_plugin_uninstall() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:reference:'
+}
+
+_ao_project() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'ls' )
+      _ao_project_ls
+      return
+      ;;
+    'add' )
+      _ao_project_add
+      return
+      ;;
+    'rm' )
+      _ao_project_rm
+      return
+      ;;
+    'set-default' )
+      _ao_project_set_default
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'ls:List all portfolio projects'
+        'add:Register a project path in the portfolio'
+        'rm:Remove a project from the portfolio'
+        'set-default:Set the default project for the portfolio'
+      )
+      _describe -t commands 'project command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_project_ls() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  return 1
+}
+
+_ao_project_add() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-k[Legacy only: the project key under `projects:` in a wrapped agent-orchestrator.yaml. Omit for flat configs.]:key:' \
+    '--key[Legacy only: the project key under `projects:` in a wrapped agent-orchestrator.yaml. Omit for flat configs.]:key:' \
+    '--default[Use the default project ID, adding a numeric suffix if needed]' \
+    '1:path:_files'
+}
+
+_ao_project_rm() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:id:'
+}
+
+_ao_project_set_default() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '1:id:'
+}
+
+_ao_migrate_storage() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  _arguments -C \
+    '--dry-run[Report what would be done without making changes]' \
+    '--force[Migrate even if active tmux sessions are detected]' \
+    '--rollback[Reverse a previous migration (restores .migrated directories)]'
+}
+
+_ao_completion() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'zsh' )
+      _ao_completion_zsh
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'zsh:Print the zsh completion script'
+      )
+      _describe -t commands 'completion command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_completion_zsh() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  return 1
+}
+
+_ao_events() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  local subcommand_name="${words[2]-}"
+  case "$subcommand_name" in
+    'list' )
+      _ao_events_list
+      return
+      ;;
+    'search' )
+      _ao_events_search
+      return
+      ;;
+    'stats' )
+      _ao_events_stats
+      return
+      ;;
+  esac
+  _arguments -C \
+    '1:command:->subcommand'
+  case $state in
+    subcommand)
+      local -a subcommands
+      subcommands=(
+        'list:List recent activity events'
+        'search:Full-text search across event summaries and data'
+        'stats:Show event log statistics'
+      )
+      _describe -t commands 'events command' subcommands
+      return
+      ;;
+  esac
+}
+
+_ao_events_list() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-p[Filter by project ID]:project:' \
+    '--project[Filter by project ID]:project:' \
+    '-s[Filter by session ID]:session:' \
+    '--session[Filter by session ID]:session:' \
+    '-t[Filter by event kind (e.g. session.spawned, lifecycle.transition)]:type:' \
+    '--type[Filter by event kind (e.g. session.spawned, lifecycle.transition)]:type:' \
+    '--log-level[Filter by log level (debug, info, warn, error)]:log-level:' \
+    '--since[Show events from last N minutes/hours/days (e.g. 30m, 2h, 1d)]:since:' \
+    '-n[Max results]:limit:' \
+    '--limit[Max results]:limit:' \
+    '--json[Output as JSON]'
+}
+
+_ao_events_search() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  _arguments -C \
+    '-p[Filter by project ID]:project:' \
+    '--project[Filter by project ID]:project:' \
+    '-n[Max results]:limit:' \
+    '--limit[Max results]:limit:' \
+    '--json[Output as JSON]' \
+    '1:query:'
+}
+
+_ao_events_stats() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[3,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 2 ))
+  return 1
+}
+
+_ao_config_help() {
+  local curcontext="$curcontext" state line
+  typeset -A opt_args
+  local -a shifted_words
+  shifted_words=("${(@)words[2,-1]}")
+  local -a words
+  words=("${shifted_words[@]}")
+  local CURRENT=$(( CURRENT - 1 ))
+  return 1
+}
+
+_ao "$@"

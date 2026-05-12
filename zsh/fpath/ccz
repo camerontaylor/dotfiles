@@ -1,7 +1,9 @@
 emulate -L zsh
 
+# Proxy-routed Z.AI background tier (was: cczbg). Outside webfront, the
+# function defined in zsh/rc.d/10_litellm.zsh handles direct invocation.
 local root
-root="$(_webfront_root)" || { _ccz "$@"; return }
+root="$(_webfront_root)" || { ccz "$@"; return }
 
 command zsh "$root/scripts/run-agent-alias.sh" ccz "$@"
 

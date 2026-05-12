@@ -1,7 +1,8 @@
 emulate -L zsh
 
+# Proxy-routed Z.AI background tier via happy yolo (was: cczbg-happy).
 local root
-root="$(_webfront_root)" || { _ccz-happy "$@"; return }
+root="$(_webfront_root)" || { ccz-happy "$@"; return }
 
 command zsh "$root/scripts/run-agent-alias.sh" ccz-happy "$@"
 

@@ -1,0 +1,47 @@
+$schema: https://raw.githubusercontent.com/ComposioHQ/agent-orchestrator/main/schema/config.schema.json
+
+port: 3000
+terminalPort: 14800
+directTerminalPort: 14801
+readyThresholdMs: 300000
+
+defaults:
+  runtime: tmux
+  agent: codex
+  workspace: worktree
+  notifiers:
+    - desktop
+  orchestrator:
+    agent: codex
+  worker:
+    agent: codex
+
+projects:
+  webfront:
+    projectId: webfront
+    path: /home/ctaylor/repos/webfront
+    repo:
+      owner: camerontaylor
+      name: webfront
+      platform: github
+      originUrl: git@github.com:camerontaylor/webfront.git
+    defaultBranch: main
+    source: ao-project-add
+    registeredAt: 1777975095
+    displayName: webfront
+    sessionPrefix: webfront
+    orchestratorSessionStrategy: delete
+
+notifiers:
+  desktop:
+    plugin: desktop
+
+notificationRouting:
+  urgent:
+    - desktop
+  action:
+    - desktop
+  warning:
+    - desktop
+  info:
+    - desktop

@@ -1,27 +1,404 @@
-model_list:
-  # Opus → Anthropic (OAuth forwarded from Claude Max subscription)
-  - model_name: claude-opus-4-6
-    litellm_params:
-      model: anthropic/claude-opus-4-6
-      # No api_key — client's x-api-key (OAuth token) forwarded via clean_headers
+# LiteLLM proxy config for OMC/OMO fleet
+# Architecture:
+#   - real Opus stays on Anthropic OAuth direct (use `ccc` alias, NOT this proxy)
+#   - background tier (Z.AI single-stream) for low-priority worktrees
+#   - fast metered tier (Fireworks) for frontier capability at speed
+#   - small/fast tier (Cerebras free → paid waterfall)
+#   - existing MiniMax sonnet/haiku mapping retained
+#
+# Proxy auth: master key in `x-litellm-api-key` header (NOT Authorization),
+# matching the ccl/ccfw/ccz alias convention.
 
-  # Sonnet → MiniMax M2.5
+model_list:
+  # ============================================
+  # EXISTING — MiniMax mappings (keep working)
+  # ============================================
   - model_name: claude-sonnet-4-6
     litellm_params:
       model: minimax/MiniMax-M2.5
       api_key: os.environ/MINIMAX_API_KEY
       api_base: https://api.minimax.io/anthropic/v1/messages
 
-  # Haiku → MiniMax M2.5
   - model_name: claude-haiku-4-5-20251001
     litellm_params:
       model: minimax/MiniMax-M2.5
       api_key: os.environ/MINIMAX_API_KEY
       api_base: https://api.minimax.io/anthropic/v1/messages
 
+  # MiniMax M2.5 direct (api.minimax.io). Used as a slow/cheap last-resort
+  # fallback in chains that explicitly want to avoid Fireworks ("better to
+  # fail than fall back to extremely fast expensive slop").
+  - model_name: minimax-m2.5
+    litellm_params:
+      model: minimax/MiniMax-M2.5
+      api_key: os.environ/MINIMAX_API_KEY
+      api_base: https://api.minimax.io/anthropic/v1/messages
+      num_retries: 0
+
+  # ============================================
+  # Z.AI — single-stream background tier
+  # Subscription saturation; never hammer concurrently.
+  # If GLM models 401 here, swap api_base to https://api.z.ai/api/coding/paas/v4
+  # (Coding Plan endpoint variant).
+  # ============================================
+  - model_name: glm-5.1-bg
+    litellm_params:
+      model: openai/glm-5.1
+      api_base: https://api.z.ai/api/paas/v4
+      api_key: os.environ/Z_AI_API_KEY
+      max_parallel_requests: 1
+      rpm: 60
+      timeout: 600
+      num_retries: 0
+    model_info:
+      context_length: 200000
+
+  - model_name: glm-5-bg
+    litellm_params:
+      model: openai/glm-5
+      api_base: https://api.z.ai/api/paas/v4
+      api_key: os.environ/Z_AI_API_KEY
+      max_parallel_requests: 1
+      rpm: 60
+      num_retries: 0
+
+  - model_name: glm-5-turbo-bg
+    litellm_params:
+      model: openai/glm-5-turbo
+      api_base: https://api.z.ai/api/paas/v4
+      api_key: os.environ/Z_AI_API_KEY
+      max_parallel_requests: 1
+      rpm: 60
+      num_retries: 0
+
+  # ============================================
+  # FIREWORKS — fast metered tier
+  # Frontier capability at 100-400 t/s, mid pricing.
+  # If a model 404s, comment it out (don't delete) — easy re-enable when
+  # Fireworks adds it to the catalog.
+  #
+  # IMPORTANT: use `fireworks_ai/` provider prefix (not `openai/`). When
+  # LiteLLM receives an Anthropic-format /v1/messages request for an
+  # openai/-prefixed model it routes to upstream /v1/responses (OpenAI
+  # Responses API), which Fireworks does NOT reliably support — small probes
+  # may sneak through but real workloads (large prompts + tool defs) return
+  # HTTP 500 from /v1/responses, and the response id surfaces with a `resp_`
+  # prefix (the Responses-API marker) on the lucky cases. The `fireworks_ai/`
+  # provider routes to /v1/chat/completions correctly and the response id
+  # then carries the `chatcmpl-` prefix. Same family of bug as the cerebras/
+  # comment above. api_base is dropped because the dedicated provider knows
+  # the correct host.
+  # ============================================
+  - model_name: kimi-k2.6
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/kimi-k2p6
+      api_key: os.environ/FIREWORKS_API_KEY
+      rpm: 600
+      max_parallel_requests: 16
+      num_retries: 2
+    model_info:
+      context_length: 262000
+
+  - model_name: kimi-k2.5
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/kimi-k2p5
+      api_key: os.environ/FIREWORKS_API_KEY
+      rpm: 600
+      max_parallel_requests: 16
+
+  - model_name: glm-5.1-fast
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/glm-5p1
+      api_key: os.environ/FIREWORKS_API_KEY
+      rpm: 600
+      max_parallel_requests: 12
+
+  # minimax-m2.7 routed via Minimax's direct OpenAI-compat endpoint
+  # (api.minimax.io/v1) instead of Fireworks. The previous Fireworks-backed
+  # entry kept hitting the same /v1/chat/completions reasoning-content
+  # streaming truncation as fleet-opus. Going direct via Minimax's OpenAI-
+  # compat surface bypasses the entire Fireworks/LiteLLM-streaming chain.
+  # (2026-04-28)
+  - model_name: minimax-m2.7
+    litellm_params:
+      model: openai/MiniMax-M2.7
+      api_base: https://api.minimax.io/v1
+      api_key: os.environ/MINIMAX_API_KEY
+      rpm: 600
+      max_parallel_requests: 12
+
+  # DISABLED 2026-04-26: Fireworks "no healthy upstream" — model not in their
+  # current catalog. Re-enable when Fireworks adds it.
+  # - model_name: minimax-m2.5
+  #   litellm_params:
+  #     model: openai/accounts/fireworks/models/minimax-m2p5
+  #     api_base: https://api.fireworks.ai/inference/v1
+  #     api_key: os.environ/FIREWORKS_API_KEY
+  #     rpm: 600
+  #     max_parallel_requests: 16
+
+  # ============================================
+  # CEREBRAS FREE — 1M tokens/day, 8K context cap
+  # Primary small/fast slot; absurdly fast Llama 3.1 8B
+  # ============================================
+  - model_name: cerebras-free-8b
+    litellm_params:
+      model: cerebras/llama3.1-8b
+      api_key: os.environ/CEREBRAS_FREE_API_KEY
+      rpm: 30
+      max_parallel_requests: 4
+      num_retries: 0
+    model_info:
+      context_length: 8192
+
+  # DISABLED 2026-04-26: Cerebras has a TEMPORARY reduction of free-tier rate
+  # limits for gpt-oss-120b (and zai-glm-4.7) per their service notice. The
+  # API surfaces this as HTTP 404 + "model_not_found" rather than 429 — a
+  # misleading status code; the model IS in the docs and IS in /v1/models, but
+  # the free-tier rate budget for it is currently zero. Other free-tier
+  # models on the same key (llama3.1-8b, qwen-3-235b-a22b-instruct-2507) work
+  # fine. Use cerebras-paid-oss120 in the meantime.
+  #
+  # Re-enable when Cerebras lifts the temporary free-tier reduction. No code
+  # change needed beyond uncommenting — the upstream key/model name is correct.
+  # - model_name: cerebras-free-oss120
+  #   litellm_params:
+  #     model: openai/gpt-oss-120b
+  #     api_base: https://api.cerebras.ai/v1
+  #     api_key: os.environ/CEREBRAS_FREE_API_KEY
+  #     rpm: 30
+  #     max_parallel_requests: 4
+  #     num_retries: 0
+  #   model_info:
+  #     context_length: 65536
+
+  # Qwen 3 235B-A22B Instruct (235B MoE with 22B active params) — workhorse
+  # tier on Cerebras free. Available on both free and paid tiers per
+  # /v1/chat/completions probe 2026-04-26.
+  #
+  # IMPORTANT: use `cerebras/` provider prefix (not `openai/`). When LiteLLM
+  # receives an Anthropic-format /v1/messages request for an openai/-prefixed
+  # model, it incorrectly routes to upstream /v1/responses (OpenAI Responses
+  # API) which Cerebras doesn't support → 404. The cerebras/ provider routes
+  # correctly to /v1/chat/completions. Same fix needed for ALL Cerebras
+  # deployments below.
+  - model_name: cerebras-free-qwen3-235b
+    litellm_params:
+      model: cerebras/qwen-3-235b-a22b-instruct-2507
+      api_key: os.environ/CEREBRAS_FREE_API_KEY
+      rpm: 30
+      max_parallel_requests: 4
+      num_retries: 0
+
+  # ============================================
+  # CEREBRAS PAID — fallback when free exhausts or context > 8K
+  # ============================================
+  - model_name: cerebras-paid-8b
+    litellm_params:
+      model: cerebras/llama3.1-8b
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+    model_info:
+      context_length: 131072
+
+  # gpt-oss-120b on Cerebras paid tier. Confirmed working via direct probe
+  # 2026-04-26 (the earlier "doesn't exist" was a transient probe error). 131K
+  # context, 40K max output per Cerebras docs.
+  - model_name: cerebras-paid-oss120
+    litellm_params:
+      model: cerebras/gpt-oss-120b
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+    model_info:
+      context_length: 131000
+
+  # Z.AI GLM-4.7 hosted on Cerebras infrastructure (paid tier only). Provides
+  # GLM's reasoning at Cerebras's wafer-scale tokens/sec. Distinct from the
+  # glm-5.1-bg / glm-5.1-fast deployments which hit Z.AI / Fireworks directly.
+  - model_name: cerebras-paid-glm-4.7
+    litellm_params:
+      model: cerebras/zai-glm-4.7
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+
+  # Qwen 3 235B-A22B Instruct on Cerebras paid (131K context, higher RPM than
+  # free tier).
+  - model_name: cerebras-paid-qwen3-235b
+    litellm_params:
+      model: cerebras/qwen-3-235b-a22b-instruct-2507
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+    model_info:
+      context_length: 131000
+
+  # ============================================
+  # OPENAI METERED — defined but NOT wired to any role alias.
+  # Per-token billing (NOT your Codex Max quota). Opt-in only.
+  # Model name `gpt-5.4-mini` is forward-looking; expect /health to flag
+  # this as model_not_found until OpenAI ships it. Keep entry for future
+  # opt-in.
+  # ============================================
+  # DISABLED 2026-04-26: OpenAI "Incorrect API key" is the masked form of
+  # model_not_found here — `gpt-5.4-mini` is forward-looking and not in the
+  # current catalog. Re-enable when OpenAI ships it.
+  # - model_name: gpt-5.4-mini-metered
+  #   litellm_params:
+  #     model: openai/gpt-5.4-mini
+  #     api_key: os.environ/OPENAI_API_KEY
+  #     rpm: 500
+  #     max_parallel_requests: 8
+
+  # ============================================
+  # ROLE ALIASES — what your harnesses actually call.
+  # Prefixed `fleet-` to avoid Claude Code's client-side model gating which
+  # rejects bare `opus`/`sonnet`/`haiku` as Anthropic-only tier names.
+  # ============================================
+  - model_name: fleet-opus  # planner-fast role; routes to best frontier coder
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/kimi-k2p6
+      api_key: os.environ/FIREWORKS_API_KEY
+
+  - model_name: fleet-sonnet  # workhorse role
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/glm-5p1
+      api_key: os.environ/FIREWORKS_API_KEY
+
+  # ANTHROPIC_DEFAULT_HAIKU_MODEL slot — the "small subagent" tier. Mapped
+  # to gpt-oss-120b on Cerebras paid: still fast (wafer-scale), still cheap
+  # relative to the opus tier, but capable enough for non-trivial sub-agent
+  # work where llama3.1-8b would be too weak. The 8b family is intentionally
+  # NOT in this chain; that's what fleet-small-fast (below) is for.
+  - model_name: fleet-haiku
+    litellm_params:
+      model: cerebras/gpt-oss-120b
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+      num_retries: 0
+    model_info:
+      context_length: 131000
+
+  # ANTHROPIC_SMALL_FAST_MODEL slot — the truly cheap-and-fast tier for
+  # tool-call analysis, background scoring, etc. Cerebras free 8b primary
+  # (1M tokens/day, ~3000 t/s), waterfalls into paid 8b → paid oss-120b →
+  # MiniMax M2.5 direct as the deliberately slow last resort.
+  - model_name: fleet-small-fast
+    litellm_params:
+      model: cerebras/llama3.1-8b
+      api_key: os.environ/CEREBRAS_FREE_API_KEY
+      num_retries: 0
+    model_info:
+      context_length: 8192
+
+  # cc-fast target: GLM-4.7 hosted on Cerebras's wafer-scale silicon (~3000 t/s).
+  # Distinct from glm-5.1-bg (Z.AI direct) and glm-5.1-fast (Fireworks).
+  - model_name: glm-4.7-cerebras
+    litellm_params:
+      model: cerebras/zai-glm-4.7
+      api_key: os.environ/CEREBRAS_API_KEY
+      rpm: 1000
+      max_parallel_requests: 16
+
+# ============================================
+# ROUTER — fallbacks, retry semantics, error handling
+# ============================================
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 600
+
+  # Fallback architecture:
+  # - bg/single-stream tiers (Z.ai) → Fireworks fast on saturation
+  # - cerebras free → cerebras paid (when 1M/day exhausted)
+  # - fleet-haiku (oss-120b) → minimax-m2.7 as last resort
+  # - fleet-small-fast (8b) → paid 8b → paid oss-120b → MiniMax M2.5 direct
+  # - fleet-opus deliberately AVOIDS Fireworks fallbacks; falls back to
+  #   slow/cheap (Z.ai bg → MiniMax direct). Better to fail loudly than to
+  #   silently degrade onto extremely fast expensive slop.
+  fallbacks:
+    - glm-5.1-bg: [glm-5.1-fast, kimi-k2.6]
+    - glm-5-bg: [glm-5.1-fast, kimi-k2.6]
+    - glm-5-turbo-bg: [minimax-m2.7]
+    - cerebras-free-8b: [cerebras-paid-8b]
+    # cerebras-free-oss120 disabled (free tier blocked from gpt-oss-120b);
+    # cerebras-paid-oss120 has no fallback — it IS the workhorse 120B slot.
+    - fleet-haiku: [minimax-m2.7]
+    - fleet-small-fast: [cerebras-paid-8b, cerebras-paid-oss120, minimax-m2.5]
+    - fleet-opus: [glm-5.1-bg, minimax-m2.5]
+    - fleet-sonnet: [kimi-k2.6, minimax-m2.7]
+
+  # Context-aware fallback for 8K Cerebras free. fleet-haiku is gpt-oss-120b
+  # with 131K context so it doesn't need a context fallback; fleet-small-fast
+  # is 8b with 8K cap so it does.
+  context_window_fallbacks:
+    - cerebras-free-8b: [cerebras-paid-8b]
+    - fleet-small-fast: [cerebras-paid-8b, cerebras-paid-oss120]
+
+  # Per-error-class retry budgets
+  retry_policy:
+    BadRequestErrorRetries: 0
+    AuthenticationErrorRetries: 0
+    ContentPolicyViolationErrorRetries: 0
+    RateLimitErrorRetries: 1
+    TimeoutErrorRetries: 2
+    InternalServerErrorRetries: 2
+
+  allowed_fails_policy:
+    RateLimitErrorAllowedFails: 1
+    InternalServerErrorAllowedFails: 2
+    TimeoutErrorAllowedFails: 2
+
+  cooldown_time: 30  # seconds before retry-eligible after fail
+
+litellm_settings:
+  drop_params: true        # silently drop unsupported params (e.g. cache_control)
+  # Belt-and-suspenders: explicitly drop params that Claude Code or CCR sends
+  # but that LiteLLM's per-provider transformers don't recognize as droppable.
+  # - `output_config`: Anthropic extended-thinking config; Cerebras 400s
+  # - `thinking_config`: alternate spelling that has appeared in some clients
+  # - `reasoning`: CCR's Anthropic transformer translates Anthropic `thinking`
+  #   into OpenAI o1-style `reasoning: {effort, enabled}`. Fireworks does NOT
+  #   accept this field and 400s with "Extra inputs are not permitted, field:
+  #   'reasoning'". Strip it before forwarding upstream. (2026-04-28)
+  # - `enable_thinking`: CCR's reasoning transformer also adds this boolean
+  #   alongside `thinking`. Same Fireworks rejection class.
+  # Add new params here when LiteLLM gets out-of-date with Anthropic SDK.
+  additional_drop_params:
+    - output_config
+    - thinking_config
+    - reasoning
+    - enable_thinking
+  set_verbose: false
+  json_logs: true
+  request_timeout: 600
+
+  # Auto-inject `stream_options.include_usage: true` for streamed calls.
+  # Without this, the OpenAI-compatible streaming spec doesn't return
+  # `usage` in the final chunk, so cost tracking / Langfuse logging shows
+  # zero tokens. Per official LiteLLM Fireworks docs:
+  # https://docs.litellm.ai/docs/providers/fireworks_ai
+  stream_options:
+    include_usage: true
+
+  # Cache identical requests briefly (helps with retry storms)
+  cache: true
+  cache_params:
+    type: local
+    ttl: 60
+
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
-  # Proxy auth via custom header — keeps x-api-key free for OAuth passthrough
-  litellm_key_header_name: "x-litellm-api-key"
-  forward_client_headers_to_llm_api: true
-  forward_llm_provider_auth_headers: true
+  # Custom header_name disabled 2026-04-27 to allow CCR (claude-code-router)
+  # to authenticate via the standard `Authorization: Bearer ...` header that
+  # CCR auto-emits from `provider.api_key`. CCR strips client-supplied custom
+  # headers and rewrites Authorization on outbound calls, so the previous
+  # `x-litellm-api-key` plumbing is incompatible with CCR-fronted traffic.
+  # Aliases (ccl/ccfw/ccz/cc-fast) updated to use ANTHROPIC_AUTH_TOKEN which
+  # makes Claude Code emit the standard Authorization header that LiteLLM
+  # now accepts. To rollback to legacy x-litellm-api-key plumbing, uncomment
+  # the line below AND revert alias env-vars.
+  # litellm_key_header_name: "x-litellm-api-key"
