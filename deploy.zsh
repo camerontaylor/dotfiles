@@ -561,7 +561,7 @@ if [[ -f $age_key_dir/keys.txt ]] && (( ${+commands[age-keygen]} )); then
         elif ! grep -Fq "$age_public_key" $SCRIPT_DIR/.sops.yaml; then
             print ""
             print "WARNING: this machine's age key is not registered for sops decryption."
-            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, ssh/*.enc, configs/portless/*.pem.enc) cannot be read."
+            print "  Encrypted secrets (zsh/env.d/9*.zsh.enc, ssh/*.enc) cannot be read."
             print ""
             print "  This machine's public key:"
             print "    $age_public_key"
@@ -596,20 +596,6 @@ if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
     done
     print "  ...done"
 
-    print "Restoring portless certs..."
-    local _pless_enc _pless_target _pless_tmp
-    for _pless_enc in $SCRIPT_DIR/configs/portless/*.pem.enc(N); do
-        _pless_target=$SCRIPT_DIR/configs/portless/${${_pless_enc:t}%.enc}
-        _pless_tmp=$(mktemp)
-        if sops --decrypt $_pless_enc > $_pless_tmp 2>/dev/null; then
-            chmod 600 $_pless_tmp
-            mv $_pless_tmp $_pless_target
-        else
-            rm -f $_pless_tmp
-            print "  WARNING: failed to decrypt ${_pless_enc:t}"
-        fi
-    done
-    print "  ...done"
 fi
 
 # Reload systemd to pick up any user units linked above

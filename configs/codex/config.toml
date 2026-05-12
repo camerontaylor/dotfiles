@@ -1,5 +1,5 @@
 suppress_unstable_features_warning = true
-model = "gpt-5.5"
+model = "gpt-5.4-mini"
 model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
@@ -34,7 +34,7 @@ trust_level = "trusted"
 [projects."/home/ctaylor/repos/copyous"]
 trust_level = "trusted"
 
-[projects."/home/ctaylor/repos/portkey-gateway"]
+[projects."/home/ctaylor/repos/telemetry-ingest"]
 trust_level = "trusted"
 
 [features]
@@ -43,10 +43,6 @@ js_repl = true
 image_detail_original = true
 codex_hooks = true
 goals = true
-terminal_resize_reflow = true
-memories = true
-external_migration = true
-prevent_idle_sleep = true
 [agents]
 max_threads = 12
 max_depth = 4
