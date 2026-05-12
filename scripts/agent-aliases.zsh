@@ -197,6 +197,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -209,6 +210,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_HAIKU_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_OPUS_MODEL MiniMax-M2.7
@@ -225,11 +227,11 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
-                ENABLE_TOOL_SEARCH
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -249,6 +251,41 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
+        ccfw-direct)
+            # Direct Fireworks via their Anthropic-compat endpoint. Bypasses Portkey.
+            local _ccfw_direct_opus_model="accounts/fireworks/models/kimi-k2p6"
+            local _ccfw_direct_sonnet_model="accounts/fireworks/models/minimax-m2p7"
+            local _ccfw_direct_haiku_model="accounts/fireworks/models/gpt-oss-120b"
+            local _ccfw_direct_small_fast_model="accounts/fireworks/models/gpt-oss-120b"
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_direct_sonnet_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_direct_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_direct_opus_model"
+                ANTHROPIC_MODEL "$_ccfw_direct_sonnet_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccfw_direct_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN "${FIREWORKS_API_KEY:-}"
+                ANTHROPIC_BASE_URL https://api.fireworks.ai/inference
+                API_TIMEOUT_MS 3000000
+            )
+            ;;
         ccfw|ccfw-happy)
             # Portkey fleet with fallback chains encoded in
             # ~/.local/dotfiles/configs/portkey/config.json:
@@ -265,6 +302,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -279,6 +317,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
@@ -344,6 +383,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -358,6 +398,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfast_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfast_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfast_opus_model"

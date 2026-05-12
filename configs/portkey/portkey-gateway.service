@@ -1,6 +1,6 @@
 [Unit]
 Description=Portkey Gateway local-mode fork
-Documentation=file:/home/ctaylor/repos/worktrees/feature/capabilities/docs/llm_gateway.md
+Documentation=file:/home/ctaylor/repos/webfront/docs/llm_gateway.md
 After=network-online.target
 Wants=network-online.target
 
@@ -20,10 +20,10 @@ Environment=ENABLE_TRACING=false
 Environment=MONITOR_METRICS=false
 Environment=CACHE_STORE=memory
 Environment=GATEWAY_CACHE_MODE=memory
-ExecStartPre=/usr/bin/test -r /home/ctaylor/repos/worktrees/portkey-gateway-2.0.0/build/start-server.js
+ExecStartPre=/usr/bin/test -r /home/ctaylor/repos/portkey-gateway/build/start-server.js
 ExecStartPre=/usr/bin/test -r %h/.local/dotfiles/configs/portkey/config.json
 ExecStartPre=/usr/bin/sh -c 'test -e "$HOME/.local/dotfiles/configs/portkey/conf.json" || ln -s "$HOME/.local/dotfiles/configs/portkey/config.json" "$HOME/.local/dotfiles/configs/portkey/conf.json"'
-ExecStart=/usr/bin/env node /home/ctaylor/repos/worktrees/portkey-gateway-2.0.0/build/start-server.js --llm-node --port 8787
+ExecStart=/usr/bin/env node /home/ctaylor/repos/portkey-gateway/build/start-server.js --llm-node --port 8787
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

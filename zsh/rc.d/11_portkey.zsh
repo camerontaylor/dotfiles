@@ -10,7 +10,7 @@ typeset -g _PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
 typeset -g _PORTKEY_BASE_URL="http://${_PORTKEY_HOST}:${_PORTKEY_PORT}"
 typeset -g _PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
 typeset -g _PORTKEY_CONFIG_DIR="${_PORTKEY_CONFIG_FILE:h}"
-typeset -g _PORTKEY_FORK_DIR="${PORTKEY_FORK_DIR:-/home/ctaylor/repos/worktrees/portkey-gateway-2.0.0}"
+typeset -g _PORTKEY_FORK_DIR="${PORTKEY_FORK_DIR:-/home/ctaylor/repos/portkey-gateway}"
 typeset -g _PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$_PORTKEY_STATE/local-api-key}"
 typeset -g _PORTKEY_TIMEOUT_MS="${PORTKEY_TIMEOUT_MS:-75000}"
 
@@ -357,6 +357,7 @@ if (( ${+commands[claude]} )); then
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -372,6 +373,7 @@ if (( ${+commands[claude]} )); then
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -407,6 +409,7 @@ if (( ${+commands[claude]} )); then
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -422,6 +425,7 @@ if (( ${+commands[claude]} )); then
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -511,6 +515,7 @@ if (( ${+commands[claude]} )); then
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -526,6 +531,7 @@ if (( ${+commands[claude]} )); then
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
