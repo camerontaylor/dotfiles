@@ -62,10 +62,6 @@ export PERL_CPANM_HOME=$XDG_CACHE_HOME/cpanm
 export SOLARGRAPH_CACHE=$XDG_CACHE_HOME/solargraph
 export GTK2_RC_FILES=$XDG_CONFIG_HOME/gtk-2.0/gtkrc
 export GHOSTTY_CONFIG_DIR="$HOME/.config/ghostty"
-export PORTLESS_STATE_DIR="$HOME/.portless"
-export PORTLESS_LAN=1
-export PORTLESS_HTTPS=0
-export PORTLESS_NAME="$(hostname)"
 
 # Ghostty sets COLORTERM locally but it doesn't survive SSH
 if [[ $TERM == xterm-ghostty && ! -v COLORTERM ]]; then
