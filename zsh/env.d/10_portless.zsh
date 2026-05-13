@@ -3,5 +3,5 @@
 export PORTLESS_STATE_DIR="$HOME/.portless"
 export PORTLESS_LAN=1
 export PORTLESS_HTTPS=0
-export PORTLESS_TLD=ceres
+export PORTLESS_TLD="${${$(hostname)}%%.*}"
 export PORTLESS_NAME="$(hostname)"
