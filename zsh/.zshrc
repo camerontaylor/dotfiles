@@ -11,13 +11,21 @@ _zshrc_dbg "start"
 # Auto-attach to tmux for SSH sessions (must run before p10k instant prompt)
 # Reattach to first unattached session, or create a new one
 if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 ]]; then
+    _tmux_args=()
+    # iTerm2 forwards LC_TERMINAL over SSH, which lets the remote shell opt into
+    # tmux control mode for native iTerm2 integration.
+    if [[ ${LC_TERMINAL-} == iTerm2 ]]; then
+        _tmux_args=(-CC)
+    fi
+
     _free_session=$(tmux ls -F '#{session_name} #{session_attached}' 2>/dev/null \
         | awk '$2 == "0" { print $1; exit }')
     if [[ -n $_free_session ]]; then
-        exec tmux attach -t "$_free_session"
+        exec tmux "${_tmux_args[@]}" attach -t "$_free_session"
     else
-        exec tmux new-session
+        exec tmux "${_tmux_args[@]}" new-session
     fi
+    unset _tmux_args
     unset _free_session
 fi
 

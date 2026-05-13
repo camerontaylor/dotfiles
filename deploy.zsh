@@ -75,6 +75,31 @@ brew_install_or_upgrade() {
     fi
 }
 
+brew_cask_install_or_upgrade() {
+    local cask=$1
+
+    if ! ensure_homebrew_path; then
+        print "  ...Homebrew not available, skipping $cask"
+        return 1
+    fi
+
+    if ! brew list --cask $cask > /dev/null 2>&1; then
+        if brew install --cask $cask > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...failed to install $cask"
+        return 1
+    elif $upgrade_mode; then
+        if brew upgrade --cask $cask > /dev/null 2>&1; then
+            print "  ...done"
+            return 0
+        fi
+        print "  ...$cask already at latest or upgrade failed"
+        return 0
+    fi
+}
+
 if [[ $DOTFILES_OS == Darwin ]]; then
     ensure_homebrew_path || true
 fi
@@ -759,6 +784,17 @@ elif (( ${+commands[brew]} )) && $upgrade_mode; then
         print "  ...done"
     else
         print "  ...engram already at latest or upgrade failed"
+    fi
+fi
+
+# Install iTerm2 via Homebrew cask if not present
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask iterm2 > /dev/null 2>&1; then
+        print "Installing iTerm2..."
+        brew_cask_install_or_upgrade iterm2 || true
+    elif $upgrade_mode; then
+        print "Upgrading iTerm2..."
+        brew_cask_install_or_upgrade iterm2 || true
     fi
 fi
 
