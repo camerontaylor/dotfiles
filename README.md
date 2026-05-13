@@ -84,7 +84,7 @@ git clone https://github.com/z0rc/dotfiles.git "$HOME/.local/dotfiles"
 $HOME/.local/dotfiles/deploy.zsh
 $HOME/.local/dotfiles/scripts/save-secrets.zsh      # optional, writes plaintext secret overrides back to .enc
 $HOME/.local/dotfiles/scripts/restore-secrets.zsh  # optional, restores plaintext secrets
-chsh -s /bin/zsh
+command -v brew >/dev/null 2>&1 && chsh -s "$(brew --prefix)/bin/zsh"  # macOS/Homebrew fallback
 ```
 
 The [deployment script](deploy.zsh) helps set up all required symlinks after

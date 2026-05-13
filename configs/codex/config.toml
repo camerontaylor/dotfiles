@@ -37,6 +37,12 @@ trust_level = "trusted"
 [projects."/home/ctaylor/repos/telemetry-ingest"]
 trust_level = "trusted"
 
+[projects."/Users/user/.local/dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/user"]
+trust_level = "trusted"
+
 [features]
 
 js_repl = true

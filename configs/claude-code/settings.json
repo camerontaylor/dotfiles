@@ -180,6 +180,7 @@
   },
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
   "editorMode": "vim",
   "teammateMode": "tmux",
   "remoteControlAtStartup": true,

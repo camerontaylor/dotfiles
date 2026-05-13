@@ -15,4 +15,3 @@ esac
 
 repo_root="${0:A:h:h}"
 exec "$repo_root/deploy.zsh" "$@"
-
