@@ -9,18 +9,18 @@
  * 1. cancelomc/stopomc: Stop active modes
  * 2. ralph: Persistence mode until task completion
  * 3. autopilot: Full autonomous execution
- * 4. team: Coordinated team execution
+ * 4. team: Explicit-only via /team (not auto-triggered)
  * 5. ultrawork/ulw: Maximum parallel execution
-* 6. pipeline: Sequential agent chaining
+ * 6. ccg: Claude-Codex-Gemini tri-model orchestration
  * 7. ralplan: Iterative planning with consensus
- * 8. plan: Planning interview mode
- * 9. tdd: Test-driven development
- * 10. ultrathink: Extended reasoning
- * 11. deepsearch: Codebase search (restricted patterns)
- * 12. analyze: Analysis mode (restricted patterns)
- * 13. codex/gpt: Delegate to Codex MCP (ask_codex)
- * 14. gemini: Delegate to Gemini MCP (ask_gemini)
- * 8. ccg: Claude-Codex-Gemini tri-model orchestration
+ * 8. deep interview: Socratic interview workflow
+ * 9. ai-slop-cleaner: Cleanup/deslop anti-slop workflow
+ * 10. tdd: Test-driven development
+ * 11. code review: Comprehensive review mode
+ * 12. security review: Security-focused review mode
+ * 13. ultrathink: Extended reasoning
+ * 14. deepsearch: Codebase search (restricted patterns)
+ * 15. analyze: Analysis mode (restricted patterns)
  */
 
 import { writeFileSync, mkdirSync, existsSync, unlinkSync, readFileSync } from 'fs';
@@ -33,6 +33,8 @@ const __dirname = dirname(__filename);
 
 // Dynamic import for the shared stdin module (use pathToFileURL for Windows compatibility, #524)
 const { readStdin } = await import(pathToFileURL(join(__dirname, 'lib', 'stdin.mjs')).href);
+const { atomicWriteFileSync } = await import(pathToFileURL(join(__dirname, 'lib', 'atomic-write.mjs')).href);
+const { getClaudeConfigDir } = await import(pathToFileURL(join(__dirname, 'lib', 'config-dir.mjs')).href);
 
 const ULTRATHINK_MESSAGE = `<think-mode>
 
@@ -47,6 +49,51 @@ You are now in deep thinking mode. Take your time to:
 Use your extended thinking capabilities to provide the most thorough and well-reasoned response.
 
 </think-mode>
+
+---
+`;
+
+const ANALYZE_MESSAGE = `<analyze-mode>
+ANALYSIS MODE. Gather context before diving deep:
+- Search relevant code paths first
+- Compare working vs broken behavior
+- Synthesize findings before proposing changes
+</analyze-mode>
+
+---
+`;
+
+const TDD_MESSAGE = `<tdd-mode>
+[TDD MODE ACTIVATED]
+Write or update tests first when practical, confirm they fail for the right reason, then implement the minimal fix and re-run verification.
+</tdd-mode>
+
+---
+`;
+
+const CODE_REVIEW_MESSAGE = `<code-review-mode>
+[CODE REVIEW MODE ACTIVATED]
+Perform a comprehensive code review of the relevant changes or target area. Focus on correctness, maintainability, edge cases, regressions, and test adequacy before recommending changes.
+</code-review-mode>
+
+---
+`;
+
+const SECURITY_REVIEW_MESSAGE = `<security-review-mode>
+[SECURITY REVIEW MODE ACTIVATED]
+Perform a focused security review of the relevant changes or target area. Check trust boundaries, auth/authz, data exposure, input validation, command/file access, secrets handling, and escalation risks before recommending changes.
+</security-review-mode>
+
+---
+`;
+
+const SEARCH_MESSAGE = `<search-mode>
+MAXIMIZE SEARCH EFFORT. Launch multiple background agents IN PARALLEL:
+- explore agents (codebase patterns, file structures)
+- document-specialist agents (remote repos, official docs, GitHub examples)
+Plus direct tools: Grep, Glob
+NEVER stop at first result - be exhaustive.
+</search-mode>
 
 ---
 `;
@@ -71,14 +118,29 @@ function extractPrompt(input) {
 }
 
 // Sanitize text to prevent false positives from code blocks, XML tags, URLs, and file paths
+const ANTI_SLOP_EXPLICIT_PATTERN = /\b(ai[\s-]?slop|anti[\s-]?slop|deslop|de[\s-]?slop)\b/i;
+const ANTI_SLOP_ACTION_PATTERN = /\b(clean(?:\s*up)?|cleanup|refactor|simplify|dedupe|de-duplicate|prune)\b/i;
+const ANTI_SLOP_SMELL_PATTERN = /\b(slop|duplicate(?:d|s)?|duplication|dead\s+code|unused\s+code|over[\s-]?abstract(?:ion|ed)?|wrapper\s+layers?|boundary\s+violations?|needless\s+abstractions?|unnecessary\s+abstractions?|ai[\s-]?generated|generated\s+code|tech\s+debt)\b/i;
+
+function isAntiSlopCleanupRequest(text) {
+  return ANTI_SLOP_EXPLICIT_PATTERN.test(text) ||
+    (ANTI_SLOP_ACTION_PATTERN.test(text) && ANTI_SLOP_SMELL_PATTERN.test(text));
+}
+
 function sanitizeForKeywordDetection(text) {
   return text
+    // 0. Strip HTML/markdown comments before tag stripping
+    .replace(/<!--[\s\S]*?-->/g, '')
     // 1. Strip XML-style tag blocks: <tag-name ...>...</tag-name> (multi-line, greedy on tag name)
     .replace(/<(\w[\w-]*)[\s>][\s\S]*?<\/\1>/g, '')
     // 2. Strip self-closing XML tags: <tag-name />, <tag-name attr="val" />
     .replace(/<\w[\w-]*(?:\s[^>]*)?\s*\/>/g, '')
     // 3. Strip URLs: http://... or https://... up to whitespace
     .replace(/https?:\/\/[^\s)>\]]+/g, '')
+    // 3.5 Strip block quotes and markdown table rows - these are usually reference content
+    .replace(/^\s*>\s.*$/gm, '')
+    .replace(/^\s*\|(?:[^|\n]*\|){2,}\s*$/gm, '')
+    .replace(/^\s*\|?(?:\s*:?-{3,}:?\s*\|){1,}\s*$/gm, '')
     // 4. Strip file paths: /foo/bar/baz or foo/bar/baz — uses lookbehind (Node.js supports it)
     // The TypeScript version (index.ts) uses capture group + $1 replacement for broader compat
     .replace(/(?<=^|[\s"'`(])(?:\/)?(?:[\w.-]+\/)+[\w.-]+/gm, '')
@@ -88,30 +150,213 @@ function sanitizeForKeywordDetection(text) {
     .replace(/`[^`]+`/g, '');
 }
 
+const INFORMATIONAL_INTENT_PATTERNS = [
+  /\b(?:what(?:'s|\s+is)|what\s+are|how\s+(?:to|do\s+i)\s+use|explain|explanation|tell\s+me\s+about|describe)\b/i,
+  /(?:뭐야|뭔데|무엇(?:이야|인가요)?|어떻게|설명(?!서\s*(?:작성|만들|생성|추가|업데이트|수정|편집|쓰))|사용법|알려\s?줘|알려줄래|소개해?\s?줘|소개\s*부탁|설명해\s?줘|뭐가\s*달라|어떤\s*기능|기능\s*(?:알려|설명|뭐)|방법\s*(?:알려|설명|뭐))/u,
+  /(?:とは|って何|使い方|説明)/u,
+  /(?:什么是|什麼是|怎(?:么|樣)用|如何使用|解释|說明|说明)/u,
+];
+const INFORMATIONAL_CONTEXT_WINDOW = 80;
+const QUOTED_SPAN_PATTERN =
+  /"[^"\n]{1,400}"|'[^'\n]{1,400}'|“[^”\n]{1,400}”|‘[^’\n]{1,400}’/g;
+const REFERENCE_META_PATTERNS = [
+  /\b(?:vs\.?|versus|compared\s+to|comparison|compare|article|blog\s+post|documentation|docs?|reference)\b/i,
+  /(?:비교|차이|설명|정리|문서|자료|가이드|이\s*(?:글|비교|문서)는|블로그)/u,
+  /\b(?:this\s+(?:article|comparison|guide|documentation|doc)|quoted|quote(?:d)?)\b/i,
+];
+const REFERENCE_EXPLANATION_PATTERNS = [
+  /(?:^|\n)\s*(?:결론|특징|예시|요약|장점|단점|설명)\s*[:：]/u,
+  /\b(?:summary|conclusion|key\s+points?|example|examples|pros|cons|overview)\s*:/i,
+  /[^\n]{1,80}=\s*["“]/,
+  /[→⇒]/,
+];
+const QUESTION_FOLLOWUP_PATTERNS = [
+  /\b(?:how\s+many|how\s+much|why|what\s+happened|what\s+went\s+wrong|token\s+budget|cost|pricing)\b/i,
+  /(?:왜|얼마|몇\s*번|몇번|토큰|가격|비용|질문)/u,
+];
+const MODE_REFERENCE_PATTERN =
+  /\b(?:ralph|autopilot|auto[\s-]?pilot|ultrawork|ulw|ralplan|ultrathink|deepsearch|deep[\s-]?analyze|deepanalyze|deep[\s-]interview|ouroboros|ccg|claude-codex-gemini|deerflow)\b/gi;
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getLineBounds(text, position) {
+  const start = text.lastIndexOf('\n', Math.max(0, position - 1)) + 1;
+  const nextNewline = text.indexOf('\n', position);
+  const end = nextNewline === -1 ? text.length : nextNewline;
+  return { start, end };
+}
+
+function isWithinQuotedSpan(text, position) {
+  for (const match of text.matchAll(QUOTED_SPAN_PATTERN)) {
+    if (match.index === undefined) continue;
+    const start = match.index;
+    const end = start + match[0].length;
+    if (position >= start && position < end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function stripQuotedSpans(text) {
+  return text.replace(QUOTED_SPAN_PATTERN, ' ');
+}
+
+function countDistinctModeReferences(text) {
+  const matches = text.match(MODE_REFERENCE_PATTERN) ?? [];
+  const normalized = new Set(
+    matches.map((match) => match.toLowerCase().replace(/\s+/g, '').replace(/-/g, '')),
+  );
+  return normalized.size;
+}
+
+function looksLikeReferenceContent(text) {
+  const hasReferenceMeta = REFERENCE_META_PATTERNS.some((pattern) => pattern.test(text));
+  const hasExplanationShape = REFERENCE_EXPLANATION_PATTERNS.some((pattern) => pattern.test(text));
+  const hasAnyModeMention = countDistinctModeReferences(text) >= 1;
+  const hasMultipleModeMentions = countDistinctModeReferences(text) >= 2;
+  const hasQuestionOutsideQuotes = QUESTION_FOLLOWUP_PATTERNS.some((pattern) =>
+    pattern.test(stripQuotedSpans(text)),
+  );
+
+  return (
+    (hasReferenceMeta && (hasExplanationShape || hasAnyModeMention || hasQuestionOutsideQuotes)) ||
+    (hasExplanationShape && (hasMultipleModeMentions || hasQuestionOutsideQuotes)) ||
+    (hasMultipleModeMentions && hasQuestionOutsideQuotes)
+  );
+}
+
+function hasActivationIntentNearKeyword(context, keyword) {
+  const escaped = escapeRegExp((keyword || '').trim());
+  if (!escaped) return false;
+
+  const patterns = [
+    new RegExp(`\\b(?:use|run|start|enable|activate|invoke|trigger|launch)\\b[^\\n]{0,28}\\b${escaped}\\b`, 'i'),
+    new RegExp(`\\b(?:fix|debug|investigate|resolve|handle|patch|address)\\b[^\\n]{0,28}\\b(?:issue|bug|problem|error)\\b[^\\n]{0,12}\\b(?:with|in)\\s+\\b${escaped}\\b`, 'i'),
+
+  ];
+
+  return patterns.some((pattern) => pattern.test(context));
+}
+
+function hasDiagnosticIntentNearKeyword(context, keyword) {
+  const escaped = escapeRegExp((keyword || '').trim());
+  if (!escaped) return false;
+
+  const patterns = [
+    new RegExp(`\\b${escaped}\\b[^\\n]{0,48}\\b(?:keeps?\\s+(?:looping|re-?running)|has\\s+(?:a\\s+)?(?:bug|issue|problem|error)|is\\s+(?:stuck|broken|failing)|loop(?:ing)?)\\b`, 'i'),
+    new RegExp(`\\b(?:bug|issue|problem|error)\\b[^\\n]{0,16}\\b(?:with|in)\\s+\\b${escaped}\\b`, 'i'),
+    new RegExp(`${escaped}.{0,14}(?:자꾸|계속).{0,14}(?:재실행|반복|루프|멈추)`, 'u'),
+  ];
+
+  return patterns.some((pattern) => pattern.test(context));
+}
+
+function isInformationalKeywordContext(text, position, keywordLength, keywordText) {
+  const start = Math.max(0, position - INFORMATIONAL_CONTEXT_WINDOW);
+  const end = Math.min(text.length, position + keywordLength + INFORMATIONAL_CONTEXT_WINDOW);
+  const context = text.slice(start, end);
+  const lineBounds = getLineBounds(text, position);
+  const line = text.slice(lineBounds.start, lineBounds.end);
+  const questionOutsideQuotes = stripQuotedSpans(text);
+  const keywordInsideQuotes = isWithinQuotedSpan(text, position);
+
+  if (keywordText) {
+    if (hasActivationIntentNearKeyword(context, keywordText)) {
+      return false;
+    }
+    if (hasDiagnosticIntentNearKeyword(context, keywordText)) {
+      return true;
+    }
+  }
+
+  if (/^\s*>\s/.test(line) || /^\s*\|(?:[^|\n]*\|){2,}\s*$/.test(line)) {
+    return true;
+  }
+
+  if (keywordInsideQuotes && QUESTION_FOLLOWUP_PATTERNS.some((pattern) => pattern.test(questionOutsideQuotes))) {
+    return true;
+  }
+
+  if (looksLikeReferenceContent(text)) {
+    return true;
+  }
+
+  return INFORMATIONAL_INTENT_PATTERNS.some((pattern) => pattern.test(context));
+}
+
+function hasActionableKeyword(text, pattern) {
+  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+  const globalPattern = new RegExp(pattern.source, flags);
+
+  for (const match of text.matchAll(globalPattern)) {
+    if (match.index === undefined) {
+      continue;
+    }
+
+    if (isInformationalKeywordContext(text, match.index, match[0].length, match[0])) {
+      continue;
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 // Create state file for a mode
+const SESSION_ID_ALLOWLIST = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
+
 function activateState(directory, prompt, stateName, sessionId) {
-  const state = {
-    active: true,
-    started_at: new Date().toISOString(),
-    original_prompt: prompt,
-    session_id: sessionId || undefined,
-    reinforcement_count: 0,
-    last_checked_at: new Date().toISOString()
-  };
+  let state;
 
-  // Write to local .omc/state directory
-  const localDir = join(directory, '.omc', 'state');
-  if (!existsSync(localDir)) {
-    try { mkdirSync(localDir, { recursive: true }); } catch {}
+  if (stateName === 'ralph') {
+    // Ralph needs 'prompt' field (not 'original_prompt') — persistent-mode.mjs reads ralph.state.prompt
+    state = {
+      active: true,
+      iteration: 1,
+      max_iterations: 100,
+      started_at: new Date().toISOString(),
+      prompt: prompt,
+      session_id: sessionId || undefined,
+      project_path: directory,
+      reinforcement_count: 0,
+      awaiting_confirmation: true,
+      last_checked_at: new Date().toISOString()
+    };
+  } else {
+    state = {
+      active: true,
+      started_at: new Date().toISOString(),
+      original_prompt: prompt,
+      session_id: sessionId || undefined,
+      project_path: directory,
+      reinforcement_count: 0,
+      awaiting_confirmation: true,
+      last_checked_at: new Date().toISOString()
+    };
   }
-  try { writeFileSync(join(localDir, `${stateName}-state.json`), JSON.stringify(state, null, 2)); } catch {}
 
-  // Write to global .omc/state directory
+  // Write to session-scoped local path when sessionId is available (must match persistent-mode.mjs reads)
+  const stateDir = join(directory, '.omc', 'state');
+  const safeSessionId = sessionId && SESSION_ID_ALLOWLIST.test(sessionId) ? sessionId : '';
+  const targetDir = safeSessionId
+    ? join(stateDir, 'sessions', safeSessionId)
+    : stateDir;
+
+  try {
+    if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
+    atomicWriteFileSync(join(targetDir, `${stateName}-state.json`), JSON.stringify(state, null, 2));
+  } catch {}
+
+  // Also write to global fallback
   const globalDir = join(homedir(), '.omc', 'state');
-  if (!existsSync(globalDir)) {
-    try { mkdirSync(globalDir, { recursive: true }); } catch {}
-  }
-  try { writeFileSync(join(globalDir, `${stateName}-state.json`), JSON.stringify(state, null, 2)); } catch {}
+  try {
+    if (!existsSync(globalDir)) mkdirSync(globalDir, { recursive: true });
+    atomicWriteFileSync(join(globalDir, `${stateName}-state.json`), JSON.stringify(state, null, 2));
+  } catch {}
 }
 
 /**
@@ -204,62 +449,14 @@ IMPORTANT: Invoke ALL skills listed above. Start with the first skill IMMEDIATEL
 }
 
 /**
- * Create MCP delegation message (NOT a skill invocation)
+ * Create combined output for multiple skill matches
  */
-function createMcpDelegation(provider, originalPrompt) {
-  const configs = {
-    codex: {
-      tool: 'ask_codex',
-      roles: 'architect, planner, critic, analyst, code-reviewer, security-reviewer, tdd-guide',
-      defaultRole: 'architect',
-    },
-    gemini: {
-      tool: 'ask_gemini',
-      roles: 'designer, writer, vision',
-      defaultRole: 'designer',
-    },
-  };
-  const config = configs[provider];
-  if (!config) return '';
-
-  return `[MAGIC KEYWORD: ${provider.toUpperCase()}]
-
-You MUST delegate this task to the ${provider === 'codex' ? 'Codex' : 'Gemini'} MCP tool.
-
-Steps:
-1. Call ToolSearch("mcp") to discover available MCP tools (required -- they are deferred and not in your tool list by default)
-2. Write a prompt file to \`.omc/prompts/${provider}-{purpose}-{timestamp}.md\` containing clear task instructions derived from the user's request
-3. Determine the appropriate agent_role from: ${config.roles}
-4. Call the \`${config.tool}\` MCP tool with:
-   - agent_role: <detected or default "${config.defaultRole}">
-   - prompt_file: <path you wrote>
-   - output_file: <corresponding -summary.md path>
-   - context_files: <relevant files from user's request>
-
-If ToolSearch returns no MCP tools, the MCP server is not configured. Fall back to the equivalent Claude agent instead.
-
-User request:
-${originalPrompt}
-
-IMPORTANT: Do NOT invoke a skill. Discover MCP tools via ToolSearch first, then delegate IMMEDIATELY.`;
-}
-
-/**
- * Create combined output for skills + MCP delegations
- */
-function createCombinedOutput(skillMatches, delegationMatches, originalPrompt) {
+function createCombinedOutput(skillMatches, originalPrompt) {
   const parts = [];
-
   if (skillMatches.length > 0) {
     parts.push('## Section 1: Skill Invocations\n\n' + createMultiSkillInvocation(skillMatches, originalPrompt));
   }
-
-  if (delegationMatches.length > 0) {
-    const delegationParts = delegationMatches.map(d => createMcpDelegation(d.name, originalPrompt));
-    parts.push('## Section ' + (skillMatches.length > 0 ? '2' : '1') + ': MCP Delegations\n\n' + delegationParts.join('\n\n---\n\n'));
-  }
-
-  const allNames = [...skillMatches, ...delegationMatches].map(m => m.name.toUpperCase());
+  const allNames = skillMatches.map(m => m.name.toUpperCase());
   return `[MAGIC KEYWORDS DETECTED: ${allNames.join(', ')}]\n\n${parts.join('\n\n---\n\n')}\n\nIMPORTANT: Complete ALL sections above in order.`;
 }
 
@@ -276,24 +473,11 @@ function resolveConflicts(matches) {
 
   let resolved = [...matches];
 
-  // Team beats autopilot (legacy ultrapilot semantics)
-  if (names.includes('team') && names.includes('autopilot')) {
-    resolved = resolved.filter(m => m.name !== 'autopilot');
-  }
-
-  // Team beats ultrapilot (team is the canonical implementation)
-  if (names.includes('team') && names.includes('ultrapilot')) {
-    resolved = resolved.filter(m => m.name !== 'ultrapilot');
-  }
-
-  // Ralph + Team coexist (team-ralph linked mode)
-  // Both keywords are preserved so the skill can detect the composition.
+  // Team keyword detection removed — team is now explicit-only via /team skill.
 
   // Sort by priority order
-const priorityOrder = ['cancel','ralph','autopilot','team','ultrawork',
-    'pipeline','ralplan','plan','tdd','ultrathink','deepsearch','analyze',
-    'pipeline','ccg','ralplan','plan','tdd','research','ultrathink','deepsearch','analyze',
-    'codex','gemini'];
+  const priorityOrder = ['cancel','ralph','autopilot','ultrawork',
+    'ccg','ralplan','deep-interview','ai-slop-cleaner','tdd','code-review','security-review','ultrathink','deepsearch','analyze'];
   resolved.sort((a, b) => priorityOrder.indexOf(a.name) - priorityOrder.indexOf(b.name));
 
   return resolved;
@@ -315,12 +499,15 @@ function createHookOutput(additionalContext) {
 
 /**
  * Check if the team feature is enabled in Claude Code settings.
- * Reads ~/.claude/settings.json and checks for CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var.
+ * Reads settings.json from [$CLAUDE_CONFIG_DIR|~/.claude] and checks for
+ * CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS env var.
  * @returns {boolean} true if team feature is enabled
  */
 function isTeamEnabled() {
   try {
-    const settingsPath = join(homedir(), '.claude', 'settings.json');
+    // Check settings.json first (authoritative, user-controlled)
+    const cfgDir = getClaudeConfigDir();
+    const settingsPath = join(cfgDir, 'settings.json');
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
       if (settings.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1' ||
@@ -328,6 +515,7 @@ function isTeamEnabled() {
         return true;
       }
     }
+    // Fallback: check env var (for dev/CI environments)
     if (process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1' ||
         process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === 'true') {
       return true;
@@ -338,6 +526,20 @@ function isTeamEnabled() {
 
 // Main
 async function main() {
+  // Skip guard: check OMC_SKIP_HOOKS env var (see issue #838)
+  const _skipHooks = (process.env.OMC_SKIP_HOOKS || '').split(',').map(s => s.trim());
+  if (process.env.DISABLE_OMC === '1' || _skipHooks.includes('keyword-detector')) {
+    console.log(JSON.stringify({ continue: true }));
+    return;
+  }
+
+  // Team worker guard: prevent keyword detection inside team workers to avoid
+  // infinite spawning loops (worker detects "team" -> invokes team skill -> spawns more workers)
+  if (process.env.OMC_TEAM_WORKER) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   try {
     const input = await readStdin();
     if (!input.trim()) {
@@ -361,84 +563,81 @@ async function main() {
     const matches = [];
 
     // Cancel keywords
-    if (/\b(cancelomc|stopomc)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(cancelomc|stopomc)\b/i)) {
       matches.push({ name: 'cancel', args: '' });
     }
 
     // Ralph keywords
-    if (/\b(ralph)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(ralph)\b|(랄프)(?!로렌)/i)) {
       matches.push({ name: 'ralph', args: '' });
     }
 
     // Autopilot keywords
-    if (/\b(autopilot|auto[\s-]?pilot|fullsend|full\s+auto)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(autopilot|auto[\s-]?pilot|fullsend|full\s+auto)\b|(오토파일럿)/i)) {
       matches.push({ name: 'autopilot', args: '' });
     }
 
-    // Team keywords (intent-gated to prevent false positives on bare "team")
-    // Uses negative lookbehind to exclude possessive/article contexts like "my team", "the team"
-    const hasTeamKeyword = /(?<!\b(?:my|the|our|a|his|her|their|its)\s)\bteam\b/i.test(cleanPrompt) ||
-      /\bcoordinated\s+team\b/i.test(cleanPrompt);
-    if (hasTeamKeyword && isTeamEnabled()) {
-      matches.push({ name: 'team', args: '' });
-    }
+    // Team keyword detection removed — team mode is now explicit-only via /team skill.
+    // This prevents infinite spawning when Claude workers receive prompts containing "team".
 
     // Ultrawork keywords
-    if (/\b(ultrawork|ulw)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(ultrawork|ulw)\b|(울트라워크)/i)) {
       matches.push({ name: 'ultrawork', args: '' });
     }
 
-    // Pipeline keywords
-    if (/\bagent\s+pipeline\b/i.test(cleanPrompt) || /\bchain\s+agents\b/i.test(cleanPrompt)) {
-      matches.push({ name: 'pipeline', args: '' });
-    }
 
     // CCG keywords (Claude-Codex-Gemini tri-model orchestration)
-    if (/\b(ccg|claude-codex-gemini)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(ccg|claude-codex-gemini)\b|(씨씨지)/i)) {
       matches.push({ name: 'ccg', args: '' });
     }
 
     // Ralplan keyword
-    if (/\b(ralplan)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(ralplan)\b|(랄플랜)/i)) {
       matches.push({ name: 'ralplan', args: '' });
     }
 
-    // Plan keywords
-    if (/\b(plan this|plan the)\b/i.test(cleanPrompt)) {
-      matches.push({ name: 'plan', args: '' });
+    // Deep interview keywords
+    if (hasActionableKeyword(cleanPrompt, /\b(deep[\s-]interview|ouroboros)\b|(딥인터뷰)/i)) {
+      matches.push({ name: 'deep-interview', args: '' });
+    }
+
+    // AI slop cleanup keywords
+    if (isAntiSlopCleanupRequest(cleanPrompt)) {
+      matches.push({ name: 'ai-slop-cleaner', args: '' });
     }
 
     // TDD keywords
-    if (/\b(tdd)\b/i.test(cleanPrompt) ||
-        /\btest\s+first\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(tdd)\b|(테스트\s?퍼스트)/i) ||
+        hasActionableKeyword(cleanPrompt, /\btest\s+first\b/i) ||
+        hasActionableKeyword(cleanPrompt, /\bred\s+green\b/i)) {
       matches.push({ name: 'tdd', args: '' });
     }
 
+    // Code review keywords
+    if (hasActionableKeyword(cleanPrompt, /\b(code\s+review|review\s+code)\b|(코드\s?리뷰)(?!어)/i)) {
+      matches.push({ name: 'code-review', args: '' });
+    }
+
+    // Security review keywords
+    if (hasActionableKeyword(cleanPrompt, /\b(security\s+review|review\s+security)\b|(보안\s?리뷰)(?!어)/i)) {
+      matches.push({ name: 'security-review', args: '' });
+    }
+
     // Ultrathink keywords
-    if (/\b(ultrathink)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(ultrathink)\b|(울트라씽크)/i)) {
       matches.push({ name: 'ultrathink', args: '' });
     }
 
     // Deepsearch keywords
-    if (/\b(deepsearch)\b/i.test(cleanPrompt) ||
-        /\bsearch\s+the\s+codebase\b/i.test(cleanPrompt) ||
-        /\bfind\s+in\s+(the\s+)?codebase\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(deepsearch)\b|(딥\s?서치)/i) ||
+        hasActionableKeyword(cleanPrompt, /\bsearch\s+the\s+codebase\b/i) ||
+        hasActionableKeyword(cleanPrompt, /\bfind\s+in\s+(the\s+)?codebase\b/i)) {
       matches.push({ name: 'deepsearch', args: '' });
     }
 
     // Analyze keywords
-    if (/\b(deep[\s-]?analyze|deepanalyze)\b/i.test(cleanPrompt)) {
+    if (hasActionableKeyword(cleanPrompt, /\b(deep[\s-]?analyze|deepanalyze)\b|(딥\s?분석)/i)) {
       matches.push({ name: 'analyze', args: '' });
-    }
-
-    // Codex keywords (intent-phrase only)
-    if (/\b(ask|use|delegate\s+to)\s+(codex|gpt)\b/i.test(cleanPrompt)) {
-      matches.push({ name: 'codex', args: '' });
-    }
-
-    // Gemini keywords (intent-phrase only)
-    if (/\b(ask|use|delegate\s+to)\s+gemini\b/i.test(cleanPrompt)) {
-      matches.push({ name: 'gemini', args: '' });
     }
 
     // No matches - pass through
@@ -462,14 +661,14 @@ async function main() {
 
     // Handle cancel specially - clear states and emit
     if (resolved.length > 0 && resolved[0].name === 'cancel') {
-      clearStateFiles(directory, ['ralph', 'autopilot', 'team', 'ultrawork', 'pipeline']);
+      clearStateFiles(directory, ['ralph', 'autopilot', 'ultrawork']);
       console.log(JSON.stringify(createHookOutput(createSkillInvocation('cancel', prompt))));
       return;
     }
 
     // Activate states for modes that need them
     const sessionId = data.sessionId || data.session_id || data.sessionid || '';
-    const stateModes = resolved.filter(m => ['ralph', 'autopilot', 'team', 'ultrawork'].includes(m.name));
+    const stateModes = resolved.filter(m => ['ralph', 'autopilot', 'ultrawork'].includes(m.name));
     for (const mode of stateModes) {
       activateState(directory, prompt, mode.name, sessionId);
     }
@@ -477,49 +676,38 @@ async function main() {
     // Special: Ralph with ultrawork (ralph always includes ultrawork)
     const hasRalph = resolved.some(m => m.name === 'ralph');
     const hasUltrawork = resolved.some(m => m.name === 'ultrawork');
-    const hasTeam = resolved.some(m => m.name === 'team');
     if (hasRalph && !hasUltrawork) {
       activateState(directory, prompt, 'ultrawork', sessionId);
     }
 
-    // Link ralph + team if both detected (team-ralph composition)
-    if (hasRalph && hasTeam) {
-      linkRalphTeam(directory, sessionId);
+    const additionalContextParts = [];
+    for (const [keywordName, message] of [
+      ['ultrathink', ULTRATHINK_MESSAGE],
+      ['deepsearch', SEARCH_MESSAGE],
+      ['analyze', ANALYZE_MESSAGE],
+      ['tdd', TDD_MESSAGE],
+      ['code-review', CODE_REVIEW_MESSAGE],
+      ['security-review', SECURITY_REVIEW_MESSAGE],
+    ]) {
+      const index = resolved.findIndex(m => m.name === keywordName);
+      if (index !== -1) {
+        resolved.splice(index, 1);
+        additionalContextParts.push(message);
+      }
     }
 
-    // Handle ultrathink specially - prepend message instead of skill invocation
-    const ultrathinkIndex = resolved.findIndex(m => m.name === 'ultrathink');
-    if (ultrathinkIndex !== -1) {
-      // Remove ultrathink from skill list
-      resolved.splice(ultrathinkIndex, 1);
-
-      // If ultrathink was the only match, emit message
-      if (resolved.length === 0) {
-        console.log(JSON.stringify(createHookOutput(ULTRATHINK_MESSAGE)));
-        return;
-      }
-
-      // Otherwise, prepend ultrathink message to skill invocation
-      const skillMessage = createMultiSkillInvocation(resolved, prompt);
-      console.log(JSON.stringify(createHookOutput(ULTRATHINK_MESSAGE + skillMessage)));
+    if (resolved.length === 0 && additionalContextParts.length > 0) {
+      console.log(JSON.stringify(createHookOutput(additionalContextParts.join(''))));
       return;
     }
 
-    // Split resolved into skills vs MCP delegations
-    const MCP_KEYWORDS = ['codex', 'gemini'];
-    const skillMatches = resolved.filter(m => !MCP_KEYWORDS.includes(m.name));
-    const delegationMatches = resolved.filter(m => MCP_KEYWORDS.includes(m.name));
+    if (resolved.length > 0) {
+      additionalContextParts.push(createMultiSkillInvocation(resolved, prompt));
+    }
 
-    if (skillMatches.length > 0 && delegationMatches.length > 0) {
-      // Combined: skills + MCP delegations
-      console.log(JSON.stringify(createHookOutput(createCombinedOutput(skillMatches, delegationMatches, prompt))));
-    } else if (delegationMatches.length > 0) {
-      // MCP delegation only
-      const delegationParts = delegationMatches.map(d => createMcpDelegation(d.name, prompt));
-      console.log(JSON.stringify(createHookOutput(delegationParts.join('\n\n---\n\n'))));
-    } else {
-      // Skills only (existing behavior)
-      console.log(JSON.stringify(createHookOutput(createMultiSkillInvocation(skillMatches, prompt))));
+    if (additionalContextParts.length > 0) {
+      console.log(JSON.stringify(createHookOutput(additionalContextParts.join(''))));
+      return;
     }
   } catch (error) {
     // On any error, allow continuation

@@ -15,6 +15,37 @@ typeset -g AGENT_ALIAS_PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/port
 typeset -g AGENT_ALIAS_PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
 typeset -g AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$AGENT_ALIAS_PORTKEY_STATE/local-api-key}"
 
+agent_alias_portkey_is_host() {
+    emulate -L zsh
+    [[ "$(hostname -s 2>/dev/null)" == "${AGENT_ALIAS_PORTKEY_HOST%%.*}" ]]
+}
+
+agent_alias_portkey_remote_token_host() {
+    emulate -L zsh
+    print -r -- "${PORTKEY_SSH_HOST:-$AGENT_ALIAS_PORTKEY_HOST}"
+}
+
+agent_alias_portkey_fetch_remote_token_file() {
+    emulate -L zsh
+    ! agent_alias_portkey_is_host || return 1
+    (( ${+commands[ssh]} )) || return 1
+
+    local ssh_host token tmp
+    ssh_host="$(agent_alias_portkey_remote_token_host)" || return $?
+    token="$(
+        ssh -o BatchMode=yes -o ConnectTimeout="${PORTKEY_SSH_CONNECT_TIMEOUT:-5}" \
+            "$ssh_host" 'cat ~/.local/state/portkey/local-api-key' 2>/dev/null
+    )" || return $?
+    [[ -n "$token" ]] || return 1
+
+    [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
+    tmp="$(mktemp "$AGENT_ALIAS_PORTKEY_STATE/local-api-key.tmp.XXXXXX")" || return $?
+    umask 077
+    print -rn -- "$token" >"$tmp"
+    chmod 600 "$tmp"
+    mv "$tmp" "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+}
+
 agent_alias_portkey_config_version() {
     emulate -L zsh
     (( $# > 0 )) || {
@@ -72,6 +103,15 @@ agent_alias_portkey_local_token() {
     fi
 
     if [[ -r "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE" ]]; then
+        <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+        return 0
+    fi
+
+    if ! agent_alias_portkey_is_host; then
+        agent_alias_portkey_fetch_remote_token_file || {
+            print -u2 -- "Portkey local token missing at $AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(agent_alias_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN."
+            return 1
+        }
         <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
         return 0
     fi
@@ -157,6 +197,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -169,6 +210,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_HAIKU_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_OPUS_MODEL MiniMax-M2.7
@@ -185,11 +227,11 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
-                ENABLE_TOOL_SEARCH
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -209,6 +251,41 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
+        ccfw-direct)
+            # Direct Fireworks via their Anthropic-compat endpoint. Bypasses Portkey.
+            local _ccfw_direct_opus_model="accounts/fireworks/models/kimi-k2p6"
+            local _ccfw_direct_sonnet_model="accounts/fireworks/models/minimax-m2p7"
+            local _ccfw_direct_haiku_model="accounts/fireworks/models/gpt-oss-120b"
+            local _ccfw_direct_small_fast_model="accounts/fireworks/models/gpt-oss-120b"
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_direct_sonnet_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_direct_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_direct_opus_model"
+                ANTHROPIC_MODEL "$_ccfw_direct_sonnet_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccfw_direct_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN "${FIREWORKS_API_KEY:-}"
+                ANTHROPIC_BASE_URL https://api.fireworks.ai/inference
+                API_TIMEOUT_MS 3000000
+            )
+            ;;
         ccfw|ccfw-happy)
             # Portkey fleet with fallback chains encoded in
             # ~/.local/dotfiles/configs/portkey/config.json:
@@ -225,6 +302,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -239,6 +317,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
@@ -304,6 +383,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -318,6 +398,7 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfast_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfast_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfast_opus_model"

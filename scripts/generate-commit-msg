@@ -88,7 +88,7 @@ Environment:
   COMMIT_CLI            Override the CLI command (bypasses alias env)
   COMMIT_ALIAS          Override the default agent alias (default: cc-fast)
   COMMIT_MODEL          Override the default model (default: alias model, then fleet-haiku)
-  ANTHROPIC_API_KEY     If set, enables --bare mode for speed
+  COMMIT_BARE_API_KEY   Placeholder key for Claude --bare when proxy auth uses headers
 
 Examples:
   git diff --cached | generate-commit-msg
@@ -150,6 +150,18 @@ if [[ -z "$MODEL" ]]; then
   MODEL="${MODEL:-fleet-haiku}"
 fi
 
+has_bare_arg() {
+  local arg
+  for arg in "$@"; do
+    [[ "$arg" == "--bare" ]] && return 0
+  done
+  return 1
+}
+
+bare_api_key() {
+  printf '%s\n' "${COMMIT_BARE_API_KEY:-dummy-api-key}"
+}
+
 run_commit_cli() {
   if [[ "$CLI_MODE" == "alias" ]]; then
     zsh -c '
@@ -160,8 +172,13 @@ run_commit_cli() {
       shift 2
       source "$aliases_file"
       agent_alias_export_env "$alias_name"
+      if (( ${argv[(Ie)--bare]} )) && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+        export ANTHROPIC_API_KEY="${COMMIT_BARE_API_KEY:-dummy-api-key}"
+      fi
       exec claude "$@"
     ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$DEFAULT_COMMIT_ALIAS" "$@"
+  elif has_bare_arg "$@" && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    ANTHROPIC_API_KEY="$(bare_api_key)" "${CLI_CMD[@]}" "$@"
   else
     "${CLI_CMD[@]}" "$@"
   fi

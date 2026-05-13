@@ -2,9 +2,12 @@ _webfront_wrapper_names=(
     p
     cc
     ccm
+    ccm-direct
+    ccfw-direct
     ccz
     ccz-direct
     ccm-happy
+    ccm-direct-happy
     ccz-happy
     ccz-direct-happy
     yolo
@@ -29,7 +32,7 @@ _webfront_wrappers_refresh() {
     if [[ -d $_webfront_wrapper_claude_completion_dir ]]; then
         (( ${fpath[(I)$_webfront_wrapper_claude_completion_dir]} )) || fpath=($_webfront_wrapper_claude_completion_dir $fpath)
         autoload -Uz _claude
-        compdef _claude cc ccm ccz ccz-direct ccm-happy ccz-happy ccz-direct-happy yolo
+        compdef _claude cc ccm ccm-direct ccfw-direct ccz ccz-direct ccm-happy ccm-direct-happy ccz-happy ccz-direct-happy yolo
     fi
 }
 

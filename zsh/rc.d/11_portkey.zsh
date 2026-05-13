@@ -1,5 +1,5 @@
 # Portkey AI Gateway: self-hosted OSS gateway helpers.
-# Portkey backs the ccfw/ccz/cc-fast alias families. The cc-fast-pk names are
+# Portkey backs the ccm/ccfw/ccz/cc-fast alias families. The cc-fast-pk names are
 # kept as compatibility wrappers over the same Portkey route.
 
 # Endpoint convention: Portkey serves Anthropic-compatible /v1/messages at the
@@ -10,12 +10,38 @@ typeset -g _PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
 typeset -g _PORTKEY_BASE_URL="http://${_PORTKEY_HOST}:${_PORTKEY_PORT}"
 typeset -g _PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
 typeset -g _PORTKEY_CONFIG_DIR="${_PORTKEY_CONFIG_FILE:h}"
-typeset -g _PORTKEY_FORK_DIR="${PORTKEY_FORK_DIR:-/home/ctaylor/repos/worktrees/portkey-gateway-2.0.0}"
+typeset -g _PORTKEY_FORK_DIR="${PORTKEY_FORK_DIR:-/home/ctaylor/repos/portkey-gateway}"
 typeset -g _PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$_PORTKEY_STATE/local-api-key}"
 typeset -g _PORTKEY_TIMEOUT_MS="${PORTKEY_TIMEOUT_MS:-75000}"
 
 _portkey_is_host() {
   [[ "$(hostname -s 2>/dev/null)" == "ceres" ]]
+}
+
+_portkey_remote_token_host() {
+  emulate -L zsh
+  print -r -- "${PORTKEY_SSH_HOST:-$_PORTKEY_HOST}"
+}
+
+_portkey_fetch_remote_token_file() {
+  emulate -L zsh
+  ! _portkey_is_host || return 1
+  (( ${+commands[ssh]} )) || return 1
+
+  local ssh_host token tmp
+  ssh_host="$(_portkey_remote_token_host)" || return $?
+  token="$(
+    ssh -o BatchMode=yes -o ConnectTimeout="${PORTKEY_SSH_CONNECT_TIMEOUT:-5}" \
+      "$ssh_host" 'cat ~/.local/state/portkey/local-api-key' 2>/dev/null
+  )" || return $?
+  [[ -n $token ]] || return 1
+
+  [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
+  tmp="$(mktemp "$_PORTKEY_STATE/local-api-key.tmp.XXXXXX")" || return $?
+  umask 077
+  print -rn -- "$token" >"$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$_PORTKEY_LOCAL_TOKEN_FILE"
 }
 
 _portkey_config_version() {
@@ -104,6 +130,18 @@ _portkey_session_id() {
   <"$session_file"
 }
 
+_portkey_claude_api_key_for_args() {
+  emulate -L zsh
+  local arg
+  for arg in "$@"; do
+    if [[ "$arg" == "--bare" ]]; then
+      print -r -- "${PORTKEY_CLAUDE_BARE_API_KEY:-dummy-api-key}"
+      return 0
+    fi
+  done
+  print -r -- ""
+}
+
 _portkey_headers() {
   emulate -L zsh
   local alias_name="${1:?usage: _portkey_headers <alias> <route> [route...]}"
@@ -144,6 +182,42 @@ _portkey_prepare_local_conf() {
   fi
 }
 
+_portkey_provider_env_names() {
+  emulate -L zsh
+  jq -r '.. | objects | .api_key_env? // empty' "$_PORTKEY_CONFIG_FILE" | sort -u
+}
+
+_portkey_write_provider_env_file() {
+  emulate -L zsh
+  local -a names missing
+  local name value tmp env_file="$_PORTKEY_STATE/env"
+
+  names=("${(@f)$(_portkey_provider_env_names)}") || return $?
+  (( ${#names} > 0 )) || return 0
+
+  for name in $names; do
+    if [[ -z ${(P)name:-} ]]; then
+      missing+=("$name")
+    fi
+  done
+
+  if (( ${#missing} > 0 )); then
+    print "Portkey provider env file not updated; missing: ${(j:, :)missing}" >&2
+    return 1
+  fi
+
+  [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
+  tmp="$(mktemp)" || return $?
+  {
+    for name in $names; do
+      value="${(P)name}"
+      printf '%s=%s\n' "$name" "$value"
+    done
+  } >"$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$env_file"
+}
+
 _portkey_ensure_local_token_file() {
   emulate -L zsh
   [[ -d $_PORTKEY_STATE ]] || mkdir -p "$_PORTKEY_STATE"
@@ -151,6 +225,12 @@ _portkey_ensure_local_token_file() {
     umask 077
     print -rn -- "$PORTKEY_LOCAL_API_KEY" >"$_PORTKEY_LOCAL_TOKEN_FILE"
   elif [[ ! -r $_PORTKEY_LOCAL_TOKEN_FILE ]]; then
+    if ! _portkey_is_host; then
+      _portkey_fetch_remote_token_file && return 0
+      print -u2 -- "Portkey local token missing at $_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN."
+      return 1
+    fi
+
     local token
     if (( ${+commands[openssl]} )); then
       token="$(openssl rand -hex 32)" || return $?
@@ -162,6 +242,20 @@ _portkey_ensure_local_token_file() {
     umask 077
     print -rn -- "$token" >"$_PORTKEY_LOCAL_TOKEN_FILE"
   fi
+}
+
+portkey-sync-token() {
+  emulate -L zsh
+  if _portkey_is_host; then
+    print -u2 -- "portkey-sync-token: this host owns $_PORTKEY_LOCAL_TOKEN_FILE"
+    return 0
+  fi
+
+  _portkey_fetch_remote_token_file || {
+    print -u2 -- "portkey-sync-token: failed to fetch token from $(_portkey_remote_token_host)"
+    return 1
+  }
+  print -r -- "Portkey local token synced from $(_portkey_remote_token_host)"
 }
 
 _portkey_gateway_env() {
@@ -192,6 +286,7 @@ _portkey_ensure_service() {
 
   _portkey_ensure_local_token_file || return $?
   _portkey_prepare_local_conf || return $?
+  _portkey_write_provider_env_file || return $?
 
   local start_script="$_PORTKEY_FORK_DIR/build/start-server.js"
   [[ -r $start_script ]] || {
@@ -274,6 +369,7 @@ if (( ${+commands[claude]} )); then
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -289,6 +385,7 @@ if (( ${+commands[claude]} )); then
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -296,6 +393,58 @@ if (( ${+commands[claude]} )); then
         ANTHROPIC_MODEL="$opus_model" \
         ANTHROPIC_DEFAULT_OPUS_MODEL="$opus_model" \
         ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          happy yolo --dangerously-skip-permissions "$@"
+        ;;
+      *)
+        print -u2 -- "unsupported Portkey runner: $runner"
+        return 1
+        ;;
+    esac
+  }
+
+  _portkey_run_ccm() {
+    emulate -L zsh
+    local alias_name="${1:?usage: _portkey_run_ccm <alias> <claude|happy> [args...]}"
+    local runner="${2:?usage: _portkey_run_ccm <alias> <claude|happy> [args...]}"
+    shift 2
+    _portkey_ensure_service || return 1
+    local minimax_model="fleet-ccm"
+    local haiku_model="fleet-haiku"
+    local small_fast_model="fleet-small-fast"
+    local headers
+    headers="$(_portkey_headers "$alias_name" "$minimax_model" "$haiku_model" "$small_fast_model")" || return $?
+
+    case "$runner" in
+      claude)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          claude --model "$minimax_model" "$@"
+        ;;
+      happy)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$minimax_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$minimax_model" \
         ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
         ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
         API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
@@ -372,13 +521,16 @@ if (( ${+commands[claude]} )); then
     local haiku_model="fleet-haiku"
     local small_fast_model="fleet-small-fast"
     local headers
+    local api_key
     headers="$(_portkey_headers "$alias_name" "$glm_model" "$opus_model" "$sonnet_model" "$haiku_model" "$small_fast_model")" || return $?
+    api_key="$(_portkey_claude_api_key_for_args "$@")" || return $?
 
     case "$runner" in
       claude)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-        ANTHROPIC_API_KEY="" \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_API_KEY="$api_key" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
         ANTHROPIC_CUSTOM_HEADERS="$headers" \
@@ -393,6 +545,7 @@ if (( ${+commands[claude]} )); then
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
         ANTHROPIC_API_KEY="" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
@@ -426,6 +579,14 @@ if (( ${+commands[claude]} )); then
 
   ccfw-pk-happy() {
     _portkey_run_ccfw ccfw-pk-happy happy "$@"
+  }
+
+  ccm() {
+    _portkey_run_ccm ccm claude "$@"
+  }
+
+  ccm-happy() {
+    _portkey_run_ccm ccm-happy happy "$@"
   }
 
   ccz() {
@@ -472,33 +633,54 @@ if (( ${+commands[claude]} )); then
     local route="${1:-fleet-opus}"
     local prompt="${2:-reply with the single word ready}"
     local max_tokens="${PORTKEY_PROBE_MAX_TOKENS:-256}"
+    if [[ "$max_tokens" != <-> ]]; then
+      print -u2 -- "portkey-probe: PORTKEY_PROBE_MAX_TOKENS must be an integer"
+      return 2
+    fi
     local headers
     headers="$(_portkey_headers "portkey-probe-${route}" "$route")" || return $?
     local -a header_args
     header_args=("${(@f)$(_portkey_header_args "$headers")}")
     local body
-    body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, messages: [{role: "user", content: $prompt}]}')" || return $?
-    curl -sS "$_PORTKEY_BASE_URL/v1/messages" \
-      -H "Content-Type: application/json" \
-      -H "anthropic-version: 2023-06-01" \
-      "${header_args[@]}" \
-      -d "$body" \
-      | jq . 2>/dev/null || cat
+    if (( max_tokens > 4096 )); then
+      body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, stream: true, messages: [{role: "user", content: $prompt}]}')" || return $?
+      curl -sSN "$_PORTKEY_BASE_URL/v1/messages" \
+        -H "Content-Type: application/json" \
+        -H "anthropic-version: 2023-06-01" \
+        "${header_args[@]}" \
+        -d "$body"
+    else
+      body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, messages: [{role: "user", content: $prompt}]}')" || return $?
+      curl -sS "$_PORTKEY_BASE_URL/v1/messages" \
+        -H "Content-Type: application/json" \
+        -H "anthropic-version: 2023-06-01" \
+        "${header_args[@]}" \
+        -d "$body" \
+        | jq . 2>/dev/null || cat
+    fi
   }
 
   portkey-probe-stream() {
     emulate -L zsh
     _portkey_ensure_service || return 1
     local route="${1:-fleet-opus}"
+    local prompt="${2:-count from 1 to 10}"
+    local max_tokens="${PORTKEY_PROBE_MAX_TOKENS:-256}"
+    if [[ "$max_tokens" != <-> ]]; then
+      print -u2 -- "portkey-probe-stream: PORTKEY_PROBE_MAX_TOKENS must be an integer"
+      return 2
+    fi
     local headers
     headers="$(_portkey_headers "portkey-probe-stream-${route}" "$route")" || return $?
     local -a header_args
     header_args=("${(@f)$(_portkey_header_args "$headers")}")
+    local body
+    body="$(jq -cn --arg model "$route" --arg prompt "$prompt" --argjson max_tokens "$max_tokens" '{model: $model, max_tokens: $max_tokens, stream: true, messages: [{role: "user", content: $prompt}]}')" || return $?
     curl -sSN "$_PORTKEY_BASE_URL/v1/messages" \
       -H "Content-Type: application/json" \
       -H "anthropic-version: 2023-06-01" \
       "${header_args[@]}" \
-      -d "{\"model\":\"$route\",\"max_tokens\":256,\"stream\":true,\"messages\":[{\"role\":\"user\",\"content\":\"count from 1 to 10\"}]}"
+      -d "$body"
   }
 
   portkey-stop() {

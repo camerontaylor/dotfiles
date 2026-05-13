@@ -43,34 +43,70 @@ fi
 # Encryption uses the recipient list defined in .sops.yaml (no --age / --config
 # overrides) so multi-machine setups stay multi-recipient.
 
+encrypted_matches_plaintext() {
+    local plaintext=$1
+    local enc_file=$2
+    local tmp result
+
+    [[ -f $enc_file ]] || return 1
+
+    tmp=$(mktemp) || return 2
+    if sops --decrypt "$enc_file" > "$tmp" 2>/dev/null; then
+        if cmp -s "$plaintext" "$tmp"; then
+            result=0
+        else
+            result=$?
+        fi
+    else
+        result=2
+    fi
+    rm -f "$tmp"
+
+    return $result
+}
+
+encrypt_if_changed() {
+    local plaintext=$1
+    local enc_file=$2
+    local compare_status
+
+    if [[ -f $enc_file && $force == false ]]; then
+        if encrypted_matches_plaintext "$plaintext" "$enc_file"; then
+            print "Skipping ${plaintext}: encrypted ${enc_file} already matches plaintext"
+            return 0
+        else
+            compare_status=$?
+            if (( compare_status != 1 )); then
+                print "Failed to decrypt ${enc_file}; use --force to overwrite" >&2
+                return 1
+            fi
+        fi
+    fi
+
+    print "Encrypting ${plaintext} -> ${enc_file}..."
+    if sops --encrypt --input-type binary --output-type binary --output "$enc_file" "$plaintext" 2>/dev/null; then
+        if $git_add; then
+            git add "$enc_file"
+        fi
+        print "  ...done"
+    else
+        print "  ...failed to encrypt $plaintext" >&2
+        return 1
+    fi
+}
+
 local plaintext enc_file
 for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
     [[ $plaintext == *.enc ]] && continue
 
     enc_file="${plaintext}.enc"
-    if ! $force && [[ -f $enc_file && $enc_file -nt $plaintext ]]; then
-        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
-        continue
-    fi
-
-    if [[ ! -f $enc_file || $plaintext -nt $enc_file || $force == true ]]; then
-        print "Encrypting ${plaintext} -> ${enc_file}..."
-        if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
-            if $git_add; then
-                git add $enc_file
-            fi
-            print "  ...done"
-        else
-            print "  ...failed to encrypt $plaintext" >&2
-            exit 1
-        fi
-    fi
+    encrypt_if_changed "$plaintext" "$enc_file"
 done
 
 # SSH config and managed keys
 local -a ssh_plaintexts ssh_enc_files
-ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub)
-ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc)
+ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub)
+ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc ssh/id_ed25519.enc ssh/id_ed25519.pub.enc)
 local i
 for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
     plaintext=${ssh_plaintexts[i]}
@@ -79,42 +115,5 @@ for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
 
     mkdir -p ssh
 
-    if ! $force && [[ -f $enc_file && $enc_file -nt $plaintext ]]; then
-        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
-    else
-        print "Encrypting ${plaintext} -> ${enc_file}..."
-        if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
-            if $git_add; then
-                git add $enc_file
-            fi
-            print "  ...done"
-        else
-            print "  ...failed to encrypt $plaintext" >&2
-            exit 1
-        fi
-    fi
-done
-
-# Portless CA and server certs
-local portless_dir=$HOME/.portless
-for f (ca.pem ca-key.pem server.pem server-key.pem); do
-    plaintext=$portless_dir/$f
-    enc_file=configs/portless/${f}.enc
-    [[ -f $plaintext ]] || continue
-
-    if ! $force && [[ -f $enc_file && $enc_file -nt $plaintext ]]; then
-        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
-        continue
-    fi
-
-    print "Encrypting ${plaintext} -> ${enc_file}..."
-    if sops --encrypt --input-type binary --output-type binary --output $enc_file $plaintext 2>/dev/null; then
-        if $git_add; then
-            git add $enc_file
-        fi
-        print "  ...done"
-    else
-        print "  ...failed to encrypt $plaintext" >&2
-        exit 1
-    fi
+    encrypt_if_changed "$plaintext" "$enc_file"
 done

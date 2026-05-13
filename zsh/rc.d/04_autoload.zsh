@@ -40,7 +40,7 @@ autoload -Uz add-zsh-hook
 # Custom personal functions
 # Don't use -U as we need aliases here
 autoload -z lspath bag fgb fgd fgl fz ineachdir psg vpaste evalcache compdefcache
-autoload -Uz _webfront_root p w cc ccm ccz ccz-direct ccm-happy ccz-happy ccz-direct-happy yolo
+autoload -Uz _webfront_root p w cc ccm ccm-direct ccfw-direct ccz ccz-direct ccm-happy ccm-direct-happy ccz-happy ccz-direct-happy yolo
 
 # Enable wrapper, if original command is available
 (( ${+commands[man]} )) && autoload -Uz wrap-man

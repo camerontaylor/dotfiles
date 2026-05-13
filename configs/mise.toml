@@ -1,5 +1,6 @@
 [tools]
 node = "lts"
+npm = "latest"
 bun = "latest"
 ruby = "latest"
 # npm global packages (migrated from nvm's default-packages)
@@ -21,9 +22,11 @@ age = "latest"
 "npm:@ast-grep/napi" = "latest"
 "npm:oxlint" = "latest"
 "npm:not-claude-code-emulator" = "latest"
-"npm:gsd-pi" = "latest"
 "npm:@oh-my-pi/pi-coding-agent" = "latest"
 uv = "latest"
+"npm:@aoagents/ao" = "latest"
+opencode = "latest"
+"npm:@code-yeongyu/comment-checker" = "latest"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

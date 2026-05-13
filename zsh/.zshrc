@@ -8,16 +8,24 @@ _zshrc_dbg() { (( _ZSHRC_DEBUG )) && echo "[zshrc] $*" >> /tmp/zsh-debug.log; }
 
 _zshrc_dbg "start"
 
+# Source the agents.slice handoff before p10k/tmux for local terminals. The
+# hook deliberately skips bare SSH login shells; those should stay focused on
+# attaching or creating tmux, and pane shells can join the slice afterward.
+if [[ -r "$ZDOTDIR/rc.d/00b_agents_slice.zsh" ]]; then
+  _zshrc_dbg "sourcing early cgroup handoff"
+  source "$ZDOTDIR/rc.d/00b_agents_slice.zsh" 2>&1 || \
+    echo "Warning: error in $ZDOTDIR/rc.d/00b_agents_slice.zsh" >&2
+fi
+
 # Auto-attach to tmux for SSH sessions (must run before p10k instant prompt)
 # Reattach to first unattached session, or create a new one
-if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 ]]; then
+if (( ${+commands[tmux]} )) && [[ ! -v TMUX && -v SSH_TTY && $EUID != 0 && -z "${ZSH_EXECUTION_STRING:-}" ]]; then
     _tmux_args=()
     # iTerm2 forwards LC_TERMINAL over SSH, which lets the remote shell opt into
     # tmux control mode for native iTerm2 integration.
     if [[ ${LC_TERMINAL-} == iTerm2 ]]; then
         _tmux_args=(-CC)
     fi
-
     _free_session=$(tmux ls -F '#{session_name} #{session_attached}' 2>/dev/null \
         | awk '$2 == "0" { print $1; exit }')
     if [[ -n $_free_session ]]; then

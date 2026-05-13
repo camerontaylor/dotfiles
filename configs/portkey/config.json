@@ -404,6 +404,59 @@
         ]
       }
     },
+    "fleet-ccm": {
+      "description": "MiniMax foreground route: primary Fireworks MiniMax M2.7, then OpenRouter MiniMax M2.7 fallback.",
+      "portkey_config": {
+        "strategy": {
+          "mode": "fallback",
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ]
+        },
+        "retry": {
+          "attempts": 2,
+          "on_status_codes": [
+            408,
+            429,
+            500,
+            502,
+            503,
+            504,
+            529
+          ],
+          "use_retry_after_header": true
+        },
+        "request_timeout": 75000,
+        "targets": [
+          {
+            "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "custom_host": "https://api.fireworks.ai/inference/v1",
+            "override_params": {
+              "model": "accounts/fireworks/models/minimax-m2p7"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "openrouter",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "override_params": {
+              "model": "minimax/minimax-m2.7",
+              "usage": {
+                "include": true
+              }
+            },
+            "request_timeout": 45000
+          }
+        ]
+      }
+    },
     "fleet-ccz": {
       "description": "Z.AI foreground route with Fireworks and MiniMax fallbacks, matching the existing direct ccz intent while preserving non-Z.AI fallback capacity.",
       "portkey_config": {
@@ -417,7 +470,20 @@
             503,
             504,
             529
-          ]
+          ],
+          "cb_config": {
+            "failure_threshold": 1,
+            "cooldown_interval": 60000,
+            "failure_status_codes": [
+              408,
+              429,
+              500,
+              502,
+              503,
+              504,
+              529
+            ]
+          }
         },
         "retry": {
           "attempts": 2,
@@ -471,6 +537,15 @@
           },
           {
             "provider": "anthropic",
+            "api_key_env": "FIREWORKS_API_KEY",
+            "custom_host": "https://api.fireworks.ai/inference/v1",
+            "override_params": {
+              "model": "accounts/fireworks/models/glm-5p1"
+            },
+            "request_timeout": 45000
+          },
+          {
+            "provider": "anthropic",
             "api_key_env": "MINIMAX_API_KEY",
             "custom_host": "https://api.minimax.io/anthropic/v1",
             "override_params": {
@@ -492,6 +567,16 @@
       "x-portkey-metadata"
     ],
     "aliases": {
+      "ccm": [
+        "fleet-ccm",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
+      "ccm-happy": [
+        "fleet-ccm",
+        "fleet-haiku",
+        "fleet-small-fast"
+      ],
       "ccfw": [
         "fleet-opus",
         "fleet-sonnet",
@@ -563,6 +648,12 @@
         "fleet-sonnet",
         "fleet-haiku",
         "fleet-small-fast"
+      ],
+      "portkey-probe-fleet-ccm": [
+        "fleet-ccm"
+      ],
+      "portkey-probe-stream-fleet-ccm": [
+        "fleet-ccm"
       ],
       "portkey-probe-fleet-cc-fast": [
         "fleet-cc-fast"

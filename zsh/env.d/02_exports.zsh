@@ -62,11 +62,19 @@ export PERL_CPANM_HOME=$XDG_CACHE_HOME/cpanm
 export SOLARGRAPH_CACHE=$XDG_CACHE_HOME/solargraph
 export GTK2_RC_FILES=$XDG_CONFIG_HOME/gtk-2.0/gtkrc
 export GHOSTTY_CONFIG_DIR="$HOME/.config/ghostty"
-export PORTLESS_STATE_DIR="$HOME/.portless"
-export PORTLESS_LAN=1
-export PORTLESS_NAME="$(hostname)"
 
 # Ghostty sets COLORTERM locally but it doesn't survive SSH
 if [[ $TERM == xterm-ghostty && ! -v COLORTERM ]]; then
     export COLORTERM=truecolor
+fi
+
+# Remote hosts without Ghostty's terminfo decode keys poorly under xterm-ghostty.
+if [[ $TERM == xterm-ghostty && ( -n ${SSH_TTY:-} || -n ${SSH_CONNECTION:-} ) ]]; then
+    if (( ${+commands[infocmp]} )); then
+        infocmp xterm-ghostty >/dev/null 2>&1 || export TERM=xterm-256color
+    elif (( ${+commands[tput]} )); then
+        tput -T xterm-ghostty longname >/dev/null 2>&1 || export TERM=xterm-256color
+    else
+        export TERM=xterm-256color
+    fi
 fi
