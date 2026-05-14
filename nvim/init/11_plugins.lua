@@ -66,3 +66,7 @@ require('tmux').setup({
 })
 require('schema-companion').setup({})
 require('flash').setup({})
+require('precognition').setup({
+  startVisible = false,
+  showBlankVirtLine = false,
+})

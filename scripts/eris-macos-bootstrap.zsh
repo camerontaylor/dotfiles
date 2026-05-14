@@ -104,6 +104,8 @@ brew install \
     tmux \
     || true
 
+brew install --cask iterm2 || true
+
 log "Making Homebrew shellenv available to zsh login shells"
 BREW_SHELLENV='eval "$(/opt/homebrew/bin/brew shellenv)"'
 if [[ -x /usr/local/bin/brew ]]; then
