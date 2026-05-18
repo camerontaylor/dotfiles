@@ -39,6 +39,10 @@
 	pager = less --quit-if-one-screen
 [pager]
 	diff = git-diff-pager
+	show = git-diff-pager
+	log = git-diff-pager
+	blame = git-diff-pager
+	stash = git-diff-pager
 [submodule]
 	fetchJobs = 32
 	recurse = true
@@ -46,8 +50,21 @@
 	submoduleSummary = true
 [rerere]
 	enabled = true
+[color "diff-highlight"]
+	oldNormal = red bold
+	oldHighlight = red bold 52
+	newNormal = green bold
+	newHighlight = green bold 22
+[color "diff"]
+	meta = 11
+	frag = magenta bold
+	func = 146 bold
+	commit = yellow bold
+	old = red bold
+	new = green bold
+	whitespace = red reverse
 [delta]
-	pager = less
+	pager = less --RAW-CONTROL-CHARS --quit-if-one-screen
 	navigate = true
 	hyperlinks = true
 	dark = true
