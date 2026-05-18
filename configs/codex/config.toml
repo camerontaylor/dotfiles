@@ -4,6 +4,7 @@ model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
+plan_mode_reasoning_effort = "xhigh"
 developer_instructions = "You have oh-my-codex installed through Codex plugin mode. AGENTS.md is the orchestration brain and main control surface. Follow AGENTS.md for skill/keyword routing and $name workflow invocation. Registered Codex plugin marketplace surfaces supply OMX workflows, prompts, and native-agent roles when the plugin is installed. User-installed skills may still live under ~/.codex/skills. Setup-owned prompt files and native-agent TOML defaults are intentionally omitted unless explicitly installed. Use outcome-first, concise progress updates: state the target result, constraints, validation evidence, and stop condition before adding process detail."
 model_reasoning_effort = "high"
 
@@ -43,11 +44,14 @@ trust_level = "trusted"
 [projects."/Users/user"]
 trust_level = "trusted"
 
+[projects."/home/ctaylor/repos/deploy/ceres.webfront.app"]
+trust_level = "trusted"
+
 [features]
 
 js_repl = true
 image_detail_original = true
-codex_hooks = true
+hooks = true
 goals = true
 [agents]
 max_threads = 12
@@ -81,30 +85,31 @@ enabled = false
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
-# OMX-owned Codex hook trust state
-# Trusts only setup-managed codex-native-hook.js wrappers.
 [hooks.state."/home/ctaylor/.codex/hooks.json:post_compact:0:0"]
-trusted_hash = "sha256:97449e23441f1d6ca1d007019a902301cd49e5e863c647232291cadaabafad2a"
+trusted_hash = "sha256:77c9f54b79673d37de5393268a419c922e79bc206a1ec52bb19577da9b754c92"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:post_tool_use:0:0"]
-trusted_hash = "sha256:739f0e9550889d15ea412453dbc583cb9f2722da63fe4f08a073a547500a01af"
+trusted_hash = "sha256:6ea7baee4712ff34a990f676d9a495487e5d363497d2535545eedd50bd4293f0"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:pre_compact:0:0"]
-trusted_hash = "sha256:2772dcd806fbe954a022c9260e663fc8a0d96e38a0b316acdd21b2f2ad627a16"
+trusted_hash = "sha256:a57718a48104f65f013a141c6f496b6882994dab54823f75f9d0592b6c503147"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:0:0"]
-trusted_hash = "sha256:5f020ffdd413c80675adf836c473650a57804d6726fbaa18ac289344afd8941a"
+trusted_hash = "sha256:7e007d459fe5f27adab5766616516bb19f638d3eb18d9eb1964437844b332dea"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:62f49f6930d5e0f76b6a7627400ea6ef289fb31d80f7fa775974a50d20bbb1ab"
+trusted_hash = "sha256:51946f17065d752e9c07b10b4047516ab05e449f3a6efff1c33c331bea4751e6"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:a08065130bdc25418c7a11bd8304b528ffb09987ec0bab6ef89c1a09cbd209b0"
+trusted_hash = "sha256:87ee2ff702277da93cae5551e79afedfe013053de93f7bf508f69b567332fec6"
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:user_prompt_submit:0:0"]
-trusted_hash = "sha256:fc743ff445d1db68bda7844fbc61c58a939d312d7a0c0cf109c7a0d1c8718a07"
+trusted_hash = "sha256:52edc0f43f9085524ec0756b8d73f17f1e4d2ed8cb5573f0514fc1b84eb928ba"
 # End OMX-owned Codex hook trust state
+
+[plugins."oh-my-codex@oh-my-codex-local"]
+enabled = true
 
 [marketplaces.oh-my-codex-local]
 source_type = "local"
-source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.16.2/lib/node_modules/oh-my-codex"
+source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.17.3/lib/node_modules/oh-my-codex"

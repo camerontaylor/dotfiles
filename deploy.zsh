@@ -199,6 +199,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/claude-code/hooks $HOME/.claude/hooks
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/hud $HOME/.claude/hud
 zf_ln -sfn $SCRIPT_DIR/configs/claude-code/skills $HOME/.claude/skills
 # Codex CLI + OMX
+$SCRIPT_DIR/scripts/enforce-codex-defaults.zsh
 zf_ln -sfn $SCRIPT_DIR/configs/codex/config.toml $HOME/.codex/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/codex/AGENTS.md $HOME/.codex/AGENTS.md
 zf_ln -sfn $SCRIPT_DIR/configs/codex/agents $HOME/.codex/agents

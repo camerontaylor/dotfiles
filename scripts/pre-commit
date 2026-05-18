@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
-# Auto-encrypt secrets before commit
+# Enforce stable generated config defaults and auto-encrypt secrets before commit
 # Runs on: git commit (pre-commit hook)
 
+setopt err_exit
+
 SCRIPT_DIR=${0:A:h}
+$SCRIPT_DIR/enforce-codex-defaults.zsh --git-add
 exec $SCRIPT_DIR/save-secrets.zsh --git-add
