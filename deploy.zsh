@@ -527,6 +527,89 @@ if (( ! ${+commands[mise]} )); then
     fi
 fi
 
+local nvim_bin=$HOME/.local/bin/nvim
+local rg_bin=$HOME/.local/bin/rg
+local sg_bin=$HOME/.local/bin/sg
+
+# Install Neovim if not present/up to date
+print "Installing nvim..."
+local nvim_current=""
+local nvim_latest
+if [[ -x $nvim_bin ]]; then
+    nvim_current=$($nvim_bin --version 2>/dev/null | head -1 | awk '{print $2}')
+elif command -v nvim &>/dev/null; then
+    nvim_current=$(nvim --version 2>/dev/null | head -1 | awk '{print $2}')
+fi
+
+nvim_latest=$(curl -sI https://github.com/neovim/neovim/releases/latest \
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
+
+if [[ -n $nvim_latest && "$nvim_current" == "$nvim_latest" ]]; then
+    print "  ...nvim $nvim_current is already up to date."
+elif [[ -n $nvim_latest ]]; then
+    print "  ...installing nvim $nvim_latest to $HOME/.local/bin (was: ${nvim_current:-not installed})..."
+    curl -Lo /tmp/nvim-appimage "https://github.com/neovim/neovim/releases/download/${nvim_latest}/nvim-linux-x86_64.appimage"
+    chmod +x /tmp/nvim-appimage
+    zf_mv /tmp/nvim-appimage $nvim_bin
+    print "  ...installed: $($nvim_bin --version | head -1)"
+else
+    print "  ...failed to determine latest nvim version, skipping"
+fi
+
+# Install ripgrep if not present/up to date
+print "Installing rg..."
+local rg_current=""
+local rg_latest
+if [[ -x $rg_bin ]]; then
+    rg_current=$($rg_bin --version 2>/dev/null | head -1 | awk '{print $2}')
+elif command -v rg &>/dev/null; then
+    rg_current=$(rg --version 2>/dev/null | head -1 | awk '{print $2}')
+fi
+
+rg_latest=$(curl -sI https://github.com/BurntSushi/ripgrep/releases/latest \
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
+
+if [[ -n $rg_latest && "$rg_current" == "$rg_latest" ]]; then
+    print "  ...rg $rg_current is already up to date."
+elif [[ -n $rg_latest ]]; then
+    print "  ...installing rg $rg_latest to $HOME/.local/bin (was: ${rg_current:-not installed})..."
+    curl -Lo /tmp/rg.tar.gz "https://github.com/BurntSushi/ripgrep/releases/download/${rg_latest}/ripgrep-${rg_latest}-x86_64-unknown-linux-musl.tar.gz"
+    tar -xzf /tmp/rg.tar.gz -C /tmp
+    zf_mv /tmp/ripgrep-${rg_latest}-x86_64-unknown-linux-musl/rg $rg_bin
+    chmod +x $rg_bin
+    rm -rf /tmp/rg.tar.gz /tmp/ripgrep-${rg_latest}-x86_64-unknown-linux-musl
+    print "  ...installed: $($rg_bin --version | head -1)"
+else
+    print "  ...failed to determine latest rg version, skipping"
+fi
+
+# Install ast-grep if not present/up to date
+print "Installing sg..."
+local sg_current=""
+local sg_latest
+if [[ -x $sg_bin ]]; then
+    sg_current=$($sg_bin --version 2>/dev/null | awk '{print $2}')
+elif command -v sg &>/dev/null; then
+    sg_current=$(sg --version 2>/dev/null | awk '{print $2}')
+fi
+
+sg_latest=$(curl -sI https://github.com/ast-grep/ast-grep/releases/latest \
+    | grep -i '^location:' | sed 's|.*/tag/||' | tr -d '\r')
+
+if [[ -n $sg_latest && "$sg_current" == "$sg_latest" ]]; then
+    print "  ...sg $sg_current is already up to date."
+elif [[ -n $sg_latest ]]; then
+    print "  ...installing sg $sg_latest to $HOME/.local/bin (was: ${sg_current:-not installed})..."
+    curl -Lo /tmp/sg.zip "https://github.com/ast-grep/ast-grep/releases/download/${sg_latest}/app-x86_64-unknown-linux-gnu.zip"
+    unzip -o /tmp/sg.zip -d /tmp/sg-extract
+    zf_mv /tmp/sg-extract/sg $sg_bin
+    chmod +x $sg_bin
+    rm -rf /tmp/sg.zip /tmp/sg-extract
+    print "  ...installed: $($sg_bin --version)"
+else
+    print "  ...failed to determine latest sg version, skipping"
+fi
+
 if (( ${+commands[mise]} )); then
     if $upgrade_mode; then
         print "Upgrading mise..."
