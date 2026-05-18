@@ -225,6 +225,23 @@ git submodule update --init --recursive > /dev/null
 git submodule foreach --recursive git clean -ffd
 print "  ...done"
 
+print "Installing pnpm shell completion helper..."
+local pnpm_completion_dir=$SCRIPT_DIR/zsh/plugins/pnpm-shell-completion
+if [[ -x $pnpm_completion_dir/pnpm-shell-completion ]]; then
+    print "  ...present"
+elif [[ -x $pnpm_completion_dir/zplug.zsh ]] && (( ${+commands[curl]} )) && (( ${+commands[unzip]} )); then
+    pushd $pnpm_completion_dir > /dev/null
+    if ./zplug.zsh > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...failed to install pnpm shell completion helper, skipping"
+    fi
+    popd > /dev/null
+else
+    print "  ...curl/unzip or installer missing, skipping"
+fi
+unset pnpm_completion_dir
+
 print "Compiling zsh plugins..."
 autoload -Uz zrecompile
 for zsh_plugin_file in $SCRIPT_DIR/zsh/plugins/**/*.zsh{-theme,}(#q.); do
