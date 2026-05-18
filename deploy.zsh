@@ -826,7 +826,7 @@ fi
 if (( ${+commands[vim]} )); then
     # Generate vim help tags
     print "Generating vim helptags..."
-    command vim --not-a-term -i "NONE" -c "helptags ALL" -c "qall" &> /dev/null
+    command vim -n -es -i "NONE" -c "helptags ALL" -c "qall" &> /dev/null
     print "  ...done"
 fi
 
