@@ -806,6 +806,17 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     fi
 fi
 
+# Install JetBrains Mono Nerd Font via Homebrew cask if not present
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask font-jetbrains-mono-nerd-font > /dev/null 2>&1; then
+        print "Installing JetBrains Mono Nerd Font..."
+        brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
+    elif $upgrade_mode; then
+        print "Upgrading JetBrains Mono Nerd Font..."
+        brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
+    fi
+fi
+
 if (( ${+commands[vim]} )); then
     # Generate vim help tags
     print "Generating vim helptags..."
