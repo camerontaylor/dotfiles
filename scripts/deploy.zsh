@@ -73,7 +73,7 @@ install_nvim() {
   echo "Installing nvim $latest to $BINDIR (was: ${current:-not installed})..."
   curl -Lo /tmp/nvim-appimage "https://github.com/neovim/neovim/releases/download/${latest}/nvim-linux-x86_64.appimage"
   chmod +x /tmp/nvim-appimage
-  mv /tmp/nvim-appimage "$BINDIR/nvim"
+  command mv -f -- /tmp/nvim-appimage "$BINDIR/nvim"
 
   echo "Installed: $($BINDIR/nvim --version | head -1)"
 }
@@ -122,7 +122,7 @@ install_rg() {
   echo "Installing rg $latest to $BINDIR (was: ${current:-not installed})..."
   curl -Lo /tmp/rg.tar.gz "https://github.com/BurntSushi/ripgrep/releases/download/${latest}/ripgrep-${latest}-x86_64-unknown-linux-musl.tar.gz"
   tar -xzf /tmp/rg.tar.gz -C /tmp
-  mv "/tmp/ripgrep-${latest}-x86_64-unknown-linux-musl/rg" "$BINDIR/rg"
+  command mv -f -- "/tmp/ripgrep-${latest}-x86_64-unknown-linux-musl/rg" "$BINDIR/rg"
   chmod +x "$BINDIR/rg"
   rm -rf /tmp/rg.tar.gz "/tmp/ripgrep-${latest}-x86_64-unknown-linux-musl"
 
@@ -158,7 +158,7 @@ install_sg() {
   echo "Installing sg $latest to $BINDIR (was: ${current:-not installed})..."
   curl -Lo /tmp/sg.zip "https://github.com/ast-grep/ast-grep/releases/download/${latest}/app-x86_64-unknown-linux-gnu.zip"
   unzip -o /tmp/sg.zip -d /tmp/sg-extract
-  mv /tmp/sg-extract/sg "$BINDIR/sg"
+  command mv -f -- /tmp/sg-extract/sg "$BINDIR/sg"
   chmod +x "$BINDIR/sg"
   rm -rf /tmp/sg.zip /tmp/sg-extract
 
