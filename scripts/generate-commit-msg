@@ -172,6 +172,9 @@ run_commit_cli() {
       shift 2
       source "$aliases_file"
       agent_alias_export_env "$alias_name"
+      if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${ANTHROPIC_CUSTOM_HEADERS:-}" ]]; then
+        export ANTHROPIC_API_KEY=portkey-local
+      fi
       if (( ${argv[(Ie)--bare]} )) && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
         export ANTHROPIC_API_KEY="${COMMIT_BARE_API_KEY:-dummy-api-key}"
       fi

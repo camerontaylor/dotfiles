@@ -101,4 +101,36 @@ _ccz-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONES
 _ccz-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.1 ANTHROPIC_SMALL_FAST_MODEL=glm-5-turbo ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
 _yolo()      { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC; CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions "$@" }
 
+_cc_fast_portkey() {
+    if (( ! ${+functions[_portkey_run_cc_fast]} )); then
+        [[ -r "$ZDOTDIR/rc.d/11_portkey.zsh" ]] || {
+            print -u2 -- "cc-fast: missing Portkey wrapper at $ZDOTDIR/rc.d/11_portkey.zsh"
+            return 1
+        }
+        source "$ZDOTDIR/rc.d/11_portkey.zsh" || return $?
+    fi
+
+    _portkey_run_cc_fast "$@"
+}
+
+# Non-interactive shells source env.d but not rc.d. Define lazy cc-fast wrappers
+# here so scripts and Codex command runs use the same Portkey path as terminals.
+unalias cc-fast cc-fast-happy cc-fast-pk cc-fast-pk-happy 2>/dev/null || :
+
+cc-fast() {
+    _cc_fast_portkey cc-fast claude "$@"
+}
+
+cc-fast-happy() {
+    _cc_fast_portkey cc-fast-happy happy "$@"
+}
+
+cc-fast-pk() {
+    _cc_fast_portkey cc-fast-pk claude "$@"
+}
+
+cc-fast-pk-happy() {
+    _cc_fast_portkey cc-fast-pk-happy happy "$@"
+}
+
 #export GEMINI_API_KEY=...  # set in zsh/env.d/90_secrets.zsh

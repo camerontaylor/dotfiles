@@ -530,7 +530,7 @@ if (( ${+commands[claude]} )); then
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
         ENABLE_TOOL_SEARCH=false \
-        ANTHROPIC_API_KEY="$api_key" \
+        ANTHROPIC_API_KEY="${api_key:-portkey-local}" \
         ANTHROPIC_AUTH_TOKEN="" \
         ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
         ANTHROPIC_CUSTOM_HEADERS="$headers" \
@@ -540,7 +540,7 @@ if (( ${+commands[claude]} )); then
         ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
         ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
         API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
-          claude --model "$glm_model" "$@"
+          claude --bare --tools "" --model "$glm_model" "$@"
         ;;
       happy)
         CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
