@@ -306,7 +306,7 @@ if (( ! ${+commands[gh]} )); then
             local gh_tmp=$(mktemp -d)
             local gh_os_lower=${gh_os:l}
             if curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_${gh_os_lower}_${gh_arch}.tar.gz" | tar xz -C $gh_tmp; then
-                zf_mv $gh_tmp/gh_${gh_version}_${gh_os_lower}_${gh_arch}/bin/gh $HOME/.local/bin/gh
+                command mv -f -- "$gh_tmp/gh_${gh_version}_${gh_os_lower}_${gh_arch}/bin/gh" "$HOME/.local/bin/gh"
                 chmod +x $HOME/.local/bin/gh
                 print "  ...done"
             else
@@ -329,7 +329,7 @@ if (( ! ${+commands[gh]} )); then
                 local gh_tmp=$(mktemp -d)
                 if curl -fsSL "https://github.com/cli/cli/releases/download/v${gh_version}/gh_${gh_version}_macOS_${gh_dl_arch}.zip" -o $gh_tmp/gh.zip \
                     && unzip -q $gh_tmp/gh.zip -d $gh_tmp; then
-                    zf_mv $gh_tmp/gh_${gh_version}_macOS_${gh_dl_arch}/bin/gh $HOME/.local/bin/gh
+                    command mv -f -- "$gh_tmp/gh_${gh_version}_macOS_${gh_dl_arch}/bin/gh" "$HOME/.local/bin/gh"
                     chmod +x $HOME/.local/bin/gh
                     print "  ...done (direct download)"
                 else
@@ -364,7 +364,7 @@ if (( ! ${+commands[glab]} )); then
             local glab_tmp=$(mktemp -d)
             local glab_os_lower=${glab_os:l}
             if curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_version}/downloads/glab_${glab_version}_${glab_os_lower}_${glab_arch}.tar.gz" | tar xz -C $glab_tmp; then
-                zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
+                command mv -f -- "$glab_tmp/bin/glab" "$HOME/.local/bin/glab"
                 chmod +x $HOME/.local/bin/glab
                 print "  ...done"
             else
@@ -386,7 +386,7 @@ if (( ! ${+commands[glab]} )); then
             if [[ -n $glab_version ]]; then
                 local glab_tmp=$(mktemp -d)
                 if curl -fsSL "https://gitlab.com/gitlab-org/cli/-/releases/v${glab_version}/downloads/glab_${glab_version}_darwin_${glab_dl_arch}.tar.gz" | tar xz -C $glab_tmp; then
-                    zf_mv $glab_tmp/bin/glab $HOME/.local/bin/glab
+                    command mv -f -- "$glab_tmp/bin/glab" "$HOME/.local/bin/glab"
                     chmod +x $HOME/.local/bin/glab
                     print "  ...done (direct download)"
                 else
@@ -550,7 +550,7 @@ elif [[ -n $nvim_latest ]]; then
     print "  ...installing nvim $nvim_latest to $HOME/.local/bin (was: ${nvim_current:-not installed})..."
     curl -Lo /tmp/nvim-appimage "https://github.com/neovim/neovim/releases/download/${nvim_latest}/nvim-linux-x86_64.appimage"
     chmod +x /tmp/nvim-appimage
-    zf_mv /tmp/nvim-appimage $nvim_bin
+    command mv -f -- /tmp/nvim-appimage "$nvim_bin"
     print "  ...installed: $($nvim_bin --version | head -1)"
 else
     print "  ...failed to determine latest nvim version, skipping"
@@ -575,7 +575,7 @@ elif [[ -n $rg_latest ]]; then
     print "  ...installing rg $rg_latest to $HOME/.local/bin (was: ${rg_current:-not installed})..."
     curl -Lo /tmp/rg.tar.gz "https://github.com/BurntSushi/ripgrep/releases/download/${rg_latest}/ripgrep-${rg_latest}-x86_64-unknown-linux-musl.tar.gz"
     tar -xzf /tmp/rg.tar.gz -C /tmp
-    zf_mv /tmp/ripgrep-${rg_latest}-x86_64-unknown-linux-musl/rg $rg_bin
+    command mv -f -- "/tmp/ripgrep-${rg_latest}-x86_64-unknown-linux-musl/rg" "$rg_bin"
     chmod +x $rg_bin
     rm -rf /tmp/rg.tar.gz /tmp/ripgrep-${rg_latest}-x86_64-unknown-linux-musl
     print "  ...installed: $($rg_bin --version | head -1)"
@@ -602,7 +602,7 @@ elif [[ -n $sg_latest ]]; then
     print "  ...installing sg $sg_latest to $HOME/.local/bin (was: ${sg_current:-not installed})..."
     curl -Lo /tmp/sg.zip "https://github.com/ast-grep/ast-grep/releases/download/${sg_latest}/app-x86_64-unknown-linux-gnu.zip"
     unzip -o /tmp/sg.zip -d /tmp/sg-extract
-    zf_mv /tmp/sg-extract/sg $sg_bin
+    command mv -f -- /tmp/sg-extract/sg "$sg_bin"
     chmod +x $sg_bin
     rm -rf /tmp/sg.zip /tmp/sg-extract
     print "  ...installed: $($sg_bin --version)"
