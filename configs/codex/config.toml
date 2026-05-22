@@ -85,31 +85,48 @@ enabled = false
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
-[hooks.state."/home/ctaylor/.codex/hooks.json:post_compact:0:0"]
-trusted_hash = "sha256:77c9f54b79673d37de5393268a419c922e79bc206a1ec52bb19577da9b754c92"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:post_tool_use:0:0"]
-trusted_hash = "sha256:6ea7baee4712ff34a990f676d9a495487e5d363497d2535545eedd50bd4293f0"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:pre_compact:0:0"]
-trusted_hash = "sha256:a57718a48104f65f013a141c6f496b6882994dab54823f75f9d0592b6c503147"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:0:0"]
-trusted_hash = "sha256:7e007d459fe5f27adab5766616516bb19f638d3eb18d9eb1964437844b332dea"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:51946f17065d752e9c07b10b4047516ab05e449f3a6efff1c33c331bea4751e6"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:stop:0:0"]
-trusted_hash = "sha256:87ee2ff702277da93cae5551e79afedfe013053de93f7bf508f69b567332fec6"
-
-[hooks.state."/home/ctaylor/.codex/hooks.json:user_prompt_submit:0:0"]
-trusted_hash = "sha256:52edc0f43f9085524ec0756b8d73f17f1e4d2ed8cb5573f0514fc1b84eb928ba"
-# End OMX-owned Codex hook trust state
-
 [plugins."oh-my-codex@oh-my-codex-local"]
 enabled = true
 
+[hooks.state]
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:post_compact:0:0"]
+trusted_hash = "sha256:9d5deb54992a9114bc584542276445b651cb40e8d418de4fe01e839f1c8e1fab"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:post_tool_use:0:0"]
+trusted_hash = "sha256:210b5f5465c23343af454e32644760bfaa1a640c8c26584ca99f45577cd8e5e2"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:post_tool_use:1:0"]
+trusted_hash = "sha256:f424d19bbc5d2233b9cf48ebe5e393def42b9d5ca4e5f1c6f63acd1e4ba63f1e"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:pre_compact:0:0"]
+trusted_hash = "sha256:d601e968059354c84263a468fae782fa916870b691e962f2784f482ec8898bfb"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:512ced0ad32f742ee6900ee0a8e0ec89f0a0f700feef0e5d06cfebb085d07d8c"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:1:0"]
+trusted_hash = "sha256:5707f88e7a1d9ee598ceb68158bbd60eb7d4a261d8690517f90d10a0a4060837"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:7def539edbf23fe2b0ca1666ff8d399bc955e50cc4e12c2da15f59229f7efcf1"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:session_start:1:0"]
+trusted_hash = "sha256:f7c720b8bad4783cbf9e00a0307fc469137d729a2b1f7a4528c1d77bc0240202"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:ea51aff53aefbd28c4628f95069659e03998c64d072fc5dee5fde96ab12fb7fe"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:stop:1:0"]
+trusted_hash = "sha256:99ba5c5df9296186c6478a9002a4c71a9368c334b20100162adfd23043a61998"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:user_prompt_submit:0:0"]
+trusted_hash = "sha256:ea46991a8232e61a7ef30340372da9024aa6b7e6eb02ecb5a240547b15ac252f"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:user_prompt_submit:1:0"]
+trusted_hash = "sha256:ec0aa542892f2293101b4f74bad6b78520336903d09a43fa40da95682a6c7e67"
+# End OMX-owned Codex hook trust state
+
 [marketplaces.oh-my-codex-local]
 source_type = "local"
-source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.17.3/lib/node_modules/oh-my-codex"
+source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.18.0/lib/node_modules/oh-my-codex"
