@@ -90,18 +90,23 @@ fi
 
 # ── Preflight checks ───────────────────────────────────────────────────────
 
-git add -A
-
 if [[ ! -x "$GENERATOR" ]]; then
   echo -e "${RED}ERROR: generate-commit-msg not found at $GENERATOR${NC}" >&2
   exit 1
 fi
 
-# Check for staged changes
+# If nothing is staged, warn and auto-stage everything (preserves prior UX for
+# users who run this on a dirty tree). If anything is already staged, use it
+# as-is — avoids silently sweeping unrelated files into the commit.
 STAGED_FILES="$(git diff --cached --name-only)"
 if [[ -z "$STAGED_FILES" ]]; then
-  echo -e "${RED}ERROR: No staged changes. Stage files with 'git add' first.${NC}" >&2
-  exit 1
+  echo -e "${YELLOW:-}Note: no staged changes; staging all (git add -A)${NC:-}" >&2
+  git add -A
+  STAGED_FILES="$(git diff --cached --name-only)"
+  if [[ -z "$STAGED_FILES" ]]; then
+    echo -e "${RED}ERROR: working tree clean; nothing to commit.${NC}" >&2
+    exit 1
+  fi
 fi
 
 # ── Gather diff ────────────────────────────────────────────────────────────

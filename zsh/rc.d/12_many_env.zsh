@@ -5,6 +5,8 @@ export VIRTUAL_ENV_DISABLE_PROMPT=1
 # Lazy init wrapper on first call
 () {
     local wrapper
+    # rbenv removed: mise handles ruby via configs/mise.toml; the rbenv
+    # submodules had no activation code anyway.
     local wrappers=(goenv jenv luaenv nodenv phpenv plenv pyenv)
     for wrapper in $wrappers[@]; do
         eval "$wrapper () {

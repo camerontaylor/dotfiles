@@ -3,6 +3,22 @@ node = "lts"
 npm = "latest"
 bun = "latest"
 ruby = "latest"
+# CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
+# Aqua backends (prebuilt binaries) are preferred where available, falling back
+# to cargo. linear-cli has no mise backend → still installed via cargo in deploy.zsh.
+neovim = "latest"
+ripgrep = "latest"
+ast-grep = "latest"
+gh = "latest"
+glab = "latest"
+"aqua:dandavison/delta" = "latest"
+bat = "latest"
+eza = "latest"
+fd = "latest"
+sd = "latest"
+zoxide = "latest"
+tree-sitter = "latest"
+awscli = "latest"
 # npm global packages (migrated from nvm's default-packages)
 "npm:happy" = "latest"
 "npm:@biomejs/biome" = "latest"

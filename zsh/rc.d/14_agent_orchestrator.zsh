@@ -3,7 +3,7 @@ if [[ -z ${AO_GLOBAL_CONFIG:-} && -n ${XDG_CONFIG_HOME:-} ]]; then
     export AO_GLOBAL_CONFIG=$XDG_CONFIG_HOME/agent-orchestrator/config.yaml
 fi
 
-_ao_completion_dir=$DOTFILES/configs/agent-orchestrator/completions
+_ao_completion_dir=$DOTFILES/configs/ai/agent-orchestrator/completions
 if [[ -d $_ao_completion_dir ]]; then
     fpath=($_ao_completion_dir $fpath)
 

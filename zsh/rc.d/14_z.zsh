@@ -1,5 +1,6 @@
 if (( ${+commands[zoxide]} )); then
-    eval "$(zoxide init zsh)"
+    # zoxide init output is static (no cwd-resolved state) → safe to evalcache
+    evalcache zoxide init zsh
 else
     # Fallback to zsh-z plugin
     # XDG compliance

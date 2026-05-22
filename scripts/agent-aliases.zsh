@@ -12,7 +12,7 @@ typeset -g AGENT_ALIAS_PORTKEY_HOST="${AGENT_ALIAS_PORTKEY_HOST:-${PORTKEY_HOST:
 typeset -g AGENT_ALIAS_PORTKEY_PORT="${AGENT_ALIAS_PORTKEY_PORT:-${PORTKEY_PORT:-8787}}"
 typeset -g AGENT_ALIAS_PORTKEY_BASE_URL="http://${AGENT_ALIAS_PORTKEY_HOST}:${AGENT_ALIAS_PORTKEY_PORT}"
 typeset -g AGENT_ALIAS_PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
-typeset -g AGENT_ALIAS_PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/portkey/config.json}"
+typeset -g AGENT_ALIAS_PORTKEY_CONFIG_FILE="${PORTKEY_CONFIG_FILE:-$HOME/.local/dotfiles/configs/ai/portkey/config.json}"
 typeset -g AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE="${PORTKEY_LOCAL_TOKEN_FILE:-$AGENT_ALIAS_PORTKEY_STATE/local-api-key}"
 
 agent_alias_portkey_is_host() {
@@ -288,7 +288,7 @@ agent_alias_define_env() {
             ;;
         ccfw|ccfw-happy)
             # Portkey fleet with fallback chains encoded in
-            # ~/.local/dotfiles/configs/portkey/config.json:
+            # ~/.local/dotfiles/configs/ai/portkey/config.json:
             #   fleet-opus       → Fireworks Kimi-K2.6 [→ Z.AI → MiniMax]
             #   fleet-sonnet     → Fireworks GLM-5.1   [→ Kimi → MiniMax M2.7]
             #   fleet-haiku      → OpenRouter BYOK → Cerebras openai/gpt-oss-120b

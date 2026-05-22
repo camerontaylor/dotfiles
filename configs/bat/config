@@ -1,0 +1,5 @@
+# bat config — match Solarized Dark theme used by Ghostty/tmux/delta/nvim.
+# bat sources its config from $XDG_CONFIG_HOME/bat/config (or BAT_CONFIG_PATH).
+--theme="Solarized (dark)"
+--style="numbers,changes,header"
+--paging=auto

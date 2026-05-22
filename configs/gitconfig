@@ -2,7 +2,10 @@
 	path = local/user
 	path = local/stuff
 [pull]
-	rebase = false
+	# Rebase-on-pull keeps history linear and avoids "merge made by recursive"
+	# noise. Rest of this config already leans rebase-friendly (rebase.autoSquash,
+	# rerere.enabled). Override per-repo if needed: `git config pull.rebase false`.
+	rebase = true
 [init]
 	defaultBranch = main
 [push]
