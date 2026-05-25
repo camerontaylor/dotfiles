@@ -1,5 +1,7 @@
 # Remind gpg-agent to update current tty before running git
-if (( ${+commands[gpg-connect-agent]} )) && pgrep -u $EUID gpg-agent &>/dev/null; then
+if [[ -z ${SSH_TTY:-} && -z ${SSH_CONNECTION:-} && -z ${SSH_CLIENT:-} ]] &&
+    (( ${+commands[gpg-connect-agent]} )) &&
+    pgrep -u $EUID gpg-agent &>/dev/null; then
     function _preexec_gpg-agent-update-tty {
         if [[ $1 == git* ]]; then
             gpg-connect-agent --quiet --no-autostart updatestartuptty /bye &>/dev/null

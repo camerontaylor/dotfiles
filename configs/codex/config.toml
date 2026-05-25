@@ -12,6 +12,9 @@ trust_level = "trusted"
 [projects."/home/ctaylor"]
 trust_level = "trusted"
 
+[projects."/home/ctaylor/.local/dotfiles"]
+trust_level = "trusted"
+
 [hooks.state]
 
 [hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:0:0"]
@@ -75,11 +78,11 @@ trusted_hash = "sha256:216a53a71d5c9819f0fdbbbbf869c4f8d9455e742dad9e0f1d91f3d67
 "gpt-5.5" = 4
 [features]
 plugin_hooks = true
-goals = true
 
+goals = true
 [plugins."oh-my-codex@oh-my-codex-local"]
 enabled = true
 
 [marketplaces.oh-my-codex-local]
 source_type = "local"
-source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.18.2/lib/node_modules/oh-my-codex"
+source = "/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/0.18.3/lib/node_modules/oh-my-codex"

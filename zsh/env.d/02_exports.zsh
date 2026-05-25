@@ -7,8 +7,12 @@ fi
 export LESS="--RAW-CONTROL-CHARS --ignore-case --hilite-unread --LONG-PROMPT --window=-4 --tabs=4 --mouse --wheel-lines=3"
 export READNULLCMD=$PAGER
 
-# make sure gpg knows about current TTY
-export GPG_TTY=$TTY
+# make sure local gpg knows about current TTY; avoid pinentry prompts in SSH sessions
+if [[ -z ${SSH_TTY:-} && -z ${SSH_CONNECTION:-} && -z ${SSH_CLIENT:-} ]]; then
+    export GPG_TTY=$TTY
+else
+    unset GPG_TTY
+fi
 
 # XDG basedir spec compliance
 if [[ ! -v XDG_CONFIG_HOME ]]; then
