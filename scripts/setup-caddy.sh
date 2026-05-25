@@ -4,7 +4,7 @@ set -euo pipefail
 # setup-caddy.sh - HTTPS dev proxy with wildcard certs
 #
 # Linux path:
-#   - Installs Caddy with apt
+#   - Installs Caddy with apt (Debian/Ubuntu) or pacman (Arch/CachyOS)
 #   - Configures Caddy and Portless with systemd
 #
 # macOS path:
@@ -81,6 +81,16 @@ require_command() {
   if ! command -v "$cmd" &>/dev/null; then
     echo "ERROR: $cmd not found. $hint"
     exit 1
+  fi
+}
+
+detect_linux_pm() {
+  if command -v pacman &>/dev/null; then
+    echo "pacman"
+  elif command -v apt &>/dev/null && command -v dpkg &>/dev/null; then
+    echo "apt"
+  else
+    echo ""
   fi
 }
 
@@ -243,21 +253,43 @@ preflight() {
   echo ""
 }
 
+install_caddy_linux_apt() {
+  sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+    | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+    | sudo tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
+
+  sudo apt update
+  sudo apt install -y caddy
+}
+
+install_caddy_linux_pacman() {
+  sudo pacman -S --needed --noconfirm caddy
+}
+
 install_caddy_linux() {
   if [[ -x "$LINUX_CADDY_BIN" ]]; then
     echo "Caddy already installed: $("$LINUX_CADDY_BIN" version)"
   else
-    echo "Installing Caddy..."
-    sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-      | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-      | sudo tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
-
-    sudo apt update
-    sudo apt install -y caddy
+    local pm
+    pm=$(detect_linux_pm)
+    case "$pm" in
+      apt)
+        echo "Installing Caddy via apt..."
+        install_caddy_linux_apt
+        ;;
+      pacman)
+        echo "Installing Caddy via pacman..."
+        install_caddy_linux_pacman
+        ;;
+      *)
+        echo "ERROR: no supported package manager found (need apt or pacman)."
+        exit 1
+        ;;
+    esac
   fi
 
   CADDY_BIN=$LINUX_CADDY_BIN
