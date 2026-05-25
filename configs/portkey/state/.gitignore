@@ -1,0 +1,5 @@
+# Decrypted runtime targets live at ~/.local/state/portkey/.
+# Only the *.enc siblings belong in git; any plaintext that lands here
+# is a mistake and must stay out of the repo.
+env
+local-api-key

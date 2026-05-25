@@ -117,3 +117,20 @@ for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
 
     encrypt_if_changed "$plaintext" "$enc_file"
 done
+
+# Portkey gateway runtime state (provider API keys + local control-plane token).
+# The systemd unit reads these directly via EnvironmentFile / a PORTKEY_LOCAL_API_KEY
+# path, so encrypted siblings ship via this repo and restore-secrets.zsh writes them
+# back to ~/.local/state/portkey with mode 0600.
+local -a portkey_plaintexts portkey_enc_files
+portkey_plaintexts=($HOME/.local/state/portkey/env $HOME/.local/state/portkey/local-api-key)
+portkey_enc_files=(configs/portkey/state/env.enc configs/portkey/state/local-api-key.enc)
+for (( i = 1; i <= ${#portkey_plaintexts}; i++ )); do
+    plaintext=${portkey_plaintexts[i]}
+    enc_file=${portkey_enc_files[i]}
+    [[ -f $plaintext ]] || continue
+
+    mkdir -p configs/portkey/state
+
+    encrypt_if_changed "$plaintext" "$enc_file"
+done

@@ -85,3 +85,33 @@ for enc_file in ssh/*.enc(N); do
         fi
     fi
 done
+
+# Portkey gateway runtime state. Targets live outside this repo at
+# ~/.local/state/portkey/ — the systemd unit's EnvironmentFile and the
+# PORTKEY_LOCAL_API_KEY path both reference them by absolute path.
+local portkey_state_dir=$HOME/.local/state/portkey
+local -a portkey_enc_files portkey_targets
+portkey_enc_files=(configs/portkey/state/env.enc configs/portkey/state/local-api-key.enc)
+portkey_targets=($portkey_state_dir/env $portkey_state_dir/local-api-key)
+if (( ${#portkey_enc_files} > 0 )); then
+    install -m 700 -d $portkey_state_dir
+fi
+for (( i = 1; i <= ${#portkey_enc_files}; i++ )); do
+    enc_file=${portkey_enc_files[i]}
+    target=${portkey_targets[i]}
+    [[ -f $enc_file ]] || continue
+    if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
+        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        continue
+    fi
+    print "Decrypting ${enc_file} -> ${target}..."
+    temp_file=$(mktemp)
+    if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+        chmod 600 $temp_file
+        mv $temp_file $target
+        print "  ...done"
+    else
+        rm -f $temp_file
+        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+    fi
+done
