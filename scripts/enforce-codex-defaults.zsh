@@ -12,7 +12,7 @@ if [[ $SCRIPT_DIR == $HOME.homedir* ]]; then
     SCRIPT_DIR=${SCRIPT_DIR/.homedir/}
 fi
 
-config_file=$SCRIPT_DIR/configs/codex/config.toml
+config_file=$SCRIPT_DIR/configs/ai/codex/config.toml
 
 while (( $# )); do
     case $1 in

@@ -1,28 +1,35 @@
-<!-- Generated: 2026-02-17; updated 2026-03-13 -->
+<!-- Generated: 2026-02-17; updated 2026-05-22 -->
 
 # dotfiles
 
-XDG-compliant zsh/neovim/vim/tmux dotfiles. All external code is git submodules (~145). Solarized Dark everywhere.
+XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80). Solarized Dark everywhere. Vim configuration was removed — Neovim is the only editor.
 
 ## Commands
-- `./deploy.zsh` — full install: create dirs, symlink configs, sync submodules, install tools
+- `./deploy.zsh` — full install dispatcher; sources fragments from `scripts/deploy.d/NN_*.zsh` in numeric order
+  - `--upgrade` / `-u` — also run brew/mise/cargo upgrades
+  - `--dry-run` / `-n` — fragments print intentions without mutating
+  - `--only NAME` — run only fragments whose basename matches NAME (repeatable)
+- `scripts/eris-macos-bootstrap.zsh` — Day-0 macOS bootstrap (run BEFORE clone via `curl | zsh`); installs Homebrew + baseline, then clones and runs deploy
 - `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
 - `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
-- Deploy runs automatically on `git pull` via the guarded post-merge hook
+- Deploy runs automatically on `git pull` via `scripts/post-merge` (guards: `zsh -n` precheck, `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
 - `sudo bash scripts/install-build-deps.sh` — install APT deps for compiling Ruby, Python, Node via env-wrappers
-- `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function)
+- `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function; honors `.sops.yaml` recipients)
 
 ## Where to Add Commands/Tools
 | Want to add... | Location |
 |----------------|----------|
-| Rust CLI tool | `deploy.zsh` → `rust_tools` array (~line 276) |
 | Runtime (node, ruby, python, etc.) | `configs/mise.toml` → `[tools]` section |
+| CLI tool with mise registry backend | `configs/mise.toml` → `[tools]` (preferred — aqua/cargo backends covered for ~13 common CLIs already) |
 | npm global package | `configs/mise.toml` → `"npm:pkg-name" = "latest"` |
+| Cargo CLI without mise backend (e.g. linear-cli) | `scripts/deploy.d/70_runtime_installs.zsh` |
 | APT build dependency | `scripts/install-build-deps.sh` → `PACKAGES` array |
-| Binary via curl/download | `deploy.zsh` → add new `if (( ! ${+commands[tool]} ))` block |
-| Tool as git submodule | `tools/` → add submodule, symlink in `deploy.zsh` |
-| Homebrew package | `deploy.zsh` → brew section (~line 303) |
+| Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
+| Tool as git submodule | `tools/` → add submodule, link in `scripts/deploy.d/40_tools.zsh` |
+| Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
+| brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
+| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
 
 ## Secrets Encryption (SOPS + Age)
 Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:

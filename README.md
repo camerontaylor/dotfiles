@@ -29,9 +29,8 @@ with [zero home presence](#zero-home-presence).
   * [autoenv plugin](https://github.com/Tarrasch/zsh-autoenv)
   * [autopair plugin](https://github.com/hlissner/zsh-autopair)
   * [clean Zsh implementation of `z`](https://github.com/agkozak/zsh-z)
-* Vim [configuration](vim/vimrc) and [plugins](vim/pack)
-* Neovim [configuration](nvim/init.lua) and [plugins](nvim/plugins)
-* Tmux [configuration](tmux/tmux.conf) and [plugins](tmux/plugins)
+* Neovim [configuration](nvim/init.lua) and [plugins](nvim/plugins) (mini.nvim ecosystem; no plugin manager needed — plugins are git submodules under `nvim/plugins/`, loaded via Neovim's native `packpath`)
+* Tmux [configuration](tmux/tmux.conf) and [plugins](tmux/plugins) including resurrect + continuum for session persistence across restarts
 * Yazi [configuration](yazi/yazi.toml) and [plugins](yazi/plugins)
 * Other configurations:
   * [ranger](configs/ranger)
@@ -56,9 +55,10 @@ with [zero home presence](#zero-home-presence).
 
 ## Installation
 
-> [!WARNING]
-> I'm in process on switching to Neovim. Vim configuration isn't maintained
-> anymore, might be removed in future.
+> [!NOTE]
+> Vim configuration has been removed. Neovim is the only supported editor.
+> If you need a fallback on a remote server without Neovim, install `nvim`
+> via your package manager or use the `mise install` path here.
 
 ### Requirements
 
@@ -87,14 +87,42 @@ $HOME/.local/dotfiles/scripts/restore-secrets.zsh  # optional, restores plaintex
 command -v brew >/dev/null 2>&1 && chsh -s "$(brew --prefix)/bin/zsh"  # macOS/Homebrew fallback
 ```
 
-The [deployment script](deploy.zsh) helps set up all required symlinks after
-the initial clone. It also adds a cron job to pull updates every midnight and
-serves as a post-merge git hook, so you don't have to worry about updating
-submodules after a successful pull. Secret save/restore is now separate and
-manual via [`scripts/save-secrets.zsh`](scripts/save-secrets.zsh) and
+The [deployment script](deploy.zsh) sets up symlinks, installs git hooks,
+runs `mise install`, and schedules a daily `git pull`. It dispatches into
+[`scripts/deploy.d/NN_*.zsh`](scripts/deploy.d) fragments, each handling one
+install concern (symlinks, submodules, brew, mise, sops, etc.). Shared
+helpers live in [`scripts/deploy.d/lib/helpers.zsh`](scripts/deploy.d/lib/helpers.zsh).
+The `scripts/post-merge` hook auto-re-runs deploy after every `git pull`
+(with a `zsh -n` precheck and a 300s `timeout` cap; opt out per-pull with
+`DOTFILES_SKIP_POSTMERGE=1`). Secret save/restore is separate and manual via
+[`scripts/save-secrets.zsh`](scripts/save-secrets.zsh) and
 [`scripts/restore-secrets.zsh`](scripts/restore-secrets.zsh). Managed SSH
-files are stored as `ssh/*.enc` and restored to ignored plaintext files under
-`ssh/`, which deploy symlinks into `~/.ssh/`.
+files are stored as `ssh/*.enc` and restored to ignored plaintext files
+under `ssh/`, which deploy symlinks into `~/.ssh/`.
+
+`deploy.zsh` accepts:
+
+| Flag | Meaning |
+|------|---------|
+| `--upgrade` / `-u` | run brew/mise/cargo upgrades in addition to installs |
+| `--dry-run` / `-n` | fragments print intentions via `[dry-run]` without mutating |
+| `--only NAME` | run only fragments whose basename matches NAME (e.g., `--only 30_submodules`); repeat for multiple |
+| `--help` / `-h` | show flag summary |
+
+### macOS Bootstrap (Day 0, before clone)
+
+[`scripts/eris-macos-bootstrap.zsh`](scripts/eris-macos-bootstrap.zsh) is the
+fresh-Mac entry point. It installs Homebrew + a baseline tool set (sops, age,
+mise, caddy, etc.), then clones this repo and runs `deploy.zsh`. Since the
+repo isn't cloned yet, fetch the script directly:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/z0rc/dotfiles/main/scripts/eris-macos-bootstrap.zsh -o ~/eris-macos-bootstrap.zsh
+zsh ~/eris-macos-bootstrap.zsh
+```
+
+The script prints the manual System Settings grants (Full Disk Access, etc.)
+needed before/after.
 
 ## Zero Home Presence
 
@@ -115,12 +143,6 @@ module.
 
 Neovim configuration is tested with latest released Neovim version only. At the
 moment of writing it's version 0.11.
-
-## Vim Version
-
-Vim 9.1 or higher is required to support the XDG Base Directory Specification.
-To use all bundled vim plugins, install vim with Python and Ruby support
-built-in.
 
 ## Configuration
 

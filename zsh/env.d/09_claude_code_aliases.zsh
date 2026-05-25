@@ -1,3 +1,7 @@
+# Interactive-only: aliases/wrappers are useless in non-interactive shells
+# (zsh -c, mise env, script invocations) and parsing them wastes startup time.
+[[ -o interactive ]] || return 0
+
 # Restore terminal state after TUIs that leave enhanced keyboard modes enabled.
 _restore_terminal_input_modes() {
     [[ -t 1 ]] || return 0
