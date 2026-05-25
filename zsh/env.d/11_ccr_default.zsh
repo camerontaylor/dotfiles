@@ -1,7 +1,7 @@
 # CCR (claude-code-router) legacy routing flag (2026-04-27)
 #
 # Portkey owns the default proxy path for ccfw/ccz/cc-fast (+ -happy variants)
-# on ceres.local:8787. Set USE_CCR=1 only for temporary rollback to the older
+# on ceres.webfront.app:8787. Set USE_CCR=1 only for temporary rollback to the older
 # CCR on port 3456.
 #
 # Per-alias overrides (used during cutover or for ad-hoc rollback):

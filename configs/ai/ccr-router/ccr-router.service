@@ -9,8 +9,8 @@ StartLimitBurst=5
 Type=exec
 EnvironmentFile=%S/ccr-router/env
 Environment=PORT=3456
-# Bind to 0.0.0.0 to match LiteLLM (:4199) — peers reach CCR via mDNS
-# (ceres.local). LAN trust boundary is already established for the proxy
+# Bind to 0.0.0.0 to match LiteLLM (:4199) -- peers reach CCR via
+# ceres.webfront.app. LAN trust boundary is already established for the proxy
 # fleet; CCR adds no new attack surface vs LiteLLM.
 Environment=HOST=0.0.0.0
 Environment=NODE_ENV=production

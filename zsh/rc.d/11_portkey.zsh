@@ -4,7 +4,7 @@
 
 # Endpoint convention: Portkey serves Anthropic-compatible /v1/messages at the
 # gateway root. Set ANTHROPIC_BASE_URL to http://host:8787 (no /anthropic suffix).
-typeset -g _PORTKEY_HOST="${PORTKEY_HOST:-ceres.local}"
+typeset -g _PORTKEY_HOST="${PORTKEY_HOST:-ceres.webfront.app}"
 typeset -g _PORTKEY_PORT="${PORTKEY_PORT:-8787}"
 typeset -g _PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
 typeset -g _PORTKEY_BASE_URL="http://${_PORTKEY_HOST}:${_PORTKEY_PORT}"

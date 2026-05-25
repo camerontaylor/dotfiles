@@ -5,10 +5,10 @@ emulate -L zsh
 typeset -ga AGENT_ALIAS_ENV_NAMES
 typeset -gA AGENT_ALIAS_ENV
 
-# Portkey gateway lives on ceres:8787 and serves Anthropic-compatible
+# Portkey gateway lives on ceres.webfront.app:8787 and serves Anthropic-compatible
 # /v1/messages at the gateway root. The real provider secrets stay on the
 # gateway host; aliases send only local control headers.
-typeset -g AGENT_ALIAS_PORTKEY_HOST="${AGENT_ALIAS_PORTKEY_HOST:-${PORTKEY_HOST:-ceres.local}}"
+typeset -g AGENT_ALIAS_PORTKEY_HOST="${AGENT_ALIAS_PORTKEY_HOST:-${PORTKEY_HOST:-ceres.webfront.app}}"
 typeset -g AGENT_ALIAS_PORTKEY_PORT="${AGENT_ALIAS_PORTKEY_PORT:-${PORTKEY_PORT:-8787}}"
 typeset -g AGENT_ALIAS_PORTKEY_BASE_URL="http://${AGENT_ALIAS_PORTKEY_HOST}:${AGENT_ALIAS_PORTKEY_PORT}"
 typeset -g AGENT_ALIAS_PORTKEY_STATE="${XDG_STATE_HOME:-$HOME/.local/state}/portkey"
