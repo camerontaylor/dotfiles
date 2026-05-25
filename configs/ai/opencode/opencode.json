@@ -14,15 +14,6 @@
       "url": "https://web-to-mcp.com/mcp/541f0cbf-c5e3-4e77-9170-885d742bb4bf/",
       "enabled": true,
       "timeout": 120000
-    },
-    "react-grab-mcp": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@react-grab/mcp",
-        "--stdio"
-      ]
     }
   },
   "plugin": [
