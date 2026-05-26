@@ -1,31 +1,39 @@
 [tools]
+# Language runtimes — pin to channels/major lines so a surprise major release
+# doesn't land on shell startup. Bump explicitly with `mise upgrade <tool>`.
 node = "lts"
-npm = "latest"
-bun = "latest"
-ruby = "latest"
+npm = "11"
+bun = "1"
+ruby = "3"
+python = "3"
+uv = "0"
 # CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
 # Aqua backends (prebuilt binaries) are preferred where available, falling back
 # to cargo. linear-cli has no mise backend → still installed via cargo in deploy.zsh.
-neovim = "latest"
-ripgrep = "latest"
-ast-grep = "latest"
-gh = "latest"
-glab = "latest"
-"aqua:dandavison/delta" = "latest"
-bat = "latest"
-eza = "latest"
-fd = "latest"
-sd = "latest"
-zoxide = "latest"
-tree-sitter = "latest"
-awscli = "latest"
-# npm global packages (migrated from nvm's default-packages)
+# Pinned to current major; bump with `mise upgrade <tool>` when ready.
+neovim = "0"
+ripgrep = "14"
+ast-grep = "0"
+gh = "2"
+glab = "1"
+"aqua:dandavison/delta" = "0"
+bat = "0"
+eza = "0"
+fd = "10"
+sd = "1"
+zoxide = "0"
+tree-sitter = "0"
+awscli = "2"
+sops = "3"
+age = "1"
+# AI/dev tools intentionally tracking leading edge (move fast, want updates).
+opencode = "latest"
+# npm global packages (migrated from nvm's default-packages).
+# npm:* tools resolve through the npm registry, not GitHub, so they don't hit
+# the GitHub rate limit and are safe to keep at "latest".
 "npm:happy" = "latest"
 "npm:@biomejs/biome" = "latest"
 "npm:@openai/codex" = "latest"
-python = "latest"
-sops = "latest"
-age = "latest"
 "npm:oh-my-codex" = "latest"
 "npm:@google/gemini-cli" = "latest"
 "npm:oh-my-claude-sisyphus" = "latest"
@@ -39,9 +47,7 @@ age = "latest"
 "npm:oxlint" = "latest"
 "npm:not-claude-code-emulator" = "latest"
 "npm:@oh-my-pi/pi-coding-agent" = "latest"
-uv = "latest"
 "npm:@aoagents/ao" = "latest"
-opencode = "latest"
 "npm:@code-yeongyu/comment-checker" = "latest"
 
 [settings]

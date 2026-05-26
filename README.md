@@ -43,15 +43,8 @@ with [zero home presence](#zero-home-presence).
   * [spark](https://github.com/holman/spark) to draw bar charts right in the console
   * [diff-so-fancy](https://github.com/so-fancy/diff-so-fancy) for a much better git diff layout
   * [git-extras](https://github.com/tj/git-extras) additional helpers for Git
-* [Environment wrappers](env-wrappers) for multiple programming languages:
-  * [goenv](https://github.com/syndbg/goenv)
-  * [jenv](https://github.com/jenv/jenv)
-  * [luaenv](https://github.com/cehoffman/luaenv)
-  * [nodenv](https://github.com/nodenv/nodenv)
-  * [phpenv](https://github.com/phpenv/phpenv)
-  * [plenv](https://github.com/tokuhirom/plenv)
-  * [pyenv](https://github.com/yyuu/pyenv)
-  * [rbenv](https://github.com/rbenv/rbenv)
+* [mise](https://mise.jdx.dev/) for polyglot runtime/tool management — see
+  [`configs/mise.toml`](configs/mise.toml). (Replaces the prior `*env` wrappers.)
 
 ## Installation
 
@@ -187,15 +180,6 @@ Add your local configuration to `$DOTFILES/vim/vimrc.local`.
 
 Local binaries can be placed in `$HOME/.local/bin`; it's added to `PATH` by
 default. Man pages can be placed in `$XDG_DATA_HOME/man`.
-
-### Lazy \*env
-
-Pyenv and similar wrappers are lazy-loaded, meaning they won't be initialized
-at shell start. Activation occurs on the first execution. Check the output of
-`type -f pyenv` in the shell and the
-[implementation](zsh/rc.d/12_many_env.zsh). Because of this, files like
-`.python-version` won't work as expected; it's recommended to use
-`autoenv.zsh` to explicitly activate the needed environment.
 
 ### Ignore Config Files Changes Locally
 

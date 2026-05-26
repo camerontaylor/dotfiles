@@ -1,76 +1,9 @@
 [submodule "configs/ranger-plugins/archives"]
 	path = configs/ranger-plugins/archives
 	url = https://github.com/maximtrp/ranger-archives.git
-[submodule "env-wrappers/goenv/goenv"]
-	path = env-wrappers/goenv/goenv
-	url = https://github.com/syndbg/goenv.git
-[submodule "env-wrappers/jenv/jenv"]
-	path = env-wrappers/jenv/jenv
-	url = https://github.com/jenv/jenv.git
-[submodule "env-wrappers/luaenv/lua-build"]
-	path = env-wrappers/luaenv/lua-build
-	url = https://github.com/cehoffman/lua-build.git
-[submodule "env-wrappers/luaenv/luaenv"]
-	path = env-wrappers/luaenv/luaenv
-	url = https://github.com/cehoffman/luaenv.git
-[submodule "env-wrappers/luaenv/luaenv-luarocks"]
-	path = env-wrappers/luaenv/luaenv-luarocks
-	url = https://github.com/xpol/luaenv-luarocks.git
-[submodule "env-wrappers/nodenv/node-build"]
-	path = env-wrappers/nodenv/node-build
-	url = https://github.com/nodenv/node-build.git
-[submodule "env-wrappers/nodenv/nodenv"]
-	path = env-wrappers/nodenv/nodenv
-	url = https://github.com/nodenv/nodenv.git
-[submodule "env-wrappers/nodenv/nodenv-aliases"]
-	path = env-wrappers/nodenv/nodenv-aliases
-	url = https://github.com/nodenv/nodenv-aliases.git
-[submodule "env-wrappers/nodenv/nodenv-env"]
-	path = env-wrappers/nodenv/nodenv-env
-	url = https://github.com/nodenv/nodenv-env.git
-[submodule "env-wrappers/nodenv/nodenv-man"]
-	path = env-wrappers/nodenv/nodenv-man
-	url = https://github.com/nodenv/nodenv-man.git
-[submodule "env-wrappers/nodenv/nodenv-package-rehash"]
-	path = env-wrappers/nodenv/nodenv-package-rehash
-	url = https://github.com/nodenv/nodenv-package-rehash.git
-[submodule "env-wrappers/phpenv/php-build"]
-	path = env-wrappers/phpenv/php-build
-	url = https://github.com/php-build/php-build.git
-[submodule "env-wrappers/phpenv/phpenv"]
-	path = env-wrappers/phpenv/phpenv
-	url = https://github.com/phpenv/phpenv.git
-[submodule "env-wrappers/phpenv/phpenv-aliases"]
-	path = env-wrappers/phpenv/phpenv-aliases
-	url = https://github.com/madumlao/phpenv-aliases.git
-[submodule "env-wrappers/phpenv/phpenv-composer"]
-	path = env-wrappers/phpenv/phpenv-composer
-	url = https://github.com/ngyuki/phpenv-composer.git
-[submodule "env-wrappers/plenv/perl-build"]
-	path = env-wrappers/plenv/perl-build
-	url = https://github.com/tokuhirom/Perl-Build.git
-[submodule "env-wrappers/plenv/plenv"]
-	path = env-wrappers/plenv/plenv
-	url = https://github.com/tokuhirom/plenv.git
-[submodule "env-wrappers/plenv/plenv-contrib"]
-	path = env-wrappers/plenv/plenv-contrib
-	url = https://github.com/miyagawa/plenv-contrib.git
-[submodule "env-wrappers/plenv/plenv-download"]
-	path = env-wrappers/plenv/plenv-download
-	url = https://github.com/skaji/plenv-download.git
-[submodule "env-wrappers/pyenv/pyenv"]
-	path = env-wrappers/pyenv/pyenv
-	url = https://github.com/yyuu/pyenv.git
-[submodule "env-wrappers/pyenv/pyenv-default-packages"]
-	path = env-wrappers/pyenv/pyenv-default-packages
-	url = https://github.com/jawshooah/pyenv-default-packages.git
-[submodule "env-wrappers/pyenv/pyenv-virtualenv"]
-	path = env-wrappers/pyenv/pyenv-virtualenv
-	url = https://github.com/yyuu/pyenv-virtualenv.git
 [submodule "nvim/plugins/blink.cmp"]
 	path = nvim/plugins/blink.cmp
 	url = https://github.com/Saghen/blink.cmp.git
-	branch = v1
 [submodule "nvim/plugins/codecompanion"]
 	path = nvim/plugins/codecompanion
 	url = https://github.com/olimorris/codecompanion.nvim.git

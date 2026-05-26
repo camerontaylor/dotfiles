@@ -23,6 +23,10 @@ if [[ -v KONSOLE_VERSION ]]; then
 fi
 
 # Ghostty integration
-if [[ -v GHOSTTY_RESOURCES_DIR ]]; then
+# cmux.app impersonates Ghostty but bundles only terminfo/themes, no shell-integration.
+# Prefer cmux's own integration when present; otherwise require the real file to exist.
+if [[ -v CMUX_SHELL_INTEGRATION_DIR && -r $CMUX_SHELL_INTEGRATION_DIR/cmux-zsh-integration.zsh ]]; then
+    source $CMUX_SHELL_INTEGRATION_DIR/cmux-zsh-integration.zsh
+elif [[ -v GHOSTTY_RESOURCES_DIR && -r $GHOSTTY_RESOURCES_DIR/shell-integration/zsh/ghostty-integration ]]; then
     source $GHOSTTY_RESOURCES_DIR/shell-integration/zsh/ghostty-integration
 fi

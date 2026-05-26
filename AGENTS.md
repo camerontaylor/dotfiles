@@ -13,7 +13,6 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 - `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
 - `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
 - Deploy runs automatically on `git pull` via `scripts/post-merge` (guards: `zsh -n` precheck, `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
-- `sudo bash scripts/install-build-deps.sh` — install APT deps for compiling Ruby, Python, Node via env-wrappers
 - `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function; honors `.sops.yaml` recipients)
 
 ## Where to Add Commands/Tools
@@ -23,7 +22,6 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | CLI tool with mise registry backend | `configs/mise.toml` → `[tools]` (preferred — aqua/cargo backends covered for ~13 common CLIs already) |
 | npm global package | `configs/mise.toml` → `"npm:pkg-name" = "latest"` |
 | Cargo CLI without mise backend (e.g. linear-cli) | `scripts/deploy.d/70_runtime_installs.zsh` |
-| APT build dependency | `scripts/install-build-deps.sh` → `PACKAGES` array |
 | Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
 | Tool as git submodule | `tools/` → add submodule, link in `scripts/deploy.d/40_tools.zsh` |
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
@@ -82,15 +80,14 @@ mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mis
 - Non-critical zsh plugins deferred via `zsh-defer` (rc.d/24-27)
 - Slow inits cached via `evalcache` (20h TTL, see `zsh/fpath/evalcache`)
 - All configs symlinked to XDG locations by `deploy.zsh`; never place files directly in `~/.config/`
-- Don't edit anything under `plugins/`, `tools/`, or `env-wrappers/` — those are submodules
+- Don't edit anything under `plugins/` or `tools/` — those are submodules
 
 ## Structure
 ```
 ├── deploy.zsh          # Main installer + git hooks
 ├── scripts/
 │   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
-│   ├── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
-│   └── install-build-deps.sh  # APT deps for env-wrappers (rbenv, pyenv, etc.)
+│   └── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
 ├── configs/
 │   └── mise.toml       # Global runtime versions (node, bun, ruby, python, sops, age)
 ├── zsh/
@@ -101,6 +98,5 @@ mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mis
 ├── nvim/               # Lua config (0.11.0+): mini.nvim, mason, blink.cmp
 ├── vim/                # Legacy VimScript (deprecated)
 ├── tmux/               # Solarized, vim-aware pane nav
-├── tools/              # fzf, diff-so-fancy, git-extras (submodules)
-└── env-wrappers/       # goenv, jenv, pyenv, rbenv, etc. (submodules)
+└── tools/              # fzf, diff-so-fancy, git-extras (submodules)
 ```
