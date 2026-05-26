@@ -53,6 +53,9 @@ trust_level = "trusted"
 [projects."/home/ctaylor/repos"]
 trust_level = "trusted"
 
+[projects."/Users/ctaylor"]
+trust_level = "trusted"
+
 [features]
 
 js_repl = true
