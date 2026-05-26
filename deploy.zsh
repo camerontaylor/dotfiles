@@ -5,6 +5,22 @@
 #
 # Usage: ./deploy.zsh [--upgrade|-u] [--dry-run|-n] [--only NAME ...]
 #
+# Fragment numbering convention (current layout):
+#   10  dirs           — XDG dirs, $HOME scaffolding
+#   20  symlinks       — link zsh/git/tmux/nvim configs into $HOME
+#   30  submodules     — `git submodule update --init`
+#   40  tools          — build/install submoduled tools (fzf, diff-so-fancy, …)
+#   50  mise           — bootstrap mise, install all `configs/mise.toml` tools
+#   55  evalcache_prune — purge poisoned 0-byte zsh evalcache files (recovery)
+#   60  git_hooks      — post-merge / pre-commit hooks
+#   65  sops           — age/sops setup, decrypt env secrets
+#   70  runtime_installs — curl-installed CLIs without a mise backend
+#   75  brew_setup     — brew formulae and casks
+#   80  nvim_post      — post-symlink nvim setup
+#   85  verify_tools   — smoke-test that mise/brew-installed binaries actually run
+#   90  p10k_warmup    — pre-warm powerlevel10k caches
+#   99  periodic       — install daily auto-pull (systemd/launchd/cron)
+#
 # History: this file was a 1129-line monolith. It now dispatches into
 # fragments so each install concern can be reviewed/edited in isolation.
 

@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# rewrite-commits-conventional
+#
+# Scans recent commits for non-conventional-commit messages, uses Claude CLI
+# to generate proper conventional commit messages from the diffs, then rewrites
+# history to apply them.
+#
+# Two-pass design:
+#   Pass 1 — Scan & generate: identify non-conventional commits, call Claude
+#            to produce new messages, store in a temp mapping directory.
+#   Pass 2 — Rewrite: git filter-branch --msg-filter looks up each commit
+#            hash and swaps the message if a replacement exists.
+
+DAYS=14
+DRY_RUN=false
+FORCE=false
+MODEL="haiku"
+CONCURRENCY=4
+VERBOSE=false
+
+usage() {
+  cat <<'EOF'
+Usage: rewrite-commits-conventional [options]
+
+Rewrite non-conventional commit messages in the current branch using Claude CLI.
+
+Options:
+  --days <N>         Number of days to look back (default: 14)
+  --dry-run          Preview changes without rewriting history
+  --force            Allow running on main/master (dangerous)
+  --model <model>    Claude model for generation (default: haiku)
+  --concurrency <N>  Max parallel Claude calls (default: 4)
+  --verbose          Show detailed progress
+  -h, --help         Show this help message
+
+Examples:
+  rewrite-commits-conventional --dry-run
+  rewrite-commits-conventional --days 7 --model sonnet
+  rewrite-commits-conventional --dry-run --verbose
+EOF
+}
+
+# ── Parse arguments ──────────────────────────────────────────────────────────
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --days)    DAYS="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    --force)   FORCE=true; shift ;;
+    --model)   MODEL="$2"; shift 2 ;;
+    --concurrency) CONCURRENCY="$2"; shift 2 ;;
+    --verbose) VERBOSE=true; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+# ── Safety checks ────────────────────────────────────────────────────────────
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+
+if [[ "$FORCE" == false && ("$BRANCH" == "main" || "$BRANCH" == "master") ]]; then
+  echo "ERROR: Refusing to rewrite history on '$BRANCH'. Use --force to override." >&2
+  exit 1
+fi
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "ERROR: Working tree is dirty. Commit or stash changes first." >&2
+  exit 1
+fi
+
+if ! command -v claude &>/dev/null; then
+  echo "ERROR: 'claude' CLI not found in PATH." >&2
+  exit 1
+fi
+
+# ── Shared generator ────────────────────────────────────────────────────────
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GENERATOR="$SCRIPT_DIR/generate-commit-msg"
+
+if [[ ! -x "$GENERATOR" ]]; then
+  echo "ERROR: generate-commit-msg not found at $GENERATOR" >&2
+  exit 1
+fi
+
+# Conventional commit pattern (for scanning — generation/retry handled by generator)
+CC_PATTERN='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?!?:[[:space:]].+'
+
+is_conventional() {
+  local first_line
+  first_line="$(echo "$1" | sed '/^[[:space:]]*$/d' | head -n1)"
+  [[ "$first_line" =~ $CC_PATTERN ]]
+}
+
+# ── Pass 1: Scan commits and generate replacements ──────────────────────────
+
+MAPPING_DIR="$(mktemp -d)"
+trap 'rm -rf "$MAPPING_DIR"' EXIT
+
+SINCE="$(date -d "$DAYS days ago" '+%Y-%m-%d' 2>/dev/null || date -v-"${DAYS}"d '+%Y-%m-%d')"
+
+echo "Scanning commits on '$BRANCH' since $SINCE ($DAYS days)..."
+echo ""
+
+mapfile -t COMMITS < <(git log --since="$SINCE" --format='%H' --no-merges)
+
+if [[ ${#COMMITS[@]} -eq 0 ]]; then
+  echo "No non-merge commits found in the last $DAYS days."
+  exit 0
+fi
+
+echo "Found ${#COMMITS[@]} non-merge commits. Checking for conventional format..."
+echo ""
+
+NON_CONVENTIONAL=()
+
+for hash in "${COMMITS[@]}"; do
+  msg="$(git log -1 --format='%B' "$hash")"
+  if ! is_conventional "$msg"; then
+    NON_CONVENTIONAL+=("$hash")
+  fi
+done
+
+if [[ ${#NON_CONVENTIONAL[@]} -eq 0 ]]; then
+  echo "All ${#COMMITS[@]} commits already follow conventional commit format."
+  exit 0
+fi
+
+echo "${#NON_CONVENTIONAL[@]} of ${#COMMITS[@]} commits need rewriting:"
+echo ""
+
+for hash in "${NON_CONVENTIONAL[@]}"; do
+  short="$(git log -1 --format='%h' "$hash")"
+  subject="$(git log -1 --format='%s' "$hash")"
+  echo "  $short  $subject"
+done
+
+echo ""
+
+# ── Generate new messages via generate-commit-msg ──────────────────────────
+
+generate_message() {
+  local hash="$1"
+  local short original_msg new_msg
+
+  short="$(git log -1 --format='%h' "$hash")"
+  original_msg="$(git log -1 --format='%B' "$hash")"
+
+  # Pipe stat + patch diff into the shared generator.
+  # histogram diff, rename/copy detection, minimal context — all handled by diff flags.
+  new_msg="$(
+    git diff-tree --no-commit-id -r --stat "$hash"
+    echo "---"
+    git diff-tree --no-commit-id -p -U1 --no-color --minimal --diff-algorithm=histogram -M -C "$hash"
+  )" || true
+
+  new_msg="$(echo "$new_msg" | "$GENERATOR" --model "$MODEL" --original-msg "$original_msg" --quiet)" || {
+    echo "WARN: generation failed for $short, skipping" >&2
+    return 1
+  }
+
+  if ! is_conventional "$new_msg"; then
+    echo "WARN: non-conventional output for $short, skipping" >&2
+    if [[ "$VERBOSE" == true ]]; then
+      echo "  Generated: $(echo "$new_msg" | head -1)" >&2
+    fi
+    return 1
+  fi
+
+  echo "$new_msg" > "$MAPPING_DIR/$hash"
+}
+
+echo "Generating conventional commit messages (model: $MODEL, concurrency: $CONCURRENCY)..."
+echo ""
+
+RUNNING=0
+GENERATED=0
+FAILED=0
+
+for hash in "${NON_CONVENTIONAL[@]}"; do
+  short="$(git log -1 --format='%h' "$hash")"
+
+  generate_message "$hash" &
+  RUNNING=$((RUNNING + 1))
+
+  if [[ "$VERBOSE" == true ]]; then
+    echo "  Started: $short"
+  fi
+
+  # Throttle concurrency
+  if [[ $RUNNING -ge $CONCURRENCY ]]; then
+    wait -n 2>/dev/null || true
+    RUNNING=$((RUNNING - 1))
+  fi
+done
+
+# Wait for all remaining jobs
+wait
+
+# Count results
+for hash in "${NON_CONVENTIONAL[@]}"; do
+  if [[ -f "$MAPPING_DIR/$hash" ]]; then
+    GENERATED=$((GENERATED + 1))
+  else
+    FAILED=$((FAILED + 1))
+  fi
+done
+
+echo "Generated: $GENERATED   Failed: $FAILED"
+echo ""
+
+if [[ $GENERATED -eq 0 ]]; then
+  echo "No messages were generated. Nothing to rewrite."
+  exit 1
+fi
+
+# ── Preview changes ──────────────────────────────────────────────────────────
+
+echo "═══════════════════════════════════════════════════════════════════════"
+echo "PREVIEW"
+echo "═══════════════════════════════════════════════════════════════════════"
+echo ""
+
+for hash in "${NON_CONVENTIONAL[@]}"; do
+  if [[ ! -f "$MAPPING_DIR/$hash" ]]; then
+    continue
+  fi
+  short="$(git log -1 --format='%h' "$hash")"
+  old_subject="$(git log -1 --format='%s' "$hash")"
+  new_subject="$(head -1 "$MAPPING_DIR/$hash")"
+
+  echo "  $short"
+  echo "    old: $old_subject"
+  echo "    new: $new_subject"
+  echo ""
+done
+
+if [[ "$DRY_RUN" == true ]]; then
+  echo "[DRY RUN] No changes applied. Remove --dry-run to rewrite history."
+  exit 0
+fi
+
+# ── Pass 2: Rewrite history ─────────────────────────────────────────────────
+
+# Find the oldest commit we need to rewrite
+OLDEST_HASH="${NON_CONVENTIONAL[-1]}"
+REBASE_BASE="$(git rev-parse "$OLDEST_HASH"^)"
+
+echo "═══════════════════════════════════════════════════════════════════════"
+echo "REWRITING"
+echo "═══════════════════════════════════════════════════════════════════════"
+echo ""
+echo "Rewriting ${GENERATED} commits from $(git log -1 --format='%h' "$OLDEST_HASH")..."
+echo "A backup ref will be stored at refs/original/ by git filter-branch."
+echo ""
+
+# Export mapping dir so the subshell can access it
+export MAPPING_DIR
+
+git filter-branch --msg-filter '
+  if [[ -f "$MAPPING_DIR/$GIT_COMMIT" ]]; then
+    cat "$MAPPING_DIR/$GIT_COMMIT"
+  else
+    cat
+  fi
+' "$REBASE_BASE"..HEAD
+
+echo ""
+echo "Done. ${GENERATED} commit messages rewritten."
+echo ""
+echo "To verify:  git log --oneline --since=\"$SINCE\""
+echo "To undo:    git reset --hard refs/original/refs/heads/$BRANCH"
+echo ""
+echo "WARNING: If this branch has been pushed, you will need to force-push."
+echo "         Do NOT force-push shared branches without coordination."

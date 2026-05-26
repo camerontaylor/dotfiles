@@ -70,6 +70,3 @@ unset envfile homezshenv
 [[ -d "$HOME/.opencode/bin" ]] && path=("$HOME/.opencode/bin" $path)
 
 _zshenv_dbg "done"
-
-# Vite+ bin (https://viteplus.dev)
-[[ -f "$HOME/.vite-plus/env" ]] && . "$HOME/.vite-plus/env"

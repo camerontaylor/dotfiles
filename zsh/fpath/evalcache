@@ -7,22 +7,38 @@ setopt local_options extended_glob
 local cache_dir=$XDG_CACHE_HOME/zsh/eval
 local cache_file=$cache_dir/${(j:_:)@:gs/\//_}.zsh
 
+# Invalidate before the main branch: if the binary vanished, or the cache is
+# zero bytes from a previous flaky run, drop the cache so the cache-miss
+# branch below regenerates it in this same shell. Without this, a poisoned
+# cache silently shadowed `zoxide init zsh` for the entire 20h TTL, leaving
+# `z` undefined despite zoxide on PATH.
 if [[ -r $cache_file ]] && ! whence $1 > /dev/null; then
-    # remove cache file when it's present, but arg isn't executable
     echo "evalcache ERROR: $1 isn't executable, removing cache file" >&2
     zf_rm -f $cache_file*
-elif [[ ! -e $cache_file || -n $cache_file(#qN.mh+20) ]]; then
+elif [[ -e $cache_file && ! -s $cache_file ]]; then
+    echo "evalcache WARN: $cache_file is empty, regenerating" >&2
+    zf_rm -f $cache_file*
+fi
+
+if [[ ! -e $cache_file || -n $cache_file(#qN.mh+20) ]]; then
     # revalidate cache every 20 hours
     # cache miss
     if (( ${+commands[$1]} )); then
         zf_mkdir -p $cache_dir
         command $@ > $cache_file
-        source $cache_file
-        # zrecompile cache file in background
-        {
-            autoload -Uz zrecompile
-            zrecompile -pq $cache_file
-        } &!
+        if [[ ! -s $cache_file ]]; then
+            # Refuse to lock in empty output — better to print an error every
+            # shell start than to silently disable the integration for 20h.
+            echo "evalcache ERROR: $* produced no output, refusing to cache" >&2
+            zf_rm -f $cache_file*
+        else
+            source $cache_file
+            # zrecompile cache file in background
+            {
+                autoload -Uz zrecompile
+                zrecompile -pq $cache_file
+            } &!
+        fi
     else
         echo "evalcache ERROR: $1 is not available in PATH" >&2
     fi

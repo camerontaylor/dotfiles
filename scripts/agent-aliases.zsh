@@ -192,12 +192,47 @@ agent_alias_define_env() {
     AGENT_ALIAS_ENV=()
 
     case "$alias_name" in
-        ccm)
-            # Direct MiniMax via their Anthropic-compat endpoint. Bypasses Portkey.
+        cc)
+            # Plain `claude` against real Anthropic. Clears every override so
+            # the binary uses its default Anthropic endpoint and default model.
+            # Useful when you want first-party Claude without any
+            # MiniMax/Portkey/Z.AI/Fireworks routing.
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC ""
+                ANTHROPIC_DEFAULT_SONNET_MODEL ""
+                ANTHROPIC_DEFAULT_HAIKU_MODEL ""
+                ANTHROPIC_DEFAULT_OPUS_MODEL ""
+                ANTHROPIC_MODEL ""
+                ANTHROPIC_SMALL_FAST_MODEL ""
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL ""
+                ANTHROPIC_CUSTOM_HEADERS ""
+                API_TIMEOUT_MS ""
+            )
+            ;;
+        ccm-direct|ccm-direct-happy)
+            # Direct MiniMax via their Anthropic-compat endpoint. Bypasses Portkey.
+            # Direct aliases must keep small-fast on the same backend because
+            # Claude Code uses one base URL for all tiers.
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -210,7 +245,6 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_HAIKU_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_OPUS_MODEL MiniMax-M2.7
@@ -221,13 +255,50 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
-        ccz-direct)
-            # Direct Z.AI via their Anthropic-compat endpoint. Bypasses Portkey.
-            # Kept as fallback in case proxy-routed `ccz` misbehaves.
+        ccm|ccm-happy)
+            # MiniMax foreground tier via Portkey. The fleet-ccm config uses
+            # Fireworks MiniMax primary with OpenRouter MiniMax fallback.
+            local _ccm_minimax_model="fleet-ccm"
+            local _ccm_haiku_model="fleet-haiku"
+            local _ccm_small_fast_model="fleet-small-fast"
+            local _ccm_headers
+            _ccm_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccm_minimax_model" "$_ccm_haiku_model" "$_ccm_small_fast_model")" || return $?
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccm_minimax_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccm_haiku_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccm_minimax_model"
+                ANTHROPIC_MODEL "$_ccm_minimax_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccm_small_fast_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
+                ANTHROPIC_CUSTOM_HEADERS "$_ccm_headers"
+                API_TIMEOUT_MS 75000
+            )
+            ;;
+        ccz-direct|ccz-direct-happy)
+            # Direct Z.AI via their Anthropic-compat endpoint. Bypasses Portkey.
+            # Kept as fallback in case proxy-routed `ccz` misbehaves.
+            # Since this bypasses Portkey, small-fast must be a Z.AI model.
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -244,7 +315,6 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_HAIKU_MODEL glm-5-turbo
                 ANTHROPIC_DEFAULT_OPUS_MODEL glm-5.1
                 ANTHROPIC_SMALL_FAST_MODEL glm-5-turbo
-                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${Z_AI_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.z.ai/api/anthropic
@@ -302,7 +372,6 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -317,7 +386,6 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfw_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfw_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
@@ -341,7 +409,6 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -356,7 +423,6 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccz_zai_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccz_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccz_zai_model"
@@ -378,12 +444,13 @@ agent_alias_define_env() {
             local _ccfast_sonnet_model="fleet-sonnet"
             local _ccfast_haiku_model="fleet-haiku"
             local _ccfast_small_fast_model="fleet-small-fast"
+            local _ccfast_api_key=""
+            [[ "$alias_name" == "cc-fast" ]] && _ccfast_api_key="portkey-local"
             local _ccfast_headers
             _ccfast_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccfast_glm_model" "$_ccfast_opus_model" "$_ccfast_sonnet_model" "$_ccfast_haiku_model" "$_ccfast_small_fast_model")" || return $?
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
-                ENABLE_TOOL_SEARCH
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
@@ -398,13 +465,12 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ENABLE_TOOL_SEARCH "false"
                 ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccfast_sonnet_model"
                 ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccfast_haiku_model"
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfast_opus_model"
                 ANTHROPIC_MODEL "$_ccfast_glm_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccfast_small_fast_model"
-                ANTHROPIC_API_KEY ""
+                ANTHROPIC_API_KEY "$_ccfast_api_key"
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
                 ANTHROPIC_CUSTOM_HEADERS "$_ccfast_headers"

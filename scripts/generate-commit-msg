@@ -37,7 +37,19 @@ is_conventional() {
 }
 
 strip_fences() {
-  echo "$1" | sed '/^```/d' | sed '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba}'
+  # Drop ``` fence lines, then trim leading/trailing blank lines.
+  # awk avoids GNU-vs-BSD sed differences around {...} blocks and \n in regex.
+  printf '%s\n' "$1" | awk '
+    /^```/ { next }
+    { lines[++n] = $0 }
+    END {
+      start = 1
+      while (start <= n && lines[start] ~ /^[[:space:]]*$/) start++
+      end = n
+      while (end >= start && lines[end] ~ /^[[:space:]]*$/) end--
+      for (i = start; i <= end; i++) print lines[i]
+    }
+  '
 }
 
 diagnose_conventional_failure() {
@@ -127,6 +139,35 @@ resolve_alias_model() {
   ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
 }
 
+resolve_alias_base_url() {
+  zsh -c '
+    emulate -L zsh
+    set -euo pipefail
+    source "$1"
+    agent_alias_define_env "$2"
+    print -r -- "${AGENT_ALIAS_ENV[ANTHROPIC_BASE_URL]:-}"
+  ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
+}
+
+# Returns 0 if a TCP connection to the alias's ANTHROPIC_BASE_URL succeeds
+# within 1s; non-zero otherwise. Used to detect a down local gateway so the
+# generator can fall back to a direct Claude call.
+alias_gateway_reachable() {
+  local url host port
+  url="$(resolve_alias_base_url "$1" 2>/dev/null)" || return 1
+  [[ -n "$url" ]] || return 1
+  if [[ "$url" =~ ^(https?)://([^:/]+)(:([0-9]+))?(/|$) ]]; then
+    host="${BASH_REMATCH[2]}"
+    port="${BASH_REMATCH[4]}"
+    if [[ -z "$port" ]]; then
+      [[ "${BASH_REMATCH[1]}" == "https" ]] && port=443 || port=80
+    fi
+    timeout 1 bash -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null
+  else
+    return 1
+  fi
+}
+
 if [[ -n "${COMMIT_CLI:-}" ]]; then
   CLI_MODE="custom"
   CLI_LABEL="$COMMIT_CLI"
@@ -141,6 +182,16 @@ elif command -v claude &>/dev/null; then
 else
   echo "ERROR: 'claude' CLI not found in PATH. Set COMMIT_CLI to override." >&2
   exit 1
+fi
+
+# If the alias's local gateway is unreachable, drop to a direct claude call
+# with haiku. Skip when the user pinned COMMIT_CLI explicitly.
+if [[ "$CLI_MODE" == "alias" ]] && ! alias_gateway_reachable "$DEFAULT_COMMIT_ALIAS"; then
+  echo "WARNING: Gateway for alias '$DEFAULT_COMMIT_ALIAS' is unreachable; falling back to direct claude --model haiku." >&2
+  CLI_MODE="claude"
+  CLI_LABEL="claude (fallback: gateway down)"
+  CLI_CMD=("claude")
+  MODEL="${MODEL:-haiku}"
 fi
 
 if [[ -z "$MODEL" ]]; then
@@ -290,7 +341,7 @@ You are a commit message generator. Given a git diff, produce a conventional com
 - Breaking changes: add ! after type/scope, e.g. feat(auth)!: change API
 - ${BODY_INSTRUCTION}
 - Preserve any "Co-Authored-By" or "Signed-off-by" trailers from the original
-- Do NOT add trailers that weren't in the original
+- Do NOT add trailers that were not in the original
 - Output ONLY the commit message — no markdown fences, no explanation, no quotes
 - If multiple types apply, choose the primary one. Prefer feat/fix over chore/refactor when both fit.
 
