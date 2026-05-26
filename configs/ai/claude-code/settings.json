@@ -127,7 +127,6 @@
       "/home/app"
     ]
   },
-  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
