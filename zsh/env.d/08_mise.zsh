@@ -11,6 +11,11 @@ export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 # GitHub token — lifts mise's GitHub-release version-resolution rate limit
 # from 60/hr (unauthenticated) to 5000/hr. Read from gh's keyring so it stays
 # in sync with `gh auth login` rotations. Skipped if already exported (e.g. CI).
+# The inner `if` ensures a missing/failed `gh auth token` doesn't make this
+# whole file exit non-zero — .zshenv reports any non-zero source as an error.
 if [[ -z ${GITHUB_TOKEN:-} ]] && (( ${+commands[gh]} )); then
-    GITHUB_TOKEN=$(gh auth token 2>/dev/null) && export GITHUB_TOKEN
+    if _gh_token=$(gh auth token 2>/dev/null); then
+        export GITHUB_TOKEN=$_gh_token
+    fi
+    unset _gh_token
 fi
