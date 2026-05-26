@@ -2,6 +2,20 @@
 # Also suppress it from history
 alias clear=" clear-screen-soft-bottom"
 
+# GNU userland aliases: on macOS prefer the `g`-prefixed brew binaries
+# (coreutils, grep, diffutils); on Linux the stock names are already GNU.
+# Falls through silently if the GNU binary is missing, leaving BSD behavior
+# rather than a broken alias.
+gnu_alias() {
+    local name=$1
+    shift
+    if [[ $OSTYPE == darwin* ]] && (( ${+commands[g$name]} )); then
+        alias "$name"="g$name $*"
+    elif [[ $OSTYPE != darwin* ]] && (( ${+commands[$name]} )); then
+        alias "$name"="$name $*"
+    fi
+}
+
 # Prefer nvim when installed
 (( ${+commands[nvim]} )) && {
     alias nv="nvim"
@@ -10,11 +24,11 @@ alias clear=" clear-screen-soft-bottom"
 }
 
 # Human file sizes
-(( ${+commands[df]} )) && alias df="df --human-readable --print-type"
-(( ${+commands[du]} )) && alias du="du --human-readable --total"
+gnu_alias df --human-readable --print-type
+gnu_alias du --human-readable --total
 
 # Handy stuff and a bit of XDG compliance
-(( ${+commands[grep]} )) && alias grep="grep --color=auto --binary-files=without-match --devices=skip"
+gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 (( ${+commands[quilt]} )) && alias quilt="quilt --quiltrc $DOTFILES/configs/quiltrc"
 (( ${+commands[tmux]} )) && alias stmux="tmux new-session 'sudo --login'"
 (( ${+commands[wget]} )) && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
@@ -27,7 +41,7 @@ else
     alias ls="ls --group-directories-first --color=auto --hyperlink=auto --classify"
     alias ll="LC_COLLATE=C ls -l -v --almost-all --human-readable"
 fi
-(( ${+commands[diff]} )) && alias diff="diff --color=auto --new-file --text --recursive --unified"
+gnu_alias diff --color=auto --new-file --text --recursive --unified
 
 
 # OpenClaw
@@ -41,7 +55,7 @@ alias pwd=" pwd"
 alias exit=" exit"
 
 # Safety
-(( ${+commands[rm]} )) && alias rm="rm -I --preserve-root=all"
+gnu_alias rm -I --preserve-root=all
 
 # Suppress suggestions and globbing, enable wrappers
 (( ${+commands[find]} )) && alias find="noglob find"

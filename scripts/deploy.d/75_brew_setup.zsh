@@ -88,6 +88,17 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade ncurses || true
 fi
 
+# GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff)
+# are referenced directly by the gnu_alias helper in zsh/rc.d/08_aliases.zsh;
+# other gnubin binaries are picked up via the PATH prepend in
+# zsh/env.d/03_paths.zsh.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing GNU userland via brew..."
+    brew_formula_install_or_upgrade coreutils || true
+    brew_formula_install_or_upgrade grep || true
+    brew_formula_install_or_upgrade diffutils || true
+fi
+
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
 # them through mise on Intel Macs. brew bottles ship for both arches.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
