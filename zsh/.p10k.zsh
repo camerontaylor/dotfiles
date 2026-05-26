@@ -52,10 +52,7 @@
     mise                    # mise version manager (https://github.com/jdx/mise)
     virtualenv              # python virtual environment (https://docs.python.org/3/library/venv.html)
     anaconda                # conda environment (https://conda.io/)
-    pyenv                   # python environment (https://github.com/pyenv/pyenv)
-    goenv                   # go environment (https://github.com/syndbg/goenv)
-    nodenv                  # node.js version from nodenv (https://github.com/nodenv/nodenv)
-    # nvm                   # node.js version from nvm (replaced by mise)
+    # pyenv, goenv, nodenv, luaenv, jenv, plenv, phpenv — replaced by mise
     nodeenv                 # node.js environment (https://github.com/ekalinin/nodeenv)
     # node_version          # node.js version
     # go_version            # go version (https://golang.org)
@@ -68,11 +65,7 @@
     # rbenv                 # ruby version from rbenv (replaced by mise)
     rvm                     # ruby version from rvm (https://rvm.io)
     fvm                     # flutter version management (https://github.com/leoafarias/fvm)
-    luaenv                  # lua version from luaenv (https://github.com/cehoffman/luaenv)
-    jenv                    # java version from jenv (https://github.com/jenv/jenv)
-    plenv                   # perl version from plenv (https://github.com/tokuhirom/plenv)
     perlbrew                # perl version from perlbrew (https://github.com/gugod/App-perlbrew)
-    phpenv                  # php version from phpenv (https://github.com/phpenv/phpenv)
     scalaenv                # scala version from scalaenv (https://github.com/scalaenv/scalaenv)
     haskell_stack           # haskell version from stack (https://haskellstack.org/)
     kubecontext             # current kubernetes context (https://kubernetes.io/)
@@ -1044,61 +1037,6 @@
   # Custom icon.
   # typeset -g POWERLEVEL9K_ANACONDA_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
-  ################[ pyenv: python environment (https://github.com/pyenv/pyenv) ]################
-  # Pyenv color.
-  typeset -g POWERLEVEL9K_PYENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PYENV_BACKGROUND=4
-  # Hide python version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_PYENV_SOURCES=(shell local global)
-  # If set to false, hide python version if it's the same as global:
-  # $(pyenv version-name) == $(pyenv global).
-  typeset -g POWERLEVEL9K_PYENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide python version if it's equal to "system".
-  typeset -g POWERLEVEL9K_PYENV_SHOW_SYSTEM=true
-
-  # Pyenv segment format. The following parameters are available within the expansion.
-  #
-  # - P9K_CONTENT                Current pyenv environment (pyenv version-name).
-  # - P9K_PYENV_PYTHON_VERSION   Current python version (python --version).
-  #
-  # The default format has the following logic:
-  #
-  # 1. Display just "$P9K_CONTENT" if it's equal to "$P9K_PYENV_PYTHON_VERSION" or
-  #    starts with "$P9K_PYENV_PYTHON_VERSION/".
-  # 2. Otherwise display "$P9K_CONTENT $P9K_PYENV_PYTHON_VERSION".
-  typeset -g POWERLEVEL9K_PYENV_CONTENT_EXPANSION='${P9K_CONTENT}${${P9K_CONTENT:#$P9K_PYENV_PYTHON_VERSION(|/*)}:+ $P9K_PYENV_PYTHON_VERSION}'
-
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_PYENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
-  ################[ goenv: go environment (https://github.com/syndbg/goenv) ]################
-  # Goenv color.
-  typeset -g POWERLEVEL9K_GOENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_GOENV_BACKGROUND=4
-  # Hide go version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_GOENV_SOURCES=(shell local global)
-  # If set to false, hide go version if it's the same as global:
-  # $(goenv version-name) == $(goenv global).
-  typeset -g POWERLEVEL9K_GOENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide go version if it's equal to "system".
-  typeset -g POWERLEVEL9K_GOENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_GOENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
-  ##########[ nodenv: node.js version from nodenv (https://github.com/nodenv/nodenv) ]##########
-  # Nodenv color.
-  typeset -g POWERLEVEL9K_NODENV_FOREGROUND=2
-  typeset -g POWERLEVEL9K_NODENV_BACKGROUND=0
-  # Hide node version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_NODENV_SOURCES=(shell local global)
-  # If set to false, hide node version if it's the same as global:
-  # $(nodenv version-name) == $(nodenv global).
-  typeset -g POWERLEVEL9K_NODENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide node version if it's equal to "system".
-  typeset -g POWERLEVEL9K_NODENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_NODENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
   ##############[ nvm: node.js version from nvm (https://github.com/nvm-sh/nvm) ]###############
   # Nvm color.
   typeset -g POWERLEVEL9K_NVM_FOREGROUND=0
@@ -1232,48 +1170,6 @@
   # Custom icon.
   # typeset -g POWERLEVEL9K_FVM_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
-  ##########[ luaenv: lua version from luaenv (https://github.com/cehoffman/luaenv) ]###########
-  # Lua color.
-  typeset -g POWERLEVEL9K_LUAENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_LUAENV_BACKGROUND=4
-  # Hide lua version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_LUAENV_SOURCES=(shell local global)
-  # If set to false, hide lua version if it's the same as global:
-  # $(luaenv version-name) == $(luaenv global).
-  typeset -g POWERLEVEL9K_LUAENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide lua version if it's equal to "system".
-  typeset -g POWERLEVEL9K_LUAENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_LUAENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
-  ###############[ jenv: java version from jenv (https://github.com/jenv/jenv) ]################
-  # Java color.
-  typeset -g POWERLEVEL9K_JENV_FOREGROUND=1
-  typeset -g POWERLEVEL9K_JENV_BACKGROUND=7
-  # Hide java version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_JENV_SOURCES=(shell local global)
-  # If set to false, hide java version if it's the same as global:
-  # $(jenv version-name) == $(jenv global).
-  typeset -g POWERLEVEL9K_JENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide java version if it's equal to "system".
-  typeset -g POWERLEVEL9K_JENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_JENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
-  ###########[ plenv: perl version from plenv (https://github.com/tokuhirom/plenv) ]############
-  # Perl color.
-  typeset -g POWERLEVEL9K_PLENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PLENV_BACKGROUND=4
-  # Hide perl version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_PLENV_SOURCES=(shell local global)
-  # If set to false, hide perl version if it's the same as global:
-  # $(plenv version-name) == $(plenv global).
-  typeset -g POWERLEVEL9K_PLENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide perl version if it's equal to "system".
-  typeset -g POWERLEVEL9K_PLENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_PLENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
   ###########[ perlbrew: perl version from perlbrew (https://github.com/gugod/App-perlbrew) ]############
   # Perlbrew color.
   typeset -g POWERLEVEL9K_PERLBREW_FOREGROUND=67
@@ -1283,20 +1179,6 @@
   typeset -g POWERLEVEL9K_PERLBREW_SHOW_PREFIX=false
   # Custom icon.
   # typeset -g POWERLEVEL9K_PERLBREW_VISUAL_IDENTIFIER_EXPANSION='⭐'
-
-  ############[ phpenv: php version from phpenv (https://github.com/phpenv/phpenv) ]############
-  # PHP color.
-  typeset -g POWERLEVEL9K_PHPENV_FOREGROUND=0
-  typeset -g POWERLEVEL9K_PHPENV_BACKGROUND=5
-  # Hide php version if it doesn't come from one of these sources.
-  typeset -g POWERLEVEL9K_PHPENV_SOURCES=(shell local global)
-  # If set to false, hide php version if it's the same as global:
-  # $(phpenv version-name) == $(phpenv global).
-  typeset -g POWERLEVEL9K_PHPENV_PROMPT_ALWAYS_SHOW=false
-  # If set to false, hide PHP version if it's equal to "system".
-  typeset -g POWERLEVEL9K_PHPENV_SHOW_SYSTEM=true
-  # Custom icon.
-  # typeset -g POWERLEVEL9K_PHPENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
 
   #######[ scalaenv: scala version from scalaenv (https://github.com/scalaenv/scalaenv) ]#######
   # Scala color.
