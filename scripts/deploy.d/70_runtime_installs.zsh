@@ -1,5 +1,5 @@
 # curl-based installs for runtimes/CLIs without a mise backend:
-# Claude Code, vite-plus, rustup/cargo, linear-cli.
+# Claude Code, rustup/cargo, linear-cli.
 
 if (( ! ${+commands[claude]} )); then
     print "Installing Claude Code..."
@@ -7,15 +7,6 @@ if (( ! ${+commands[claude]} )); then
         print "  ...done"
     else
         print "  ...failed to install Claude Code"
-    fi
-fi
-
-if (( ! ${+commands[vp]} )); then
-    print "Installing vite-plus..."
-    if curl -fsSL https://vite.plus | bash > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...failed to install vite-plus"
     fi
 fi
 
