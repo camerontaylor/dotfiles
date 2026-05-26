@@ -2,14 +2,7 @@
 # (or $ZEROTIER_NETWORK_IDS, space-separated) in zsh/env.d/9*_zerotier_secrets.zsh.
 # Skipped silently when no network id is configured.
 
-if [[ $DOTFILES_OS != Linux ]]; then
-    # macOS install via Homebrew cask is handled in 75_brew_setup.zsh; nothing
-    # to do here. ZeroTier on macOS is GUI-only and a cask install is enough.
-    return 0
-fi
-
-if (( ! ${+commands[curl]} )); then
-    print "ZeroTier: curl not available, skipping install"
+if [[ $DOTFILES_OS != Linux && $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
@@ -31,27 +24,77 @@ if (( ${#zt_networks} == 0 )); then
     return 0
 fi
 
-if (( ! ${+commands[zerotier-cli]} )); then
-    print "Installing ZeroTier..."
-    if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would: curl -s https://install.zerotier.com | sudo bash"
-    else
-        if curl -s https://install.zerotier.com | sudo bash > /dev/null 2>&1; then
-            rehash
-            print "  ...done"
+# Install the daemon when missing; refresh under --upgrade on macOS.
+if [[ $DOTFILES_OS == Darwin ]]; then
+    if ! ensure_homebrew_path; then
+        print "ZeroTier: Homebrew not available, skipping"
+        return 0
+    fi
+    if ! brew list --cask zerotier-one > /dev/null 2>&1; then
+        print "Installing ZeroTier..."
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: brew install --cask zerotier-one"
         else
-            print "  ...failed to install ZeroTier"
-            return 0
+            if brew_cask_install_or_upgrade zerotier-one; then
+                rehash
+                print "  ...macOS may prompt to allow the ZeroTier system extension"
+                print "     in System Settings -> Privacy & Security."
+            else
+                return 0
+            fi
+        fi
+    elif $upgrade_mode; then
+        print "Upgrading ZeroTier..."
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: brew upgrade --cask zerotier-one"
+        else
+            brew_cask_install_or_upgrade zerotier-one || true
+        fi
+    fi
+else
+    if (( ! ${+commands[curl]} )); then
+        print "ZeroTier: curl not available, skipping install"
+        return 0
+    fi
+    if (( ! ${+commands[zerotier-cli]} )); then
+        print "Installing ZeroTier..."
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: curl -s https://install.zerotier.com | sudo bash"
+        else
+            if curl -s https://install.zerotier.com | sudo bash > /dev/null 2>&1; then
+                rehash
+                print "  ...done"
+            else
+                print "  ...failed to install ZeroTier"
+                return 0
+            fi
         fi
     fi
 fi
 
-if (( ${+commands[systemctl]} )) && ! systemctl is-active --quiet zerotier-one 2>/dev/null; then
-    if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would: sudo systemctl enable --now zerotier-one"
-    else
-        sudo systemctl enable --now zerotier-one > /dev/null 2>&1 || true
+# Ensure the daemon is running.
+if [[ $DOTFILES_OS == Linux ]]; then
+    if (( ${+commands[systemctl]} )) && ! systemctl is-active --quiet zerotier-one 2>/dev/null; then
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: sudo systemctl enable --now zerotier-one"
+        else
+            sudo systemctl enable --now zerotier-one > /dev/null 2>&1 || true
+        fi
     fi
+elif [[ $DOTFILES_OS == Darwin ]]; then
+    local zt_plist=/Library/LaunchDaemons/com.zerotier.one.plist
+    if [[ -f $zt_plist ]] && ! pgrep -x zerotier-one > /dev/null 2>&1; then
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: sudo launchctl load -w $zt_plist"
+        else
+            sudo launchctl load -w $zt_plist > /dev/null 2>&1 || true
+        fi
+    fi
+fi
+
+if (( ! ${+commands[zerotier-cli]} )); then
+    print "ZeroTier: zerotier-cli still not on PATH, skipping join"
+    return 0
 fi
 
 # zerotier-cli requires root to talk to the local service socket.
