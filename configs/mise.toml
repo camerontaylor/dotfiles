@@ -11,10 +11,11 @@ ripgrep = "latest"
 ast-grep = "latest"
 gh = "latest"
 glab = "latest"
-"aqua:dandavison/delta" = "latest"
+# delta/fd: installed via Homebrew in scripts/deploy.d/75_brew_setup.zsh — their
+# upstream releases dropped x86_64-apple-darwin binaries (aarch64 only), so no
+# mise backend can install them on Intel Macs. brew bottles cover both arches.
 bat = "latest"
 eza = "latest"
-fd = "latest"
 sd = "latest"
 zoxide = "latest"
 tree-sitter = "latest"
@@ -25,7 +26,9 @@ awscli = "latest"
 "npm:@openai/codex" = "latest"
 python = "latest"
 sops = "latest"
-age = "latest"
+# age: github backend (FiloSottile ships darwin/amd64 in GitHub Releases, but
+# aqua's spec omits it). ubi: is deprecated in mise as of 2026 → use github:.
+"github:FiloSottile/age" = "latest"
 "npm:oh-my-codex" = "latest"
 "npm:@google/gemini-cli" = "latest"
 "npm:oh-my-claude-sisyphus" = "latest"

@@ -88,6 +88,15 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade ncurses || true
 fi
 
+# fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
+# them through mise on Intel Macs. brew bottles ship for both arches.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing fd via brew..."
+    brew_formula_install_or_upgrade fd || true
+    print "Installing git-delta via brew..."
+    brew_formula_install_or_upgrade git-delta || true
+fi
+
 # engram tap install.
 if (( ${+commands[brew]} )) && (( ! ${+commands[engram]} )); then
     print "Installing engram via brew..."

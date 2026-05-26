@@ -46,6 +46,8 @@ normalize_codex_config() {
 
     awk \
         -v desired_model='model = "gpt-5.4-mini"' \
+        -v desired_sandbox='sandbox_mode = "danger-full-access"' \
+        -v desired_approval='approval_policy = "never"' \
         -v desired_effort='model_reasoning_effort = "high"' '
         BEGIN {
             in_root = 1
@@ -55,6 +57,14 @@ normalize_codex_config() {
             if (!seen_model) {
                 print desired_model
                 seen_model = 1
+            }
+            if (!seen_sandbox) {
+                print desired_sandbox
+                seen_sandbox = 1
+            }
+            if (!seen_approval) {
+                print desired_approval
+                seen_approval = 1
             }
             if (!seen_effort) {
                 print desired_effort
@@ -73,6 +83,22 @@ normalize_codex_config() {
                     print desired_model
                 }
                 seen_model = 1
+                next
+            }
+
+            if (in_root && $0 ~ /^[[:space:]]*sandbox_mode[[:space:]]*=/) {
+                if (!seen_sandbox) {
+                    print desired_sandbox
+                }
+                seen_sandbox = 1
+                next
+            }
+
+            if (in_root && $0 ~ /^[[:space:]]*approval_policy[[:space:]]*=/) {
+                if (!seen_approval) {
+                    print desired_approval
+                }
+                seen_approval = 1
                 next
             }
 
