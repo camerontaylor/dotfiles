@@ -1,0 +1,4 @@
+#!/bin/sh
+# sleepwatcher hook: runs on display wake. See scripts/wake-peers for the
+# fanout logic. PATH is minimal under launchd so use the absolute symlink path.
+exec "$HOME/.local/bin/wake-peers" >/dev/null 2>&1

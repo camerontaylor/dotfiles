@@ -60,6 +60,14 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
+# wake-peers (Universal Control screen-wake fanout). The sleepwatcher
+# LaunchAgent itself is activated only on macOS peer hosts by
+# scripts/deploy.d/76_wake_peers.zsh; these symlinks are cross-platform
+# harmless data files.
+zf_mkdir -p $XDG_CONFIG_HOME/wake-peers
+zf_ln -sfn $SCRIPT_DIR/configs/wake-peers/peers.conf $XDG_CONFIG_HOME/wake-peers/peers.conf
+zf_ln -sfn $SCRIPT_DIR/scripts/wake-peers $HOME/.local/bin/wake-peers
+zf_ln -sfn $SCRIPT_DIR/configs/wake-peers/displaywakeup $HOME/.displaywakeup
 for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
     zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
 done

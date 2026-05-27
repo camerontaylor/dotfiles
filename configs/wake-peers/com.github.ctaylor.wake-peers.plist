@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template plist rendered by scripts/deploy.d/76_wake_peers.zsh into
+  ~/Library/LaunchAgents/com.github.ctaylor.wake-peers.plist with
+  @HOME@ and @SLEEPWATCHER_PATH@ substituted for the live machine. The rendered
+  copy is the active LaunchAgent; this repo copy is the canonical source.
+
+  Custom label deliberately avoids brew's default homebrew.mxcl.sleepwatcher
+  plist so `brew services` does not start a second sleepwatcher with only -w.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.github.ctaylor.wake-peers</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@SLEEPWATCHER_PATH@</string>
+    <string>-W</string>
+    <string>@HOME@/.displaywakeup</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>/dev/null</string>
+
+  <key>StandardErrorPath</key>
+  <string>/dev/null</string>
+</dict>
+</plist>

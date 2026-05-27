@@ -1,0 +1,56 @@
+#!/bin/sh
+# wake-peers: send `caffeinate -u -t 1` to every peer host in peers.conf except
+# self, to wake their displays so Universal Control hands off cleanly.
+#
+# Runnable two ways:
+#   - manually / via hotkey: `wake-peers`
+#   - via sleepwatcher on display wake: launchd -> sleepwatcher -W ~/.displaywakeup -> wake-peers
+#
+# Fire-and-forget: each SSH backgrounds with BatchMode + 3s ConnectTimeout, no
+# logging. Offline / unreachable peers are silent. Exits 0 on every successful
+# fanout, and 0 (no-op) when the current host is not in peers.conf or the
+# config file is missing.
+#
+# BSD-userland portable (no GNU sed/date/getopt/etc.).
+
+set -u
+
+PEERS_CONF=${WAKE_PEERS_CONF:-${XDG_CONFIG_HOME:-$HOME/.config}/wake-peers/peers.conf}
+
+if [ ! -r "$PEERS_CONF" ]; then
+    exit 0
+fi
+
+# Canonical short hostname. scutil --get LocalHostName is the macOS convention;
+# hostname -s is the BSD fallback for non-Darwin or stripped systems.
+self=$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null || echo "")
+
+# Strip comments and blank lines.
+peers=$(awk '
+    { sub(/#.*$/, "") }
+    { gsub(/^[ \t]+|[ \t]+$/, "") }
+    NF > 0 { print }
+' "$PEERS_CONF")
+
+# Bail silently if this host is not in the peer list (deploy fragment should
+# have prevented activation, but the standalone hotkey path may run anywhere).
+self_in_list=0
+for host in $peers; do
+    if [ "$host" = "$self" ]; then
+        self_in_list=1
+        break
+    fi
+done
+[ "$self_in_list" -eq 0 ] && exit 0
+
+for host in $peers; do
+    [ "$host" = "$self" ] && continue
+    ssh -o BatchMode=yes \
+        -o ConnectTimeout=3 \
+        -o StrictHostKeyChecking=accept-new \
+        -o LogLevel=ERROR \
+        "$host" 'caffeinate -u -t 1' >/dev/null 2>&1 &
+done
+
+wait
+exit 0
