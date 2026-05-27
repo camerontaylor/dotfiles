@@ -149,23 +149,20 @@ resolve_alias_base_url() {
   ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
 }
 
-# Returns 0 if a TCP connection to the alias's ANTHROPIC_BASE_URL succeeds
-# within 1s; non-zero otherwise. Used to detect a down local gateway so the
-# generator can fall back to a direct Claude call.
+# Returns 0 if the alias's ANTHROPIC_BASE_URL accepts an HTTP request within
+# 2s; non-zero otherwise. Used to detect a down local gateway so the generator
+# can fall back to a direct Claude call.
+#
+# Uses curl rather than bash's /dev/tcp builtin because the latter is missing
+# from Apple's bundled bash 3.2 and behaves unreliably under `timeout` on macOS
+# (it was SIGKILLed on saturn, falsely flagging a reachable gateway as down).
+# curl returns 0 for ANY HTTP response (including 4xx/5xx auth/config errors),
+# non-zero only for DNS/TCP/TLS failures — exactly the signal we want.
 alias_gateway_reachable() {
-  local url host port
+  local url
   url="$(resolve_alias_base_url "$1" 2>/dev/null)" || return 1
   [[ -n "$url" ]] || return 1
-  if [[ "$url" =~ ^(https?)://([^:/]+)(:([0-9]+))?(/|$) ]]; then
-    host="${BASH_REMATCH[2]}"
-    port="${BASH_REMATCH[4]}"
-    if [[ -z "$port" ]]; then
-      [[ "${BASH_REMATCH[1]}" == "https" ]] && port=443 || port=80
-    fi
-    timeout 1 bash -c "exec 3<>/dev/tcp/$host/$port" 2>/dev/null
-  else
-    return 1
-  fi
+  curl -s --connect-timeout 1 --max-time 2 -o /dev/null "$url" 2>/dev/null
 }
 
 if [[ -n "${COMMIT_CLI:-}" ]]; then

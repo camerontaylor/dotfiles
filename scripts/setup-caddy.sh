@@ -114,8 +114,8 @@ is_root_owned_executable() {
       [[ "$owner" == "root:root" ]] || return 1
       ;;
     Darwin)
-      owner=$(stat -f '%Su:%Sg' "$path")
-      mode=$(stat -f '%Lp' "$path")
+      owner=$(/usr/bin/stat -f '%Su:%Sg' "$path")
+      mode=$(/usr/bin/stat -f '%Lp' "$path")
       [[ "$owner" == "root:wheel" ]] || return 1
       ;;
     *)
@@ -400,6 +400,7 @@ setup_caddy_launchd() {
   echo "Configuring Caddy launchd service..."
   write_caddy_env
   sudo chown root:wheel "$CADDY_ENV_PATH"
+  sudo install -d -o root -g wheel -m 700 "$CADDY_CONFIG_DIR/data" "$CADDY_CONFIG_DIR/config"
 
   local runner="$CADDY_CONFIG_DIR/run-caddy.sh"
   sudo tee "$runner" > /dev/null <<EOF
@@ -408,6 +409,9 @@ set -euo pipefail
 set -a
 source "$CADDY_ENV_PATH"
 set +a
+export HOME="/var/root"
+export XDG_DATA_HOME="$CADDY_CONFIG_DIR/data"
+export XDG_CONFIG_HOME="$CADDY_CONFIG_DIR/config"
 exec "$CADDY_BIN" run --config "$CADDYFILE_PATH" --adapter caddyfile
 EOF
   sudo chmod 700 "$runner"
