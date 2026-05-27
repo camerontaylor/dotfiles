@@ -23,6 +23,17 @@ gnu_alias() {
     alias vim="nvim"
 }
 
+# Prefer Homebrew's modern bash over macOS's bundled 3.2.57 when typing
+# `bash some-script.sh` interactively. The brew binary is already first on
+# PATH via `brew shellenv` (see zsh/env.d/03_paths.zsh), so this alias is
+# belt-and-suspenders insurance against future PATH-ordering changes.
+# Has NO effect on scripts launched by a `#!/bin/bash` shebang — those go
+# straight to /bin/bash 3.2 and must use `#!/usr/bin/env bash` to pick up
+# the brew binary.
+if [[ $OSTYPE == darwin* ]] && [[ -n $HOMEBREW_PREFIX ]] && [[ -x $HOMEBREW_PREFIX/bin/bash ]]; then
+    alias bash="$HOMEBREW_PREFIX/bin/bash"
+fi
+
 # Human file sizes
 gnu_alias df --human-readable --print-type
 gnu_alias du --human-readable --total
