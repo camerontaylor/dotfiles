@@ -398,6 +398,44 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 75000
             )
             ;;
+        ccd|ccd-happy)
+            # DeepSeek V4 foreground tier via Portkey. Both routes pin OpenRouter
+            # to `provider.only=["DeepSeek"]` with `allow_fallbacks=false` — no
+            # cross-provider fallback. ccd will fail when DeepSeek upstream is
+            # unavailable; this is intentional (provider isolation > resilience).
+            local _ccd_pro_model="fleet-ccd"
+            local _ccd_flash_model="fleet-ccd-haiku"
+            local _ccd_headers
+            _ccd_headers="$(agent_alias_portkey_headers "$alias_name" "$_ccd_pro_model" "$_ccd_flash_model")" || return $?
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ANTHROPIC_DEFAULT_SONNET_MODEL "$_ccd_pro_model"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL "$_ccd_flash_model"
+                ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccd_pro_model"
+                ANTHROPIC_MODEL "$_ccd_pro_model"
+                ANTHROPIC_SMALL_FAST_MODEL "$_ccd_flash_model"
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN ""
+                ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
+                ANTHROPIC_CUSTOM_HEADERS "$_ccd_headers"
+                API_TIMEOUT_MS 75000
+            )
+            ;;
         ccz|ccz-happy)
             # Z.AI foreground tier via Portkey. The fleet-ccz config keeps Z.AI
             # primary and preserves Fireworks/MiniMax fallback capacity.

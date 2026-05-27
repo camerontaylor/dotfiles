@@ -55,7 +55,8 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/skills $HOME/.codex/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json
-# OMX standalone agents
+# OMX standalone config + agents
+zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/config.toml $HOME/.omx/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless

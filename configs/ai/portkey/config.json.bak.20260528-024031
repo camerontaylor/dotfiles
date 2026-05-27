@@ -555,104 +555,6 @@
           }
         ]
       }
-    },
-    "fleet-ccd": {
-      "portkey_config": {
-        "strategy": {
-          "mode": "fallback",
-          "on_status_codes": [
-            408,
-            429,
-            500,
-            502,
-            503,
-            504,
-            529
-          ]
-        },
-        "retry": {
-          "attempts": 2,
-          "on_status_codes": [
-            408,
-            429,
-            500,
-            502,
-            503,
-            504,
-            529
-          ],
-          "use_retry_after_header": true
-        },
-        "request_timeout": 75000,
-        "targets": [
-          {
-            "provider": "openrouter",
-            "api_key_env": "OPENROUTER_API_KEY",
-            "override_params": {
-              "model": "deepseek/deepseek-v4-pro",
-              "provider": {
-                "only": [
-                  "DeepSeek"
-                ],
-                "allow_fallbacks": false
-              },
-              "usage": {
-                "include": true
-              }
-            },
-            "request_timeout": 45000
-          }
-        ]
-      }
-    },
-    "fleet-ccd-haiku": {
-      "portkey_config": {
-        "strategy": {
-          "mode": "fallback",
-          "on_status_codes": [
-            408,
-            429,
-            500,
-            502,
-            503,
-            504,
-            529
-          ]
-        },
-        "retry": {
-          "attempts": 2,
-          "on_status_codes": [
-            408,
-            429,
-            500,
-            502,
-            503,
-            504,
-            529
-          ],
-          "use_retry_after_header": true
-        },
-        "request_timeout": 75000,
-        "targets": [
-          {
-            "provider": "openrouter",
-            "api_key_env": "OPENROUTER_API_KEY",
-            "override_params": {
-              "model": "deepseek/deepseek-v4-flash",
-              "provider": {
-                "only": [
-                  "DeepSeek"
-                ],
-                "allow_fallbacks": false
-              },
-              "usage": {
-                "include": true
-              }
-            },
-            "request_timeout": 45000
-          }
-        ]
-      }
     }
   },
   "local_config": {
@@ -794,14 +696,6 @@
       ],
       "portkey-probe-stream-fleet-sonnet": [
         "fleet-sonnet"
-      ],
-      "ccd": [
-        "fleet-ccd",
-        "fleet-ccd-haiku"
-      ],
-      "ccd-happy": [
-        "fleet-ccd",
-        "fleet-ccd-haiku"
       ]
     }
   },

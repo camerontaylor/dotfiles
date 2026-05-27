@@ -457,6 +457,65 @@ if (( ${+commands[claude]} )); then
     esac
   }
 
+  _portkey_run_ccd() {
+    # Strict DeepSeek isolation: both Portkey routes pin provider.only=["DeepSeek"]
+    # with allow_fallbacks=false. Failure mode is "loud" at the Portkey/Claude Code
+    # layer (HTTP error logged to Portkey gateway and surfaced as a claude error),
+    # but from the user's terminal a DeepSeek upstream outage will look like a
+    # generic "claude crashed" — there is no terminal banner. If ccd appears
+    # broken, check Portkey gateway logs and DeepSeek status before assuming
+    # local breakage. (Trade-off chosen in deep-interview Round 2: provider
+    # isolation > resilience.)
+    emulate -L zsh
+    local alias_name="${1:?usage: _portkey_run_ccd <alias> <claude|happy> [args...]}"
+    local runner="${2:?usage: _portkey_run_ccd <alias> <claude|happy> [args...]}"
+    shift 2
+    _portkey_ensure_service || return 1
+    local pro_model="fleet-ccd"
+    local flash_model="fleet-ccd-haiku"
+    local headers
+    headers="$(_portkey_headers "$alias_name" "$pro_model" "$flash_model")" || return $?
+
+    case "$runner" in
+      claude)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$flash_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$flash_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          claude --model "$pro_model" "$@"
+        ;;
+      happy)
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_API_KEY="" \
+        ANTHROPIC_AUTH_TOKEN="" \
+        ANTHROPIC_BASE_URL="$_PORTKEY_BASE_URL" \
+        ANTHROPIC_CUSTOM_HEADERS="$headers" \
+        ANTHROPIC_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$pro_model" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="$flash_model" \
+        ANTHROPIC_SMALL_FAST_MODEL="$flash_model" \
+        API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
+          happy yolo --dangerously-skip-permissions "$@"
+        ;;
+      *)
+        print -u2 -- "unsupported Portkey runner: $runner"
+        return 1
+        ;;
+    esac
+  }
+
   _portkey_run_ccz() {
     emulate -L zsh
     local alias_name="${1:?usage: _portkey_run_ccz <alias> <claude|happy> [args...]}"
@@ -603,6 +662,14 @@ if (( ${+commands[claude]} )); then
 
   ccz-pk-happy() {
     _portkey_run_ccz ccz-pk-happy happy "$@"
+  }
+
+  ccd() {
+    _portkey_run_ccd ccd claude "$@"
+  }
+
+  ccd-happy() {
+    _portkey_run_ccd ccd-happy happy "$@"
   }
 
   cc-fast() {

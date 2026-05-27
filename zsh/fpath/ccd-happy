@@ -1,0 +1,5 @@
+#compdef ccd-happy
+
+# Proxy-routed DeepSeek V4 via happy yolo.
+root="$(_webfront_root)" || { _portkey_run_ccd ccd-happy happy "$@"; return }
+command zsh "$root/scripts/run-agent-alias.sh" ccd-happy "$@"
