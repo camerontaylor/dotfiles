@@ -11,9 +11,15 @@ Scripts under `scripts/`, `scripts/deploy.d/`, `zsh/`, and the top-level
   `zsh/env.d/03_paths.zsh`'s gnubin PATH prepend has NOT applied.
 
 **Rule:** every shell script in this repo must work with raw BSD userland on
-macOS. Do NOT assume GNU sed/awk/date/coreutils. The fact that
-`eris-macos-bootstrap.zsh` installs `gnu-sed`/`coreutils`/etc. is for the
-user's interactive shell — it is NOT a guarantee for scripts.
+macOS. Do NOT assume GNU sed/awk/date/coreutils. `scripts/deploy.d/75_brew_setup.zsh`
+installs `coreutils`, `gnu-sed`, `gnu-tar`, `gawk`, `findutils`, `gnu-getopt`,
+`grep`, `diffutils`, `moreutils`, `flock`, and a modern `bash` — and
+`zsh/env.d/03_paths.zsh` prepends their gnubin dirs so the **interactive
+shell** gets GNU semantics for `sed`/`find`/`xargs`/`awk`/`tar`/`getopt`/etc.
+That is NOT a guarantee for scripts: git hooks, cron, launchd jobs, and any
+`bash -c '…'` invocation may run before that PATH wiring applies (or under a
+sanitised env entirely), so the bootstrap layer (`scripts/`, `scripts/deploy.d/`,
+`zsh/`, top-level `deploy.zsh`) must stay BSD-clean.
 
 ### BSD-vs-GNU foot-guns to avoid
 

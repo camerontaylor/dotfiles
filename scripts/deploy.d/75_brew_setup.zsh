@@ -99,15 +99,39 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade ncurses || true
 fi
 
-# GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff)
-# are referenced directly by the gnu_alias helper in zsh/rc.d/08_aliases.zsh;
-# other gnubin binaries are picked up via the PATH prepend in
-# zsh/env.d/03_paths.zsh.
+# GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
+# gsed, gtar, gawk, gfind, gxargs) are referenced directly by the gnu_alias
+# helper in zsh/rc.d/08_aliases.zsh; the un-prefixed names are picked up via
+# the gnubin PATH prepend in zsh/env.d/03_paths.zsh. gnu-getopt is keg-only
+# (would shadow /usr/bin/getopt), so it's symlinked through a dedicated
+# branch in 03_paths.zsh rather than the gnubin loop.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing GNU userland via brew..."
     brew_formula_install_or_upgrade coreutils || true
     brew_formula_install_or_upgrade grep || true
     brew_formula_install_or_upgrade diffutils || true
+    brew_formula_install_or_upgrade gnu-sed || true
+    brew_formula_install_or_upgrade gnu-tar || true
+    brew_formula_install_or_upgrade gawk || true
+    brew_formula_install_or_upgrade findutils || true
+    brew_formula_install_or_upgrade gnu-getopt || true
+fi
+
+# Linux-script compat helpers that aren't part of GNU coreutils but ship as
+# standard tooling on most Linux distros and bite ported scripts when missing:
+#   moreutils  — `sponge` (in-place pipeline rewrites), `ts`, `chronic`, `vipe`
+#   flock      — macOS has no flock(1) at all; many cron/lock scripts depend on it
+#
+# Not installed:
+#   bash-completion@2 — zsh is the daily driver and ~/.bashrc is unmanaged,
+#     so the completion files would just sit on disk inert.
+#   zsh-completions (brew formula) — redundant; zsh/plugins/completions is the
+#     same zsh-users/zsh-completions repo vendored as a submodule and already
+#     wired into fpath by zsh/rc.d/15_completion.zsh:19.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing Linux-script compat helpers via brew..."
+    brew_formula_install_or_upgrade moreutils || true
+    brew_formula_install_or_upgrade flock || true
 fi
 
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get

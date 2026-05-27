@@ -21,16 +21,13 @@ if [[ $OSTYPE = darwin* ]]; then
         autoload -z evalcache
         evalcache brew shellenv
 
-        # Enable gnu version of utilities on macOS, if installed
-        for gnuutil in coreutils gnu-sed gnu-tar grep; do
-            if [[ -d $HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnubin ]]; then
-                path=($HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnubin $path)
-            fi
-            if [[ -d $HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnuman ]]; then
-                MANPATH=$HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnuman:$MANPATH
-            fi
-        done
-        unset gnuutil
+        # Note: GNU userland gnubin PATH prepends live in
+        # zsh/rc.d/02b_gnubin_path.zsh, NOT here. macOS's /etc/zprofile runs
+        # `path_helper -s` after .zshenv, which rewrites PATH to put
+        # /etc/paths entries (incl. /usr/bin) at the head and demotes any
+        # prepends made in env.d to behind them. rc.d runs after that
+        # rewrite, so the gnubin/gnu-getopt PATH manipulation has to live
+        # there to actually take effect for `sed`, `find`, `awk`, etc.
         # Prefer curl installed via brew
         if [[ -d $HOMEBREW_PREFIX/opt/curl/bin ]]; then
             path=($HOMEBREW_PREFIX/opt/curl/bin $path)
