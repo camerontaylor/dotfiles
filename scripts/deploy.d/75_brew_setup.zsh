@@ -132,6 +132,10 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing Linux-script compat helpers via brew..."
     brew_formula_install_or_upgrade moreutils || true
     brew_formula_install_or_upgrade flock || true
+    # macOS ships openrsync (rsync 2.6.9 compat, protocol 29) which rejects
+    # common GNU rsync flags like --info=progress2 and behaves differently on
+    # --exclude patterns. Install brew's rsync 3.x to get parity with Linux.
+    brew_formula_install_or_upgrade rsync || true
 fi
 
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
