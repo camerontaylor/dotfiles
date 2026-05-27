@@ -92,8 +92,24 @@ elif [[ $DOTFILES_OS == Darwin ]]; then
     fi
 fi
 
-if (( ! ${+commands[zerotier-cli]} )); then
-    print "ZeroTier: zerotier-cli still not on PATH, skipping join"
+# Locate zerotier-cli. On Apple Silicon, the ZeroTier cask drops the CLI
+# symlink at /usr/local/bin/zerotier-cli (legacy Intel prefix), which is
+# NOT on deploy.zsh's PATH. Fall back to known cask install locations.
+local zt_cli=""
+if (( ${+commands[zerotier-cli]} )); then
+    zt_cli=$commands[zerotier-cli]
+else
+    local candidate
+    for candidate in /usr/local/bin/zerotier-cli /opt/homebrew/bin/zerotier-cli; do
+        if [[ -x $candidate ]]; then
+            zt_cli=$candidate
+            break
+        fi
+    done
+fi
+
+if [[ -z $zt_cli ]]; then
+    print "ZeroTier: zerotier-cli still not found, skipping join"
     return 0
 fi
 
@@ -102,7 +118,7 @@ local joined_raw
 if (( DEPLOY_DRY_RUN )); then
     joined_raw=""
 else
-    joined_raw=$(sudo zerotier-cli -j listnetworks 2>/dev/null) || joined_raw=""
+    joined_raw=$(sudo $zt_cli -j listnetworks 2>/dev/null) || joined_raw=""
 fi
 
 local network_id
@@ -112,9 +128,9 @@ for network_id in $zt_networks; do
     fi
     print "ZeroTier: joining network $network_id..."
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would: sudo zerotier-cli join $network_id"
+        print "  [dry-run] would: sudo $zt_cli join $network_id"
     else
-        if sudo zerotier-cli join $network_id > /dev/null 2>&1; then
+        if sudo $zt_cli join $network_id > /dev/null 2>&1; then
             print "  ...done (controller must authorize this node before traffic flows)"
         else
             print "  ...failed to join $network_id"
