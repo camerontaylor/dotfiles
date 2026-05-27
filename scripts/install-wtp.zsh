@@ -58,12 +58,37 @@ ensure_homebrew_path() {
 }
 
 if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
-    if brew install satococoa/tap/wtp > /dev/null 2>&1; then
+    local brew_output
+    if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
         rehash
-        print "  ...done"
-        exit 0
+        if (( ${+commands[wtp]} )); then
+            print "  ...done"
+            exit 0
+        fi
+        # brew install exited 0 but the keg is unlinked — typically because a
+        # sibling completion dir (e.g. /usr/local/share/fish/vendor_completions.d)
+        # is owned by another user and brew aborts the entire link when any
+        # single symlink fails. Bypass the link step by pointing ~/.local/bin/wtp
+        # at the keg directly; that's all we actually need.
+        local wtp_prefix=
+        wtp_prefix=$(brew --prefix satococoa/tap/wtp 2>/dev/null) || wtp_prefix=
+        if [[ -n $wtp_prefix && -x $wtp_prefix/bin/wtp ]]; then
+            mkdir -p $install_dir
+            ln -sf $wtp_prefix/bin/wtp $target
+            rehash
+            print "  ...brew keg was unlinked; symlinking $wtp_prefix/bin/wtp -> $target"
+            print "  brew said:"
+            print -r -- "$brew_output" | sed 's/^/    /'
+            print "  ...done"
+            exit 0
+        fi
+        print "  ...brew install reported success but produced no wtp binary"
+        print -r -- "$brew_output" | sed 's/^/    /'
+    else
+        print "  ...Homebrew install failed:"
+        print -r -- "$brew_output" | sed 's/^/    /'
     fi
-    print "  ...Homebrew install failed, trying direct release asset"
+    print "  ...trying direct release asset"
 fi
 
 if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[ $wtp_os == Darwin && $wtp_arch == arm64 ]]; then
