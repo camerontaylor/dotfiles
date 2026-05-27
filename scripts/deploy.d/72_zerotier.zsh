@@ -113,17 +113,20 @@ if [[ -z $zt_cli ]]; then
     return 0
 fi
 
-# zerotier-cli requires root to talk to the local service socket.
-local joined_raw
-if (( DEPLOY_DRY_RUN )); then
-    joined_raw=""
+local zt_home
+if [[ $DOTFILES_OS == Darwin ]]; then
+    zt_home='/Library/Application Support/ZeroTier/One'
 else
-    joined_raw=$(sudo $zt_cli -j listnetworks 2>/dev/null) || joined_raw=""
+    zt_home='/var/lib/zerotier-one'
 fi
+local zt_networks_dir=$zt_home/networks.d
 
 local network_id
 for network_id in $zt_networks; do
-    if [[ $joined_raw == *\"$network_id\"* ]]; then
+    # ZeroTier records joined networks as empty <network-id>.conf files.
+    # Use that durable state marker first so we avoid sudo when nothing
+    # needs to change.
+    if [[ -f $zt_networks_dir/$network_id.conf ]]; then
         continue
     fi
     print "ZeroTier: joining network $network_id..."
