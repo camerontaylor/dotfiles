@@ -48,7 +48,9 @@
 	stash = git-diff-pager
 [submodule]
 	fetchJobs = 32
-	recurse = true
+	# Master switch for auto-recursion (pull, push, checkout, switch, status).
+	# Off by default — opt in per-command with `--recurse-submodules` when needed.
+	recurse = false
 [status]
 	submoduleSummary = true
 [rerere]

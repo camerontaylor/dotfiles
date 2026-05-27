@@ -30,8 +30,11 @@ fi
 # Run with a wall-clock cap so a hung deploy can't hang every `git pull`.
 # `timeout` is GNU coreutils (Linux stock, macOS via brew). Fall back to direct
 # exec if the binary is missing.
+#
+# Do NOT forward "$@": git invokes post-merge with a single squash-flag arg (0
+# or 1) that deploy.zsh's fail-closed parser would reject as "unknown argument".
 if (( ${+commands[timeout]} )); then
-    exec timeout 300 zsh "$repo_root/deploy.zsh" "$@"
+    exec timeout 300 zsh "$repo_root/deploy.zsh"
 else
-    exec zsh "$repo_root/deploy.zsh" "$@"
+    exec zsh "$repo_root/deploy.zsh"
 fi
