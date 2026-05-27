@@ -1,9 +1,14 @@
 #!/usr/bin/env zsh
-# Enforce stable generated config defaults and auto-encrypt secrets before commit
+# Enforce stable generated config defaults before commit.
 # Runs on: git commit (pre-commit hook)
+#
+# Secrets re-encryption was previously chained here via save-secrets.zsh
+# --git-add, but every commit re-encrypted all .enc files with fresh nonces
+# even when plaintext hadn't changed — folding noise into unrelated commits
+# and producing routine ssh/config.enc conflicts on stash/rebase. Run
+# `./scripts/save-secrets.zsh` manually after editing a secret.
 
 setopt err_exit
 
 SCRIPT_DIR=${0:A:h}
-$SCRIPT_DIR/enforce-codex-defaults.zsh --git-add
-exec $SCRIPT_DIR/save-secrets.zsh --git-add
+exec $SCRIPT_DIR/enforce-codex-defaults.zsh --git-add

@@ -1,6 +1,30 @@
 #!/usr/bin/env zsh
+#
+# Two-tier enforcement of configs/ai/codex/config.toml. Invoked from
+# scripts/pre-commit via the --git-add flag; usable standalone for the
+# working-tree pass.
+#
+# HARD-enforced (silent rewrite, working tree AND staged blob):
+#   sandbox_mode    = "danger-full-access"
+#   approval_policy = "never"
+# These are safety/UX defaults that should never drift across commits.
+#
+# TRANSIENT (warn-and-revert on staged blob only; working tree untouched):
+#   model
+#   model_reasoning_effort
+# These get tuned per-session for model experimentation. We don't want
+# stray drift bundled into unrelated commits, but we don't want to nuke
+# your working-tree WIP either — so the staged blob is reverted to HEAD's
+# value and the working tree is left alone. Real bumps land via:
+#
+#   SKIP_CODEX_ENFORCE=1 git commit -m "feat(codex): bump model to gpt-5.5"
 
 setopt err_exit pipefail
+
+# Opt-out for intentional model/effort updates.
+if [[ -n ${SKIP_CODEX_ENFORCE:-} ]]; then
+    exit 0
+fi
 
 local git_add=false
 local config_file
@@ -40,24 +64,47 @@ if [[ ! -f $config_file ]]; then
     exit 1
 fi
 
+# Hardcoded hard-enforced lines (verbatim TOML).
+local desired_sandbox='sandbox_mode = "danger-full-access"'
+local desired_approval='approval_policy = "never"'
+
+# Pull HEAD's model and effort lines for transient-revert baseline. Empty
+# strings = "leave these keys alone" (e.g., file not in HEAD yet, or those
+# keys missing from HEAD).
+local head_model=""
+local head_effort=""
+local relpath=${config_file#$SCRIPT_DIR/}
+if [[ $relpath != /* ]] && (( ${+commands[git]} )) \
+    && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+    && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
+    head_model=$(git -C "$SCRIPT_DIR" show "HEAD:$relpath" 2>/dev/null \
+        | awk '/^[[:space:]]*model[[:space:]]*=/ {print; exit}')
+    head_effort=$(git -C "$SCRIPT_DIR" show "HEAD:$relpath" 2>/dev/null \
+        | awk '/^[[:space:]]*model_reasoning_effort[[:space:]]*=/ {print; exit}')
+fi
+
+# Normalize one buffer through awk. apply_transient="yes" enables
+# model/effort revert against HEAD; "no" leaves them as-is. Either way,
+# sandbox_mode and approval_policy are hard-rewritten and inserted if missing.
 normalize_codex_config() {
-    local input=$1
-    local output=$2
+    local input=$1 output=$2 apply_transient=$3
+
+    local awk_model="" awk_effort=""
+    if [[ $apply_transient == yes ]]; then
+        awk_model=$head_model
+        awk_effort=$head_effort
+    fi
 
     awk \
-        -v desired_model='model = "gpt-5.4-mini"' \
-        -v desired_sandbox='sandbox_mode = "danger-full-access"' \
-        -v desired_approval='approval_policy = "never"' \
-        -v desired_effort='model_reasoning_effort = "high"' '
+        -v desired_sandbox="$desired_sandbox" \
+        -v desired_approval="$desired_approval" \
+        -v desired_model="$awk_model" \
+        -v desired_effort="$awk_effort" '
         BEGIN {
             in_root = 1
         }
 
         function emit_missing() {
-            if (!seen_model) {
-                print desired_model
-                seen_model = 1
-            }
             if (!seen_sandbox) {
                 print desired_sandbox
                 seen_sandbox = 1
@@ -66,24 +113,15 @@ normalize_codex_config() {
                 print desired_approval
                 seen_approval = 1
             }
-            if (!seen_effort) {
-                print desired_effort
-                seen_effort = 1
-            }
+            # Deliberately do NOT insert model/effort if missing — those
+            # are user-managed transient values; we only revert drift on
+            # existing lines, never insist on presence.
         }
 
         {
             if (in_root && $0 ~ /^[[:space:]]*\[/) {
                 emit_missing()
                 in_root = 0
-            }
-
-            if (in_root && $0 ~ /^[[:space:]]*model[[:space:]]*=/) {
-                if (!seen_model) {
-                    print desired_model
-                }
-                seen_model = 1
-                next
             }
 
             if (in_root && $0 ~ /^[[:space:]]*sandbox_mode[[:space:]]*=/) {
@@ -102,12 +140,18 @@ normalize_codex_config() {
                 next
             }
 
-            if (in_root && $0 ~ /^[[:space:]]*model_reasoning_effort[[:space:]]*=/) {
-                if (!seen_effort) {
-                    print desired_effort
+            if (in_root && $0 ~ /^[[:space:]]*model[[:space:]]*=/) {
+                if (desired_model != "") {
+                    print desired_model
+                    next
                 }
-                seen_effort = 1
-                next
+            }
+
+            if (in_root && $0 ~ /^[[:space:]]*model_reasoning_effort[[:space:]]*=/) {
+                if (desired_effort != "") {
+                    print desired_effort
+                    next
+                }
             }
 
             print
@@ -122,11 +166,10 @@ normalize_codex_config() {
 }
 
 normalize_file() {
-    local target=$1
-    local tmp
+    local target=$1 apply_transient=$2 tmp
 
     tmp=$(mktemp "${TMPDIR:-/tmp}/codex-config.XXXXXX")
-    normalize_codex_config "$target" "$tmp"
+    normalize_codex_config "$target" "$tmp" "$apply_transient"
 
     if cmp -s "$target" "$tmp"; then
         rm -f "$tmp"
@@ -138,28 +181,40 @@ normalize_file() {
     return 0
 }
 
-if normalize_file "$config_file"; then
-    print "Enforced Codex defaults in ${config_file#$SCRIPT_DIR/}"
+# Working tree pass: hard-enforce sandbox/approval, leave model/effort
+# alone so per-session experimentation isn't clobbered.
+if normalize_file "$config_file" no; then
+    print "Enforced Codex hard defaults in ${relpath:-$config_file}"
 fi
 
+# Staged blob pass (--git-add mode): hard-enforce sandbox/approval AND
+# revert model/effort drift back to HEAD's value, warning the user.
 if [[ $git_add == true ]] && (( ${+commands[git]} )); then
-    local relpath=${config_file#$SCRIPT_DIR/}
-
-    if [[ $relpath != /* ]] &&
-        git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 &&
-        git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
+    if [[ $relpath != /* ]] \
+        && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+        && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
         local index_tmp normalized_tmp mode blob
 
         index_tmp=$(mktemp "${TMPDIR:-/tmp}/codex-config-index.XXXXXX")
         normalized_tmp=$(mktemp "${TMPDIR:-/tmp}/codex-config-index-normalized.XXXXXX")
 
         if git -C "$SCRIPT_DIR" show ":$relpath" > "$index_tmp" 2>/dev/null; then
-            normalize_codex_config "$index_tmp" "$normalized_tmp"
+            normalize_codex_config "$index_tmp" "$normalized_tmp" yes
             if ! cmp -s "$index_tmp" "$normalized_tmp"; then
+                print "Codex config: reverting drift in staged blob:"
+                # diff returns 1 when files differ — which is exactly when
+                # this branch runs. Without `|| true` the pipefail+err_exit
+                # combo aborts the script before update-index can run.
+                { diff "$index_tmp" "$normalized_tmp" 2>/dev/null || true; } \
+                    | head -20 \
+                    | sed 's/^/  /'
+
                 mode=$(git -C "$SCRIPT_DIR" ls-files -s -- "$relpath" | awk 'NR == 1 {print $1}')
                 blob=$(git -C "$SCRIPT_DIR" hash-object -w "$normalized_tmp")
                 git -C "$SCRIPT_DIR" update-index --cacheinfo "$mode" "$blob" "$relpath"
-                print "Enforced Codex defaults in staged $relpath"
+                print "  ...staged blob normalized."
+                print "  ...working tree left as-is. To commit your model/effort change,"
+                print "     re-run with: SKIP_CODEX_ENFORCE=1 git commit ..."
             fi
         fi
 
