@@ -2,6 +2,8 @@ developer_instructions = "You have oh-my-codex installed through Codex plugin mo
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 dangerously_bypass_approvals_and_sandbox = true
+model = "gpt-5.5"
+model_reasoning_effort = "high"
 
 [projects."/home/ctaylor/repos/webfront"]
 trust_level = "trusted"
