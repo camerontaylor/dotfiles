@@ -255,6 +255,43 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
+        ccd-direct|ccd-direct-happy)
+            # Direct DeepSeek V4 via their Anthropic-compat endpoint. Bypasses Portkey.
+            # Same base URL serves both deepseek-v4-pro (opus/sonnet/main) and
+            # deepseek-v4-flash (haiku/subagent), so we can split tiers across two
+            # models without breaking the "one base URL" constraint that forces
+            # ccm-direct/ccz-direct onto a single model.
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
+                CLAUDE_CODE_EFFORT_LEVEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ANTHROPIC_DEFAULT_SONNET_MODEL "deepseek-v4-pro[1m]"
+                ANTHROPIC_DEFAULT_HAIKU_MODEL deepseek-v4-flash
+                ANTHROPIC_DEFAULT_OPUS_MODEL "deepseek-v4-pro[1m]"
+                ANTHROPIC_MODEL "deepseek-v4-pro[1m]"
+                ANTHROPIC_SMALL_FAST_MODEL deepseek-v4-flash
+                CLAUDE_CODE_SUBAGENT_MODEL deepseek-v4-flash
+                CLAUDE_CODE_EFFORT_LEVEL max
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN "${DEEPSEEK_API_KEY:-}"
+                ANTHROPIC_BASE_URL https://api.deepseek.com/anthropic
+                API_TIMEOUT_MS 3000000
+            )
+            ;;
         ccm|ccm-happy)
             # MiniMax foreground tier via Portkey. The fleet-ccm config uses
             # Fireworks MiniMax primary with OpenRouter MiniMax fallback.

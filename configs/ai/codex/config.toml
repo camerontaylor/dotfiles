@@ -108,6 +108,21 @@ trusted_hash = "sha256:dbfc3e0626a9cf6bbe579a69e22409384ed0598fba08df794b355e1e7
 [hooks.state."oh-my-codex@oh-my-codex-local:hooks/hooks.json:stop:0:0"]
 trusted_hash = "sha256:216a53a71d5c9819f0fdbbbbf869c4f8d9455e742dad9e0f1d91f3d67dbba2ff"
 
+[hooks.state."/home/ctaylor/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:512ced0ad32f742ee6900ee0a8e0ec89f0a0f700feef0e5d06cfebb085d07d8c"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:post_tool_use:0:0"]
+trusted_hash = "sha256:210b5f5465c23343af454e32644760bfaa1a640c8c26584ca99f45577cd8e5e2"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:7def539edbf23fe2b0ca1666ff8d399bc955e50cc4e12c2da15f59229f7efcf1"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:user_prompt_submit:0:0"]
+trusted_hash = "sha256:ea46991a8232e61a7ef30340372da9024aa6b7e6eb02ecb5a240547b15ac252f"
+
+[hooks.state."/home/ctaylor/.codex/hooks.json:stop:0:0"]
+trusted_hash = "sha256:ea51aff53aefbd28c4628f95069659e03998c64d072fc5dee5fde96ab12fb7fe"
+
 [plugins."oh-my-codex@oh-my-codex-local"]
 enabled = true
 
