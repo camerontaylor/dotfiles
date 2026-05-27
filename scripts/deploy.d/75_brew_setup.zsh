@@ -183,3 +183,25 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
         brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
     fi
 fi
+
+# cmux cask — Ghostty-based terminal wrapper with vertical tabs / agent notifications.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask cmux > /dev/null 2>&1; then
+        print "Installing cmux..."
+        brew_cask_install_or_upgrade cmux || true
+    elif $upgrade_mode; then
+        print "Upgrading cmux..."
+        brew_cask_install_or_upgrade cmux || true
+    fi
+fi
+
+# Raycast cask — launcher / keystroke productivity tool.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask raycast > /dev/null 2>&1; then
+        print "Installing Raycast..."
+        brew_cask_install_or_upgrade raycast || true
+    elif $upgrade_mode; then
+        print "Upgrading Raycast..."
+        brew_cask_install_or_upgrade raycast || true
+    fi
+fi
