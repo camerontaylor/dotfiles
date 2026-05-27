@@ -270,7 +270,6 @@ agent_alias_define_env() {
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
                 CLAUDE_CODE_SUBAGENT_MODEL
-                CLAUDE_CODE_EFFORT_LEVEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -285,7 +284,6 @@ agent_alias_define_env() {
                 ANTHROPIC_MODEL "deepseek-v4-pro[1m]"
                 ANTHROPIC_SMALL_FAST_MODEL deepseek-v4-flash
                 CLAUDE_CODE_SUBAGENT_MODEL deepseek-v4-flash
-                CLAUDE_CODE_EFFORT_LEVEL max
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${DEEPSEEK_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.deepseek.com/anthropic
