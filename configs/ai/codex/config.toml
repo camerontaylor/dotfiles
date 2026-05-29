@@ -126,6 +126,9 @@ trusted_hash = "sha256:ea51aff53aefbd28c4628f95069659e03998c64d072fc5dee5fde96ab
 [plugins."oh-my-codex@oh-my-codex-local"]
 enabled = true
 
+[plugins."github@openai-curated"]
+enabled = true
+
 [marketplaces.oh-my-codex-local]
 source_type = "local"
 source = "/home/ctaylor/.local/share/mise/installs/node/24.16.0/lib/node_modules/oh-my-codex"

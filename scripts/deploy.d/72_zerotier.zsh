@@ -1,6 +1,6 @@
-# ZeroTier install + network join. Network ID(s) come from $ZEROTIER_NETWORK_ID
+# ZeroTier install + network join. Joins the primary personal network by
+# default; optional extra network ID(s) come from $ZEROTIER_NETWORK_ID
 # (or $ZEROTIER_NETWORK_IDS, space-separated) in zsh/env.d/9*_zerotier_secrets.zsh.
-# Skipped silently when no network id is configured.
 
 if [[ $DOTFILES_OS != Linux && $DOTFILES_OS != Darwin ]]; then
     return 0
@@ -12,17 +12,14 @@ for secret_file in $SCRIPT_DIR/zsh/env.d/9[0-9]_zerotier_secrets.zsh(N); do
     source $secret_file
 done
 
-local -a zt_networks
+local -r default_zt_network_id=2873fd00f25ac35e
+local -a zt_networks=($default_zt_network_id)
 if [[ -n ${ZEROTIER_NETWORK_IDS:-} ]]; then
-    zt_networks=(${(z)ZEROTIER_NETWORK_IDS})
+    zt_networks+=(${(z)ZEROTIER_NETWORK_IDS})
 elif [[ -n ${ZEROTIER_NETWORK_ID:-} ]]; then
-    zt_networks=($ZEROTIER_NETWORK_ID)
+    zt_networks+=($ZEROTIER_NETWORK_ID)
 fi
-
-if (( ${#zt_networks} == 0 )); then
-    print "ZeroTier: no \$ZEROTIER_NETWORK_ID configured, skipping"
-    return 0
-fi
+typeset -U zt_networks
 
 # Install the daemon when missing; refresh under --upgrade on macOS.
 if [[ $DOTFILES_OS == Darwin ]]; then
