@@ -53,6 +53,7 @@ opencode = "latest"
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions
 idiomatic_version_file = true
+trusted_config_paths = ["/home/ctaylor/repos/webfront"]
 
 [settings.ruby]
 # Use precompiled ruby binaries (faster installs; set to false to compile from source)
