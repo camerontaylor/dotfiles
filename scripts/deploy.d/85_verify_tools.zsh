@@ -20,6 +20,7 @@ local -a tool_checks=(
     ripgrep:rg
     fzf:fzf
     delta:delta
+    htop:htop
     gh:gh
     glab:glab
     ast-grep:sg

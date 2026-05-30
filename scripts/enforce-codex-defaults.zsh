@@ -9,13 +9,12 @@
 #   approval_policy = "never"
 # These are safety/UX defaults that should never drift across commits.
 #
-# TRANSIENT (warn-and-revert on staged blob only; working tree untouched):
+# TRANSIENT (revert to HEAD unless SKIP_CODEX_ENFORCE=1 is set):
 #   model
 #   model_reasoning_effort
 # These get tuned per-session for model experimentation. We don't want
-# stray drift bundled into unrelated commits, but we don't want to nuke
-# your working-tree WIP either — so the staged blob is reverted to HEAD's
-# value and the working tree is left alone. Real bumps land via:
+# stray drift bundled into unrelated commits, so both the working tree and
+# staged blob are reverted to HEAD's value before commit. Real bumps land via:
 #
 #   SKIP_CODEX_ENFORCE=1 git commit -m "feat(codex): bump model to gpt-5.5"
 
@@ -181,14 +180,15 @@ normalize_file() {
     return 0
 }
 
-# Working tree pass: hard-enforce sandbox/approval, leave model/effort
-# alone so per-session experimentation isn't clobbered.
-if normalize_file "$config_file" no; then
-    print "Enforced Codex hard defaults in ${relpath:-$config_file}"
+# Working tree pass: hard-enforce sandbox/approval and revert model/effort
+# drift so per-session Codex model experiments do not linger as repo churn.
+if normalize_file "$config_file" yes; then
+    print "Enforced Codex defaults in ${relpath:-$config_file}"
 fi
 
 # Staged blob pass (--git-add mode): hard-enforce sandbox/approval AND
-# revert model/effort drift back to HEAD's value, warning the user.
+# revert model/effort drift back to HEAD's value, warning the user when the
+# staged blob still needed cleanup after the working-tree pass.
 if [[ $git_add == true ]] && (( ${+commands[git]} )); then
     if [[ $relpath != /* ]] \
         && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
@@ -213,7 +213,7 @@ if [[ $git_add == true ]] && (( ${+commands[git]} )); then
                 blob=$(git -C "$SCRIPT_DIR" hash-object -w "$normalized_tmp")
                 git -C "$SCRIPT_DIR" update-index --cacheinfo "$mode" "$blob" "$relpath"
                 print "  ...staged blob normalized."
-                print "  ...working tree left as-is. To commit your model/effort change,"
+                print "  ...to commit your model/effort change,"
                 print "     re-run with: SKIP_CODEX_ENFORCE=1 git commit ..."
             fi
         fi

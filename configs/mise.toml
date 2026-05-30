@@ -49,6 +49,7 @@ opencode = "latest"
 "npm:@oh-my-pi/pi-coding-agent" = "latest"
 "npm:@aoagents/ao" = "latest"
 "npm:@code-yeongyu/comment-checker" = "latest"
+"github:usewhale/DeepSeek-COde-Whale" = "0.1.24"
 
 [settings]
 # Respect version files: .node-version, .ruby-version, .tool-versions

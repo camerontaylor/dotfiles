@@ -99,6 +99,12 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade ncurses || true
 fi
 
+# htop process viewer; config is symlinked by 20_symlinks.zsh.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing htop via brew..."
+    brew_formula_install_or_upgrade htop || true
+fi
+
 # GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
 # gsed, gtar, gawk, gfind, gxargs) are referenced directly by the gnu_alias
 # helper in zsh/rc.d/08_aliases.zsh; the un-prefixed names are picked up via
