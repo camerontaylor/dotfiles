@@ -83,4 +83,20 @@ zf_ln -sfn $SCRIPT_DIR/configs/wake-peers/displaywakeup $HOME/.displaywakeup
 for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
     zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
 done
+# niri Wayland desktop stack (Linux only)
+if [[ $DOTFILES_OS == Linux ]]; then
+    zf_mkdir -p $XDG_CONFIG_HOME/niri
+    zf_ln -sfn $SCRIPT_DIR/configs/niri/config.kdl $XDG_CONFIG_HOME/niri/config.kdl
+    zf_mkdir -p $XDG_CONFIG_HOME/waybar
+    zf_ln -sfn $SCRIPT_DIR/configs/waybar/config.jsonc $XDG_CONFIG_HOME/waybar/config.jsonc
+    zf_ln -sfn $SCRIPT_DIR/configs/waybar/style.css $XDG_CONFIG_HOME/waybar/style.css
+    zf_mkdir -p $XDG_CONFIG_HOME/mako
+    zf_ln -sfn $SCRIPT_DIR/configs/mako/config $XDG_CONFIG_HOME/mako/config
+    zf_mkdir -p $XDG_CONFIG_HOME/fuzzel
+    zf_ln -sfn $SCRIPT_DIR/configs/fuzzel/fuzzel.ini $XDG_CONFIG_HOME/fuzzel/fuzzel.ini
+    zf_mkdir -p $XDG_CONFIG_HOME/swaylock
+    zf_ln -sfn $SCRIPT_DIR/configs/swaylock/config $XDG_CONFIG_HOME/swaylock/config
+    zf_mkdir -p $XDG_CONFIG_HOME/wpaperd
+    zf_ln -sfn $SCRIPT_DIR/configs/wpaperd/config.toml $XDG_CONFIG_HOME/wpaperd/config.toml
+fi
 print "  ...done"

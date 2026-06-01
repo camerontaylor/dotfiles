@@ -1,0 +1,14 @@
+# wpaperd — Wayland wallpaper daemon with native rotation.
+# Drop image files into ~/Pictures/wallpapers/ — wpaperd auto-discovers.
+# Reload: pkill -USR1 wpaperd (re-scans dir + applies new config)
+# Manual advance: wpaperctl next-wallpaper (bound to Mod+Shift+W)
+
+[default]
+path = "/home/ctaylor/Pictures/wallpapers"
+duration = "15m"
+sorting = "random"
+mode = "fit"
+# Smooth fade between wallpapers (default is instant).
+transition-time = 500
+# Re-randomise the queue when it's exhausted so no repeats within a cycle.
+queue-size = 10

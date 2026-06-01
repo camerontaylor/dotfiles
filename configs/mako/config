@@ -1,0 +1,27 @@
+# mako — notification daemon. Reload: makoctl reload
+font=Noto Sans 11
+background-color=#1e1e2e
+text-color=#cdd6f4
+border-color=#89b4fa
+border-size=2
+border-radius=10
+padding=12,16
+margin=8
+default-timeout=5000
+ignore-timeout=1
+max-icon-size=48
+icon-path=/usr/share/icons/Papirus-Dark:/usr/share/icons/Adwaita
+layer=overlay
+anchor=top-right
+width=380
+
+[urgency=low]
+border-color=#6c7086
+default-timeout=4000
+
+[urgency=normal]
+border-color=#89b4fa
+
+[urgency=high]
+border-color=#f38ba8
+default-timeout=0
