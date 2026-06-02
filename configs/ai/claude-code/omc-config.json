@@ -15,6 +15,5 @@
     "useMcp": false
   },
   "setupCompleted": "2026-05-14T19:10:15+10:00",
-  "setupVersion": "4.13.7",
-  "nodeBinary": "/home/ctaylor/.local/share/mise/installs/node/24.14.1/bin/node"
+  "setupVersion": "4.13.7"
 }
