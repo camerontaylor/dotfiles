@@ -91,3 +91,7 @@
 	parallel = 32
 [checkout]
 	workers = 16
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+[coderabbit]
+	machineId = cli/b3691d24787149248d400912f75f04ac

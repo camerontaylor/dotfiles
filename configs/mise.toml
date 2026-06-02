@@ -36,6 +36,11 @@ opencode = "latest"
 "npm:@openai/codex" = "latest"
 "npm:oh-my-codex" = "latest"
 "npm:@google/gemini-cli" = "latest"
+# T3 Code — minimal web GUI for coding agents (Codex/Claude/OpenCode).
+# CLI form: `t3 serve` runs a WebSocket server on port 3773, exposed over the
+# ZeroTier mesh via the t3.<host>.webfront.app Caddy block (see setup-caddy.sh).
+# The macOS desktop app is installed separately as a cask in 75_brew_setup.zsh.
+"npm:t3" = "latest"
 "npm:oh-my-claude-sisyphus" = "latest"
 "npm:pnpm" = "latest"
 "npm:vite-plus" = "latest"

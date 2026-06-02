@@ -6,6 +6,8 @@ setopt local_options extended_glob
 
 local cache_dir=$XDG_CACHE_HOME/zsh/eval
 local cache_file=$cache_dir/${(j:_:)@:gs/\//_}.zsh
+local tmp_file=$cache_file.$$.tmp
+local -a cleanup_files
 
 # Invalidate before the main branch: if the binary vanished, or the cache is
 # zero bytes from a previous flaky run, drop the cache so the cache-miss
@@ -14,10 +16,12 @@ local cache_file=$cache_dir/${(j:_:)@:gs/\//_}.zsh
 # `z` undefined despite zoxide on PATH.
 if [[ -r $cache_file ]] && ! whence $1 > /dev/null; then
     echo "evalcache ERROR: $1 isn't executable, removing cache file" >&2
-    zf_rm -f $cache_file*
+    cleanup_files=(${cache_file}(N) ${cache_file}.zwc(N) ${cache_file}.zwc.old(N) ${tmp_file}(N))
+    (( $#cleanup_files )) && zf_rm -f -- $cleanup_files
 elif [[ -e $cache_file && ! -s $cache_file ]]; then
     echo "evalcache WARN: $cache_file is empty, regenerating" >&2
-    zf_rm -f $cache_file*
+    cleanup_files=(${cache_file}(N) ${cache_file}.zwc(N) ${cache_file}.zwc.old(N) ${tmp_file}(N))
+    (( $#cleanup_files )) && zf_rm -f -- $cleanup_files
 fi
 
 if [[ ! -e $cache_file || -n $cache_file(#qN.mh+20) ]]; then
@@ -25,19 +29,24 @@ if [[ ! -e $cache_file || -n $cache_file(#qN.mh+20) ]]; then
     # cache miss
     if (( ${+commands[$1]} )); then
         zf_mkdir -p $cache_dir
-        command $@ > $cache_file
-        if [[ ! -s $cache_file ]]; then
-            # Refuse to lock in empty output — better to print an error every
-            # shell start than to silently disable the integration for 20h.
-            echo "evalcache ERROR: $* produced no output, refusing to cache" >&2
-            zf_rm -f $cache_file*
-        else
+        if command "$@" >| $tmp_file && [[ -s $tmp_file ]]; then
+            cleanup_files=(${cache_file}.zwc(N) ${cache_file}.zwc.old(N))
+            (( $#cleanup_files )) && zf_rm -f -- $cleanup_files
+            mv -f -- $tmp_file $cache_file
             source $cache_file
             # zrecompile cache file in background
             {
                 autoload -Uz zrecompile
                 zrecompile -pq $cache_file
             } &!
+        else
+            # Refuse to lock in empty output. Keep any existing non-empty
+            # cache so transient shim/tool failures do not break startup.
+            echo "evalcache ERROR: $* produced no output, refusing to cache" >&2
+            cleanup_files=(${tmp_file}(N))
+            (( $#cleanup_files )) && zf_rm -f -- $cleanup_files
+            [[ -s $cache_file ]] || return 1
+            source $cache_file
         fi
     else
         echo "evalcache ERROR: $1 is not available in PATH" >&2
