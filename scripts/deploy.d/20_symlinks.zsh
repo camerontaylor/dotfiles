@@ -38,7 +38,15 @@ zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conve
 zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
 # Claude Code + OMC
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/RTK.md $HOME/.claude/RTK.md
+# RTK was nuked. Actively remove any stale link left by prior deploys so the
+# removal propagates to every machine on its next deploy (idempotent no-op once gone).
+if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
+    if (( DEPLOY_DRY_RUN )); then
+        print "  [dry-run] rm -f $HOME/.claude/RTK.md (stale RTK link)"
+    else
+        rm -f $HOME/.claude/RTK.md && print "  removed stale ~/.claude/RTK.md"
+    fi
+fi
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.json $HOME/.claude/settings.json
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.local.json $HOME/.claude/settings.local.json
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/statusline-command.sh $HOME/.claude/statusline-command.sh
