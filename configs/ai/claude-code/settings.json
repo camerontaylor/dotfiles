@@ -61,15 +61,12 @@
       "Bash(command:*)",
       "Read",
       "Bash(node -e \"require\\(''./.eslintrc.js''\\)\")",
-      "Read(//home/app/.claude/projects/-home-app-webfront/9b040817-e3e6-4009-90d0-ce13accaf0b7/subagents/**)",
       "Glob",
       "Grep",
       "LS",
       "NotebookRead",
       "TodoRead",
       "Bash(yarn remove:*)",
-      "Read(//home/app/webfront/**)",
-      "Read(//home/app/.claude/plugins/cache/omc/oh-my-claudecode/**)",
       "Bash(npm install:*)",
       "Bash(chmod:*)",
       "Bash(git add:*)",
@@ -81,12 +78,6 @@
       "Bash(xargs:*)",
       "Bash(node --version:*)",
       "Bash(SKIP_SLOW=true yarn eslint:*)",
-      "Bash(git -C /home/app/webfront log --oneline -15)",
-      "Bash(git -C /home/app/webfront log --oneline -20 --all -- \"*.md\")",
-      "Bash(git -C /home/app/webfront show f440121cb:vendor/gears/core/docs/testing-plan.md)",
-      "Bash(git -C /home/app/webfront log --oneline -5 f440121cb -- \"*.md\")",
-      "Bash(git -C /home/app/webfront show cfd270e2a --name-only)",
-      "Bash(git -C /home/app/webfront show f440121cb --name-only)",
       "Bash(claude plugin uninstall:*)",
       "Bash(claude plugin install:*)",
       "Bash(source ~/.nvm/nvm.sh)",
@@ -121,11 +112,7 @@
       "mcp__plugin_oh-my-claudecode_t__notepad_write_working"
     ],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      "/home/app/webfront/docs",
-      "/home/app/webfront/.claude",
-      "/home/app"
-    ]
+    "additionalDirectories": []
   },
   "statusLine": {
     "type": "command",
@@ -184,5 +171,23 @@
   "teammateMode": "tmux",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true
+  "skipAutoPermissionPrompt": true,
+  "omc": {
+    "deepInterview": {
+      "ambiguityThreshold": 0.1
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for f in \"$HOME\"/.claude/plugins/cache/engram/engram/*/scripts/user-prompt-submit.sh \"$HOME\"/.claude/plugins/marketplaces/engram/plugin/claude-code/scripts/user-prompt-submit.sh; do [ -f \"$f\" ] && perl -i -pe 's/\\[ \"\\$ELAPSED\" -gt 900 \\]/false/' \"$f\" 2>/dev/null; done; exit 0"
+          }
+        ]
+      }
+    ]
+  },
+  "model": "opus"
 }

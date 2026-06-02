@@ -91,7 +91,7 @@ done
 # PORTKEY_LOCAL_API_KEY path both reference them by absolute path.
 local portkey_state_dir=$HOME/.local/state/portkey
 local -a portkey_enc_files portkey_targets
-portkey_enc_files=(configs/portkey/state/env.enc configs/portkey/state/local-api-key.enc)
+portkey_enc_files=(configs/ai/portkey/state/env.enc configs/ai/portkey/state/local-api-key.enc)
 portkey_targets=($portkey_state_dir/env $portkey_state_dir/local-api-key)
 if (( ${#portkey_enc_files} > 0 )); then
     install -m 700 -d $portkey_state_dir

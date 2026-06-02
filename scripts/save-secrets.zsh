@@ -124,13 +124,13 @@ done
 # back to ~/.local/state/portkey with mode 0600.
 local -a portkey_plaintexts portkey_enc_files
 portkey_plaintexts=($HOME/.local/state/portkey/env $HOME/.local/state/portkey/local-api-key)
-portkey_enc_files=(configs/portkey/state/env.enc configs/portkey/state/local-api-key.enc)
+portkey_enc_files=(configs/ai/portkey/state/env.enc configs/ai/portkey/state/local-api-key.enc)
 for (( i = 1; i <= ${#portkey_plaintexts}; i++ )); do
     plaintext=${portkey_plaintexts[i]}
     enc_file=${portkey_enc_files[i]}
     [[ -f $plaintext ]] || continue
 
-    mkdir -p configs/portkey/state
+    mkdir -p configs/ai/portkey/state
 
     encrypt_if_changed "$plaintext" "$enc_file"
 done
