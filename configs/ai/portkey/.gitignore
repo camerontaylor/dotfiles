@@ -1,0 +1,3 @@
+# Runtime symlink created by portkey-gateway.service ExecStartPre
+# (conf.json -> config.json). Not source; never commit it.
+/conf.json

@@ -6,7 +6,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=%h/.local/dotfiles/configs/portkey
+WorkingDirectory=%h/.local/dotfiles/configs/ai/portkey
 Environment=PATH=%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=%S/portkey/env
 Environment=PORT=8787
@@ -21,8 +21,8 @@ Environment=MONITOR_METRICS=false
 Environment=CACHE_STORE=memory
 Environment=GATEWAY_CACHE_MODE=memory
 ExecStartPre=/usr/bin/test -r /home/ctaylor/repos/portkey-gateway/build/start-server.js
-ExecStartPre=/usr/bin/test -r %h/.local/dotfiles/configs/portkey/config.json
-ExecStartPre=/usr/bin/sh -c 'test -e "$HOME/.local/dotfiles/configs/portkey/conf.json" || ln -s "$HOME/.local/dotfiles/configs/portkey/config.json" "$HOME/.local/dotfiles/configs/portkey/conf.json"'
+ExecStartPre=/usr/bin/test -r %h/.local/dotfiles/configs/ai/portkey/config.json
+ExecStartPre=/usr/bin/sh -c 'test -e "$HOME/.local/dotfiles/configs/ai/portkey/conf.json" || ln -s "$HOME/.local/dotfiles/configs/ai/portkey/config.json" "$HOME/.local/dotfiles/configs/ai/portkey/conf.json"'
 ExecStart=/usr/bin/env node /home/ctaylor/repos/portkey-gateway/build/start-server.js --llm-node --port 8787
 Restart=on-failure
 RestartSec=5
