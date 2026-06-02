@@ -1,0 +1,20 @@
+{
+  "team": {
+    "ops": {
+      "maxAgents": 3,
+      "defaultAgentType": "codex",
+      "monitorIntervalMs": 30000,
+      "shutdownTimeoutMs": 15000
+    }
+  },
+  "defaultExecutionMode": "ultrawork",
+  "configuredAt": "2026-05-14T08:59:41Z",
+  "taskTool": "builtin",
+  "taskToolConfig": {
+    "injectInstructions": true,
+    "useMcp": false
+  },
+  "setupCompleted": "2026-05-14T19:10:15+10:00",
+  "setupVersion": "4.13.7",
+  "nodeBinary": "/home/ctaylor/.local/share/mise/installs/node/24.14.1/bin/node"
+}

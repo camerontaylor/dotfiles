@@ -53,6 +53,9 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/statusline-command.sh $HOME/.claud
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hooks $HOME/.claude/hooks
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hud $HOME/.claude/hud
 zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/skills $HOME/.claude/skills
+zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/commands $HOME/.claude/commands
+zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/mcp.json $HOME/.claude/.mcp.json
+zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/omc-config.json $HOME/.claude/.omc-config.json
 # Codex CLI + OMX
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/AGENTS.md $HOME/.codex/AGENTS.md
