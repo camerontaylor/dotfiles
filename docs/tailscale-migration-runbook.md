@@ -95,7 +95,14 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
    The fragment installs Tailscale, starts the daemon, and runs
    `tailscale up --ssh --accept-routes --authkey=…`. Install is **distro-aware**:
    - **macOS** → brew cask `tailscale` (first run: approve the system extension in
-     **System Settings → Privacy & Security** and open the app once).
+     **System Settings → Privacy & Security** and open the app once). The fragment
+     does **not** pass `--ssh` on macOS: the sandboxed GUI/cask build cannot run
+     the Tailscale SSH server (`500: does not run in sandboxed Tailscale GUI
+     builds`). Reach Macs via normal SSH over the tailnet. For a "solid" Mac fleet
+     node, in the GUI run `tailscale up --accept-routes --advertise-tags=tag:fleet`
+     (tagged ⇒ no key expiry + fleet ACL) and enable **Run unattended** so it
+     survives reboots without a GUI login. (To get Tailscale-SSH on a Mac you'd
+     need the open-source `tailscaled`, not the cask — usually not worth it.)
    - **Arch family** (Arch/CachyOS/Manjaro) → `sudo pacman -Sy --needed --noconfirm
      tailscale` — the `-Sy` db refresh avoids the stale-mirror 404 seen on ceres.
    - **everything else** (Debian/Ubuntu/Fedora/…) → official `install.sh`.

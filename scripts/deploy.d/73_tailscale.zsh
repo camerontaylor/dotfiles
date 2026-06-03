@@ -167,7 +167,18 @@ fi
 # Assemble `tailscale up` arguments. The auth key is kept in its own array
 # element so it is never word-split and never printed.
 local -a up_args
-up_args=(--ssh --accept-routes "--authkey=$TAILSCALE_AUTHKEY")
+up_args=(--accept-routes "--authkey=$TAILSCALE_AUTHKEY")
+
+# Tailscale SSH server runs on Linux tailscaled but NOT on the sandboxed macOS
+# GUI (cask) build — `--ssh` there fails with a 500 "does not run in sandboxed
+# Tailscale GUI builds". Enable it on Linux only; reach macOS fleet nodes via
+# regular SSH over the tailnet. (A Mac running the open-source tailscaled can
+# opt in with TAILSCALE_EXTRA_ARGS="--ssh".)
+local ssh_label="accept-routes"
+if [[ $DOTFILES_OS == Linux ]]; then
+    up_args=(--ssh $up_args)
+    ssh_label="ssh, accept-routes"
+fi
 
 local routes_csv=""
 if [[ -n ${TAILSCALE_ADVERTISE_ROUTES:-} ]]; then
@@ -184,14 +195,16 @@ if [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]]; then
     up_args+=(${(z)TAILSCALE_EXTRA_ARGS})
 fi
 
-print "Tailscale: bringing up tailnet (ssh, accept-routes)..."
+print "Tailscale: bringing up tailnet (${ssh_label})..."
 if (( DEPLOY_DRY_RUN )); then
     # Show the real non-secret args (like 72_zerotier.zsh prints network IDs) but
     # NEVER echo the auth key.
+    local dry_ssh=""
+    [[ $DOTFILES_OS == Linux ]] && dry_ssh=" --ssh"
     local dry_extra=""
     [[ -n $routes_csv ]] && dry_extra+=" --advertise-routes=$routes_csv"
     [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]] && dry_extra+=" $TAILSCALE_EXTRA_ARGS"
-    print "  [dry-run] would: $ts_cli up --ssh --accept-routes --authkey=***${dry_extra}"
+    print "  [dry-run] would: $ts_cli up${dry_ssh} --accept-routes --authkey=***${dry_extra}"
 else
     local -a ts_cmd
     if [[ $DOTFILES_OS == Linux ]]; then
