@@ -148,6 +148,23 @@ if [[ -z $ts_cli ]]; then
     return 0
 fi
 
+# macOS: the cask CLI lives in /usr/local/bin (legacy Intel prefix) or inside the
+# app bundle — neither is on the interactive PATH on Apple Silicon, where
+# env.d/03_paths.zsh deliberately omits /usr/local/bin. Surface the binary via
+# ~/.local/bin (already on PATH, user-owned) so bare `tailscale` resolves in a
+# shell, without exposing all of /usr/local/bin. Idempotent.
+if [[ $DOTFILES_OS == Darwin ]]; then
+    local ts_link=$HOME/.local/bin/tailscale
+    if [[ ${ts_link:A} != ${ts_cli:A} ]]; then
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would: ln -sfn $ts_cli ~/.local/bin/tailscale"
+        else
+            mkdir -p $HOME/.local/bin
+            ln -sfn $ts_cli $ts_link && print "Tailscale: linked CLI into ~/.local/bin (PATH-visible)"
+        fi
+    fi
+fi
+
 # Idempotency: if the backend is already up AND authenticated, leave it alone so
 # re-running deploy.zsh stays a no-op (and avoids a sudo prompt on Linux).
 # We do NOT rely on `tailscale status`'s exit code: depending on the version it
