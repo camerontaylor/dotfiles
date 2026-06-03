@@ -30,3 +30,5 @@ proxy.lan
 proxy.tld
 .omx/
 .conflicts/
+configs/portless/logs/proxy.err
+configs/portless/logs/proxy.log
