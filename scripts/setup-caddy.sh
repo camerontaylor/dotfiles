@@ -502,6 +502,18 @@ setup_portless_launchd() {
   rm -f "$RUN_HOME/.portless/proxy.tld" "$RUN_HOME/.portless/proxy.pid" \
         "$RUN_HOME/.portless/proxy.port" "$RUN_HOME/.portless/proxy.lan"
 
+  # The service runs as UserName=$RUN_USER, so its stdout/stderr files must be
+  # in a path that user can write. /var/log is root-only: launchd cannot open
+  # the job's stdio there and the job dies before exec with a *misleading*
+  # "posix_spawn(<program>) error 0xd - Permission denied" + EX_CONFIG (78) and
+  # zero log output (it can't create the log to log to). Caddy's daemon escapes
+  # this only because it runs as root. Keep portless logs under the user's home.
+  local portless_log_dir="$RUN_HOME/.portless/logs"
+  mkdir -p "$portless_log_dir"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    chown "$RUN_USER" "$RUN_HOME/.portless" "$portless_log_dir" 2>/dev/null || true
+  fi
+
   local portless_dir portless_path
   portless_path=$(command -v portless)
   portless_dir=$(dirname "$portless_path")
@@ -541,9 +553,9 @@ setup_portless_launchd() {
   <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>/var/log/local.portless-proxy.log</string>
+  <string>$portless_log_dir/proxy.log</string>
   <key>StandardErrorPath</key>
-  <string>/var/log/local.portless-proxy.err</string>
+  <string>$portless_log_dir/proxy.err</string>
 </dict>
 </plist>
 EOF
@@ -620,7 +632,7 @@ verify() {
     echo "  Caddy:      sudo launchctl print system/local.caddy"
     echo "  Portless:   sudo launchctl print system/local.portless-proxy"
     echo "  Caddy logs: tail -f /var/log/local.caddy.err"
-    echo "  PL logs:    tail -f /var/log/local.portless-proxy.err"
+    echo "  PL logs:    tail -f $RUN_HOME/.portless/logs/proxy.err"
   fi
   echo ""
   echo "Usage:"

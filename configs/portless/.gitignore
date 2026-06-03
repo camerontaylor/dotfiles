@@ -6,3 +6,4 @@ proxy.log
 proxy.pid
 proxy.port
 routes.json
+logs/
