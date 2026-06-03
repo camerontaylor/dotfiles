@@ -51,22 +51,60 @@ if [[ $DOTFILES_OS == Darwin ]]; then
         fi
     fi
 else
-    if (( ! ${+commands[curl]} )); then
-        print "Tailscale: curl not available, skipping install"
-        return 0
-    fi
     if (( ! ${+commands[tailscale]} )); then
         print "Installing Tailscale..."
-        if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: curl -fsSL https://tailscale.com/install.sh | sh"
+        # Distro-aware install. Tailscale's install.sh handles most families
+        # (apt/dnf/zypper) well, but on Arch it shells out to `pacman -S` against
+        # the LOCAL db, which fails when that db is stale (404 on a dropped
+        # package/sig). So on Arch-family we install natively with a db refresh.
+        # NOTE: stdout/stderr is intentionally NOT suppressed — a failed install
+        # must show why (an earlier version hid a stale-mirror 404).
+        # os-release is designed to be sourced; do it in a subshell so its vars
+        # don't leak. Absent file / missing keys => empty, which falls through to
+        # the install.sh default (safe).
+        local distro_id="" distro_like=""
+        if [[ -r /etc/os-release ]]; then
+            distro_id=$(. /etc/os-release 2>/dev/null && print -r -- "${ID:-}")
+            distro_like=$(. /etc/os-release 2>/dev/null && print -r -- "${ID_LIKE:-}")
+        fi
+
+        # Match the token "arch" (Arch + all derivatives set ID or ID_LIKE to it:
+        # cachyos, manjaro, endeavouros, garuda, artix, ...). Surrounding spaces
+        # anchor on whole words so we don't match "monarch"/"starch".
+        local install_ok=0
+        case " $distro_id $distro_like " in
+            *" arch "*)
+                # -Sy refreshes the sync db so a stale entry doesn't 404; --needed
+                # makes it a no-op if already present. NOTE: -Sy without -u leaves
+                # the local db synced ahead of installed packages — a partial-
+                # upgrade state. Fine for adding this near-static leaf here; on an
+                # existing daily-driver run `sudo pacman -Syu` soon after.
+                if (( DEPLOY_DRY_RUN )); then
+                    print "  [dry-run] would: sudo pacman -Sy --needed --noconfirm tailscale"
+                    install_ok=1
+                elif sudo pacman -Sy --needed --noconfirm tailscale; then
+                    install_ok=1
+                fi
+                ;;
+            *)
+                if (( ! ${+commands[curl]} )); then
+                    print "Tailscale: curl not available for install.sh, skipping install and join"
+                    return 0
+                fi
+                if (( DEPLOY_DRY_RUN )); then
+                    print "  [dry-run] would: curl -fsSL https://tailscale.com/install.sh | sh"
+                    install_ok=1
+                elif curl -fsSL https://tailscale.com/install.sh | sh; then
+                    install_ok=1
+                fi
+                ;;
+        esac
+
+        if (( install_ok )); then
+            (( DEPLOY_DRY_RUN )) || { rehash; print "  ...done" }
         else
-            if curl -fsSL https://tailscale.com/install.sh | sh > /dev/null 2>&1; then
-                rehash
-                print "  ...done"
-            else
-                print "  ...failed to install Tailscale"
-                return 0
-            fi
+            print "  ...failed to install Tailscale (see output above)"
+            return 0
         fi
     fi
 fi

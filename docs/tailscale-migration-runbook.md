@@ -29,6 +29,12 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
    secret network ID `743993800fe3d723` (in `94_zerotier_secrets.zsh`). Record
    which network is the DNS-plane network (`10.132.32.0/24`). **Do not change any
    DNS until this is confirmed** — the spec only *assumes* this mapping.
+   > ✅ **CONFIRMED on ceres (2026-06-03):** the DNS-plane `10.132.32.0/24` is
+   > ZeroTier network `743993800fe3d723` (short name `zt6q3havzm`, "heliocentric").
+   > The deploy *default* `2873fd00f25ac35e` is a DIFFERENT net ("bee-dee-bags",
+   > `10.102.181.0/24`) — NOT the DNS plane. Per-host: read each host's
+   > `10.132.32.x` from `zerotier-cli listnetworks` and its new Tailscale `100.x`
+   > from `tailscale ip -4`. ceres: `10.132.32.46` → `100.82.17.115`.
 2. 🔒 **Create the tailnet auth key** (admin console → Settings → Keys):
    reusable, non-ephemeral, tagged `tag:fleet`. Copy the `tskey-auth-…` value.
 3. 🔒 **Enable MagicDNS** (admin console → DNS → enable MagicDNS). This is
@@ -52,28 +58,47 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
 
 ## Phase 2 — Pilot one host (coexisting with ZeroTier)
 
-5. 📝 **Create the secret** on the pilot host and encrypt it:
+5. 📝 **Create the secret ONCE** (on your workstation) and commit the `.enc`:
    ```sh
-   cat > zsh/env.d/93_tailscale_secrets.zsh <<'EOF'
-   export TAILSCALE_AUTHKEY="tskey-auth-…"   # the reusable tagged key from step 2
-   EOF
+   print 'export TAILSCALE_AUTHKEY=tskey-auth-…' > zsh/env.d/95_tailscale_secrets.zsh
+   chmod 600 zsh/env.d/95_tailscale_secrets.zsh
    ./scripts/save-secrets.zsh        # encrypts 9[0-9]_* plaintext → .enc (commit the .enc)
+   git add zsh/env.d/95_tailscale_secrets.zsh.enc && git commit && git push
    ```
-   The plaintext `93_tailscale_secrets.zsh` is gitignored; only the `.enc` is
+   The plaintext `95_tailscale_secrets.zsh` is gitignored; only the `.enc` is
    committed. `.sops.yaml`'s `9[0-9]_` rule already covers it — no config change.
-   > ⚠️ The plaintext file exists unencrypted in the working tree until
+   > ⚠️ The plaintext exists unencrypted in the working tree until
    > `save-secrets.zsh` succeeds. If it fails partway, **delete
-   > `zsh/env.d/93_tailscale_secrets.zsh` manually** and regenerate the key in
-   > the admin console before retrying — the reusable `tag:fleet` key grants
-   > tailnet access to anyone who obtains it.
-6. **Deploy** on the pilot (e.g. `ceres`):
+   > `zsh/env.d/95_tailscale_secrets.zsh` manually** and regenerate the key in
+   > the admin console — the reusable `tag:fleet` key grants tailnet access to
+   > anyone who obtains it. (Already done as of 2026-06-03: `95_*` committed.)
+5a. 📝✅ **Restore secrets on the target host (ONCE per host) — REQUIRED.**
+   `deploy.zsh` does NOT decrypt `env.d` secrets: `65_sops.zsh` only restores
+   `ssh/*.enc`, and `restore-secrets.zsh` (which handles `env.d`) is **not** wired
+   into deploy. So on a host that has never had its secrets restored,
+   `95_tailscale_secrets.zsh` is absent and `73_tailscale` skips the join. After
+   `git pull` brings the `.enc` to the host:
    ```sh
-   ./deploy.zsh --only 73_tailscale         # or a full deploy
+   cd ~/.local/dotfiles && ./scripts/restore-secrets.zsh   # decrypts all 9[0-9]_*.enc
+   # or, surgical (just this one):
+   sops --decrypt zsh/env.d/95_tailscale_secrets.zsh.enc > zsh/env.d/95_tailscale_secrets.zsh \
+     && chmod 600 zsh/env.d/95_tailscale_secrets.zsh
    ```
-   The fragment installs Tailscale (macOS cask / Linux install.sh), starts the
-   daemon, and runs `tailscale up --ssh --accept-routes --authkey=…`.
-   - macOS first run: approve the system extension in **System Settings →
-     Privacy & Security** and open the app once (same class of step as ZeroTier).
+   Prereq: the host's age key must be registered in `.sops.yaml` (a fresh
+   `deploy.zsh`/`65_sops` run prints a clear WARNING with the key + fix command if
+   not). Verify: `zsh -c 'source zsh/env.d/95_tailscale_secrets.zsh; [[ -n $TAILSCALE_AUTHKEY ]] && echo OK'`.
+6. **Deploy** on the host:
+   ```sh
+   git -c core.hooksPath=/dev/null pull --ff-only   # get commits w/o full auto-deploy
+   ./deploy.zsh --only 73_tailscale                 # or a full ./deploy.zsh
+   ```
+   The fragment installs Tailscale, starts the daemon, and runs
+   `tailscale up --ssh --accept-routes --authkey=…`. Install is **distro-aware**:
+   - **macOS** → brew cask `tailscale` (first run: approve the system extension in
+     **System Settings → Privacy & Security** and open the app once).
+   - **Arch family** (Arch/CachyOS/Manjaro) → `sudo pacman -Sy --needed --noconfirm
+     tailscale` — the `-Sy` db refresh avoids the stale-mirror 404 seen on ceres.
+   - **everything else** (Debian/Ubuntu/Fedora/…) → official `install.sh`.
 7. ✅ **Verify the pilot** (ZeroTier still up the whole time):
    ```sh
    tailscale status                         # this host shows 100.x, BackendState=Running
@@ -94,6 +119,15 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
    redeploy `73_tailscale`, then 🔒 **approve the route** in the admin console
    (Machines → that host → Edit route settings). ✅ Verify another tailnet host
    can `ping 10.132.32.29` via the router.
+
+> 🔒 **Tailnet node-naming hygiene (do before the DNS cutover).** A host whose
+> Tailscale hostname is already taken by a stale/offline node joins as
+> `<name>-1` (e.g. ceres joined as `ceres-1` because an offline `ceres` from a
+> prior personal login still held the name). To get clean MagicDNS names:
+> admin console → **Machines** → delete each stale/offline duplicate → then on
+> the live node, **⋯ → Edit machine name** and rename `<name>-1` → `<name>`.
+> MagicDNS updates immediately. Re-point `*.webfront.app` at the node's `100.x`
+> IP regardless of its MagicDNS label (the A record points at the IP, not the name).
 
 ## Phase 4 — Cut over (the switch; still reversible until Phase 5)
 
