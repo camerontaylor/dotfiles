@@ -43,6 +43,7 @@ gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 (( ${+commands[quilt]} )) && alias quilt="quilt --quiltrc $DOTFILES/configs/quiltrc"
 (( ${+commands[tmux]} )) && alias stmux="tmux new-session 'sudo --login'"
 (( ${+commands[wget]} )) && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
+(( ${+commands[gh]} )) && alias gh-pr="$DOTFILES/scripts/gh-pr.sh"
 # Prefer eza over ls when available
 if (( ${+commands[eza]} )); then
     alias ls="eza --group-directories-first --color=auto --hyperlink"
