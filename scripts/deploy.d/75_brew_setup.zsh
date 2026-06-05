@@ -217,9 +217,9 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
 fi
 
 # T3 Code cask — desktop web GUI for coding agents (Codex/Claude/OpenCode).
-# The `t3` CLI (server form, port 3773) is installed cross-platform via mise
-# (configs/mise.toml) and exposed over the mesh by setup-caddy.sh; this cask is
-# the macOS desktop companion app.
+# The `t3` CLI (server form, port 3773) is installed cross-platform through
+# .default-npm-packages and exposed over the mesh by setup-caddy.sh; this cask
+# is the macOS desktop companion app.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     if ! brew list --cask t3-code > /dev/null 2>&1; then
         print "Installing T3 Code..."

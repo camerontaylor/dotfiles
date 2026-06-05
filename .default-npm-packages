@@ -1,0 +1,20 @@
+# npm globals installed by scripts/deploy.d/70_runtime_installs.zsh through
+# Vite+'s managed npm. Keep vp/vite-plus itself out of this file; the official
+# Vite+ installer owns that bootstrap.
+happy@latest
+happy-dom@latest
+@openai/codex@latest
+oh-my-codex@latest
+@google/gemini-cli@latest
+t3@latest
+oh-my-claude-sisyphus@latest
+pnpm@11.5.1
+tsx@latest
+portless@latest
+agent-browser@latest
+@ast-grep/cli@latest
+@ast-grep/napi@0.43.0
+oxlint@latest
+@oh-my-pi/pi-coding-agent@latest
+@aoagents/ao@latest
+grab@latest

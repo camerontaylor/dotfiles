@@ -18,9 +18,9 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 ## Where to Add Commands/Tools
 | Want to add... | Location |
 |----------------|----------|
-| Runtime (node, ruby, python, etc.) | `configs/mise.toml` → `[tools]` section |
+| Runtime (ruby, python, bun, etc.) | `configs/mise.toml` → `[tools]` section |
+| Node/npm/vp/pnpm or npm global package | `.default-npm-packages` plus `scripts/deploy.d/70_runtime_installs.zsh` |
 | CLI tool with mise registry backend | `configs/mise.toml` → `[tools]` (preferred — aqua/cargo backends covered for ~13 common CLIs already) |
-| npm global package | `configs/mise.toml` → `"npm:pkg-name" = "latest"` |
 | Cargo CLI without mise backend (e.g. linear-cli) | `scripts/deploy.d/70_runtime_installs.zsh` |
 | Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
 | Tool as git submodule | `tools/` → add submodule, link in `scripts/deploy.d/40_tools.zsh` |
@@ -46,13 +46,17 @@ echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 **Encryption**: `./scripts/save-secrets.zsh` skips overwriting newer `.enc` files unless `--force`
 **Decryption**: `./scripts/restore-secrets.zsh` overwrites plaintext files from tracked `.enc` secrets on demand
 
-## Runtime Management (mise)
-mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mise.toml`.
-- `mise install` — install all tools defined in config
+## Runtime Management (Vite+ + mise)
+Vite+ owns Node/npm/vp/pnpm and npm global packages. mise owns the remaining
+polyglot runtimes and non-npm CLIs. See `configs/mise.toml` and
+`.default-npm-packages`.
+- `vp env doctor` — verify Vite+'s Node/npm shims
+- `npm ls -g --depth=0` — show npm globals installed through Vite+'s npm
+- `mise install` — install all non-npm tools defined in config
 - `mise ls` — show installed tools and versions
-- `mise use --global node@22` — change global node version
 - **Config**: `configs/mise.toml` → symlinked to `~/.config/mise/config.toml`
 - **env.d/08_mise.zsh**: Sets XDG paths, adds shims to PATH (all shells)
+- **env.d/09_vite_plus.zsh**: Sources `~/.vite-plus/env` (all shells)
 - **rc.d/22_mise.zsh**: `mise activate zsh` hook + pnpm completions (interactive)
 
 ## How to Add Things
@@ -89,7 +93,7 @@ mise replaced nvm/rbenv/direnv for polyglot runtime management. See `configs/mis
 │   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
 │   └── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
 ├── configs/
-│   └── mise.toml       # Global runtime versions (node, bun, ruby, python, sops, age)
+│   └── mise.toml       # Global runtime versions (bun, ruby, python, sops, age)
 ├── zsh/
 │   ├── .zshenv         # Entry point, sets ZDOTDIR
 │   ├── env.d/          # ALL shells (export PATH, XDG vars, mise shims)

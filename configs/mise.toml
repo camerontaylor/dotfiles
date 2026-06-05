@@ -1,12 +1,12 @@
 [tools]
 # Language runtimes — pin to channels/major lines so a surprise major release
 # doesn't land on shell startup. Bump explicitly with `mise upgrade <tool>`.
-node = "lts"
-npm = "11"
 bun = "1"
 ruby = "3"
 python = "3"
 uv = "0"
+# Node/npm/vp are managed by Vite+ from deploy.zsh. npm globals live in
+# ~/.local/dotfiles/.default-npm-packages instead of mise shims.
 # CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
 # Aqua backends (prebuilt binaries) are preferred where available, falling back
 # to cargo. linear-cli has no mise backend → still installed via cargo in deploy.zsh.
@@ -28,32 +28,6 @@ sops = "3"
 age = "1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
 opencode = "latest"
-# npm global packages (migrated from nvm's default-packages).
-# npm:* tools resolve through the npm registry, not GitHub, so they don't hit
-# the GitHub rate limit and are safe to keep at "latest".
-"npm:happy" = "latest"
-"npm:@biomejs/biome" = "latest"
-"npm:@openai/codex" = "latest"
-"npm:oh-my-codex" = "latest"
-"npm:@google/gemini-cli" = "latest"
-# T3 Code — minimal web GUI for coding agents (Codex/Claude/OpenCode).
-# CLI form: `t3 serve` runs a WebSocket server on port 3773, exposed over the
-# ZeroTier mesh via the t3.<host>.webfront.app Caddy block (see setup-caddy.sh).
-# The macOS desktop app is installed separately as a cask in 75_brew_setup.zsh.
-"npm:t3" = "latest"
-"npm:oh-my-claude-sisyphus" = "latest"
-"npm:pnpm" = "latest"
-"npm:vite-plus" = "latest"
-"npm:tsx" = "latest"
-"npm:portless" = "latest"
-"npm:agent-browser" = "latest"
-"npm:@ast-grep/cli" = "latest"
-"npm:@ast-grep/napi" = "latest"
-"npm:oxlint" = "latest"
-"npm:not-claude-code-emulator" = "latest"
-"npm:@oh-my-pi/pi-coding-agent" = "latest"
-"npm:@aoagents/ao" = "latest"
-"npm:@code-yeongyu/comment-checker" = "latest"
 "github:usewhale/DeepSeek-COde-Whale" = "0.1.24"
 
 [settings]
