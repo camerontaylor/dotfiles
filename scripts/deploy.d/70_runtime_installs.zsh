@@ -33,40 +33,9 @@ else
         fi
     fi
 
-    if [[ -x $vp_bin ]]; then
-        export PATH="$vp_home/bin:$PATH"
-        rehash
-
-        print "Refreshing Vite+ Node/npm shims..."
-        if VP_HOME=$vp_home VP_NODE_MANAGER=yes $vp_bin env setup --refresh > /dev/null 2>&1; then
-            print "  ...done"
-        else
-            print "  ...failed to refresh Vite+ Node/npm shims"
-        fi
-
-        if [[ -f $npm_packages_file ]]; then
-            if [[ -x $npm_bin ]]; then
-                local -a npm_packages=()
-                local npm_package
-                while IFS= read -r npm_package || [[ -n $npm_package ]]; do
-                    [[ -z $npm_package || $npm_package == \#* ]] && continue
-                    npm_packages+=("$npm_package")
-                done < $npm_packages_file
-
-                if (( ${#npm_packages} > 0 )); then
-                    print "Installing npm globals through Vite+ npm..."
-                    if $npm_bin install -g $npm_packages > /dev/null 2>&1; then
-                        print "  ...done"
-                    else
-                        print "  ...failed to install npm globals"
-                    fi
-                fi
-            else
-                print "  ...Vite+ npm shim missing; skipping npm globals"
-            fi
-        fi
-    fi
-
+    # Remove the pre-migration mise Node/npm installs FIRST. Doing this before
+    # the Vite+ shim/prune step below means any vp shim still pointing into a
+    # removed mise install becomes a detectable dangling link we can clear.
     if (( ${+commands[mise]} )); then
         local -a obsolete_mise_tools=(
             # gh dropped from mise.toml: ghx's gh shim now owns the gh command,
@@ -101,6 +70,53 @@ else
         mise uninstall -y --all $obsolete_mise_tools > /dev/null 2>&1 || true
         mise reshim --force -y > /dev/null 2>&1 || true
         print "  ...done"
+    fi
+
+    if [[ -x $vp_bin ]]; then
+        export PATH="$vp_home/bin:$PATH"
+        rehash
+
+        print "Refreshing Vite+ Node/npm shims..."
+        if VP_HOME=$vp_home VP_NODE_MANAGER=yes $vp_bin env setup --refresh > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to refresh Vite+ Node/npm shims"
+        fi
+
+        # Prune dangling shims left in vp's bin by the mise -> Vite+ migration.
+        # vp's shim refresh will NOT overwrite a name that already exists, so a
+        # stale symlink pointing at an uninstalled mise package (e.g. the old
+        # npm-pnpm shim) keeps shadowing the real node-global binary and breaks
+        # the tool on PATH. Clearing dead links lets the npm-globals install
+        # below recreate correct shims.
+        local _vp_shim
+        for _vp_shim in $vp_home/bin/*(N); do
+            if [[ -L $_vp_shim && ! -e $_vp_shim ]]; then
+                rm -f -- $_vp_shim
+            fi
+        done
+
+        if [[ -f $npm_packages_file ]]; then
+            if [[ -x $npm_bin ]]; then
+                local -a npm_packages=()
+                local npm_package
+                while IFS= read -r npm_package || [[ -n $npm_package ]]; do
+                    [[ -z $npm_package || $npm_package == \#* ]] && continue
+                    npm_packages+=("$npm_package")
+                done < $npm_packages_file
+
+                if (( ${#npm_packages} > 0 )); then
+                    print "Installing npm globals through Vite+ npm..."
+                    if $npm_bin install -g $npm_packages > /dev/null 2>&1; then
+                        print "  ...done"
+                    else
+                        print "  ...failed to install npm globals"
+                    fi
+                fi
+            else
+                print "  ...Vite+ npm shim missing; skipping npm globals"
+            fi
+        fi
     fi
 fi
 

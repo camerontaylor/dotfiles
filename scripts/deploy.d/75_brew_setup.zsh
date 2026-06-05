@@ -99,10 +99,27 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade ncurses || true
 fi
 
-# htop process viewer; config is symlinked by 20_symlinks.zsh.
+# htop process viewer; config is symlinked by 20_symlinks.zsh. There is no
+# mise/aqua backend for htop, so it comes from the platform package manager:
+# brew on macOS (refreshed every run), pacman on Arch-family Linux.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing htop via brew..."
     brew_formula_install_or_upgrade htop || true
+elif (( ${+commands[pacman]} )) && (( ! ${+commands[htop]} )); then
+    # sudo can prompt for a password. In a non-interactive deploy (e.g. the
+    # post-merge git hook) there's no TTY to answer it, so only attempt the
+    # install when sudo is already passwordless/cached or stdin is a terminal;
+    # otherwise leave a copy-paste hint instead of hanging on the prompt.
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        print "Installing htop via pacman..."
+        if sudo pacman -S --needed --noconfirm htop > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install htop via pacman"
+        fi
+    else
+        print "htop missing; install it with: sudo pacman -S --needed htop"
+    fi
 fi
 
 # GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
