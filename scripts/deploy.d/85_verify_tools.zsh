@@ -22,6 +22,7 @@ local -a tool_checks=(
     delta:delta
     htop:htop
     gh:gh
+    ghx:ghx
     glab:glab
     ast-grep:sg
     tree-sitter:tree-sitter

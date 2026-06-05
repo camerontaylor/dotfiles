@@ -69,6 +69,11 @@ else
 
     if (( ${+commands[mise]} )); then
         local -a obsolete_mise_tools=(
+            # gh dropped from mise.toml: ghx's gh shim now owns the gh command,
+            # and a mise gh would shadow it on PATH. Uninstall any prior install
+            # BEFORE the ghx fallback below runs, so its installer sees no real
+            # gh and plants the shim.
+            gh
             node
             npm
             npm:happy
@@ -125,5 +130,23 @@ if (( ${+commands[cargo]} )); then
         else
             print "  ...failed to upgrade linear-cli"
         fi
+    fi
+fi
+
+# ghx — GitHub CLI caching daemon. Brew-equipped hosts install it in
+# 75_brew_setup.zsh; this is the fallback for hosts WITHOUT brew (most Linux),
+# pulling the release binary into ~/.local/bin (on PATH, no sudo). Runs LAST so
+# the mise-gh uninstall above has already happened: with no real gh on PATH,
+# install.sh plants its `gh` shim, so `gh` -> ghx -> ghx's auto-managed gh under
+# ~/.ghx/bin. install.sh auto-detects linux/darwin x amd64/arm64. --upgrade
+# re-fetches the latest release.
+if (( ! ${+commands[brew]} )) && { (( ! ${+commands[ghx]} )) || [[ $upgrade_mode == true ]]; }; then
+    print "Installing ghx..."
+    if curl -fsSL https://raw.githubusercontent.com/brunoborges/ghx/main/install.sh \
+        | INSTALL_DIR=$HOME/.local/bin bash > /dev/null 2>&1; then
+        rehash
+        print "  ...done"
+    else
+        print "  ...failed to install ghx"
     fi
 fi

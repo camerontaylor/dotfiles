@@ -170,6 +170,40 @@ elif (( ${+commands[brew]} )) && $upgrade_mode; then
     fi
 fi
 
+# ghx — caching layer for the GitHub CLI, installed via brew wherever brew
+# exists (macOS, plus any Linuxbrew host). It wraps read-only gh commands
+# (pr/issue/run list+view, api GETs) behind a per-user local daemon (ghxd) over
+# a 0600 unix socket; per-host cache by design (no networked/shared-cache mode).
+#
+# We use ghx's `gh` shim DELIBERATELY: with no real gh on PATH (mise's gh is
+# dropped in 70_runtime_installs.zsh, brew's gh removed just below), brew links
+# the shim as `gh`, so `gh` -> ghx -> a gh binary ghx auto-downloads and manages
+# under ~/.ghx/bin. The brew formula ships all three of gh+ghx+ghxd and links
+# them atomically — a pre-existing brew `gh` would abort the whole link, which
+# is why we uninstall it FIRST. Hosts without brew use the curl installer in
+# 70_runtime_installs.zsh. Interactive gh->ghx shortcut lives in
+# zsh/rc.d/08_aliases.zsh.
+if (( ${+commands[brew]} )) && brew list --formula gh > /dev/null 2>&1; then
+    print "Removing brew gh (ghx's gh shim replaces it)..."
+    brew uninstall gh > /dev/null 2>&1 || true
+fi
+if (( ${+commands[brew]} )) && (( ! ${+commands[ghx]} )); then
+    print "Installing ghx via brew..."
+    if brew install brunoborges/tap/ghx > /dev/null 2>&1; then
+        rehash
+        print "  ...done"
+    else
+        print "  ...failed to install ghx"
+    fi
+elif (( ${+commands[brew]} )) && $upgrade_mode; then
+    print "Upgrading ghx via brew..."
+    if brew upgrade brunoborges/tap/ghx > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "  ...ghx already at latest or upgrade failed"
+    fi
+fi
+
 # iTerm2 cask.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     if ! brew list --cask iterm2 > /dev/null 2>&1; then
