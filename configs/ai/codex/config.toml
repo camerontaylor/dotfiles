@@ -37,6 +37,9 @@ persistence = "save-all"
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
+[projects."/Users/ctaylor/repos/webfront"]
+trust_level = "trusted"
+
 [plugins."oh-my-codex@oh-my-codex-local"]
 enabled = true
 
