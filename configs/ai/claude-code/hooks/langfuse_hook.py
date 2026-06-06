@@ -509,7 +509,7 @@ def main():
     # Get Langfuse credentials from environment
     public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
     secret_key = os.environ.get("LANGFUSE_SECRET_KEY")
-    host = os.environ.get("LANGFUSE_HOST", "http://localhost:3050")
+    host = os.environ.get("LANGFUSE_HOST", "https://telemetry.webfront.app")
 
     if not public_key or not secret_key:
         log("ERROR", "Langfuse API keys not set")
