@@ -5,6 +5,7 @@ happy@latest
 happy-dom@latest
 @openai/codex@latest
 oh-my-codex@latest
+opencode-ai@latest
 @google/gemini-cli@latest
 t3@latest
 oh-my-claude-sisyphus@latest

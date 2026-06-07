@@ -59,7 +59,7 @@ if (( ${+commands[mise]} )); then
         fi
     fi
 
-    print "Installing mise tools (node, bun, ruby, etc.)..."
+    print "Installing mise tools (node, bun, python, etc.)..."
     if mise install > /dev/null 2>&1; then
         print "  ...done"
     else

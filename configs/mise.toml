@@ -2,9 +2,8 @@
 # Language runtimes — pin to channels/major lines so a surprise major release
 # doesn't land on shell startup. Bump explicitly with `mise upgrade <tool>`.
 bun = "1"
-ruby = "3"
 python = "3"
-uv = "0"
+uv = "0.11.16"
 # Node/npm/vp are managed by Vite+ from deploy.zsh. npm globals live in
 # ~/.local/dotfiles/.default-npm-packages instead of mise shims.
 # CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
@@ -30,14 +29,12 @@ awscli = "2"
 sops = "3"
 age = "1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
-opencode = "latest"
+# opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
+# NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases
+# and warns on every shell startup when a new version isn't yet published there.
 "github:usewhale/DeepSeek-COde-Whale" = "0.1.24"
 
 [settings]
-# Respect version files: .node-version, .ruby-version, .tool-versions
+# Respect version files: .node-version, .tool-versions
 idiomatic_version_file = true
 trusted_config_paths = ["/home/ctaylor/repos/webfront"]
-
-[settings.ruby]
-# Use precompiled ruby binaries (faster installs; set to false to compile from source)
-compile = false
