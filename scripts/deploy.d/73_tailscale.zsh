@@ -1,10 +1,10 @@
-# Tailscale install + tailnet join. Runs ALONGSIDE ZeroTier during the
-# migration (coexist-then-cut-over) — it does NOT touch ZeroTier. See
-# docs/tailscale-migration-runbook.md for the full cutover/decommission flow.
+# Tailscale install + tailnet join — the dev fleet's mesh VPN. (ZeroTier, the
+# previous mesh, was decommissioned 2026-06-07; see
+# docs/tailscale-migration-runbook.md for the historical cutover.)
 #
 # Joins using a reusable, tagged pre-auth key from $TAILSCALE_AUTHKEY, sourced
 # from an encrypted secret file zsh/env.d/9[0-9]_tailscale_secrets.zsh (the same
-# sops/age flow as the ZeroTier secret). Optional knobs from that file:
+# sops/age flow as other encrypted secrets). Optional knobs from that file:
 #   $TAILSCALE_ADVERTISE_ROUTES  space/comma-separated CIDRs for a subnet router
 #                                (e.g. "10.132.32.0/24" on the LAN-router host)
 #   $TAILSCALE_EXTRA_ARGS        extra flags appended verbatim to `tailscale up`
@@ -110,10 +110,9 @@ else
 fi
 
 # Ensure the daemon is running. On Linux this is the tailscaled systemd unit.
-# Unlike ZeroTier (72_zerotier.zsh loads a launchd plist on macOS), there is NO
-# Darwin daemon-start branch here: the macOS Tailscale daemon is a system
-# extension managed by macOS and bundled in the cask .app — opening the app once
-# (runbook Phase 2) activates it; there is no plist for us to load.
+# There is no Darwin daemon-start branch here: the macOS Tailscale daemon is a
+# system extension managed by macOS and bundled in the cask .app — opening the
+# app once (runbook Phase 2) activates it; there is no plist for us to load.
 if [[ $DOTFILES_OS == Linux ]]; then
     if (( ${+commands[systemctl]} )) && ! systemctl is-active --quiet tailscaled 2>/dev/null; then
         if (( DEPLOY_DRY_RUN )); then
@@ -214,8 +213,7 @@ fi
 
 print "Tailscale: bringing up tailnet (${ssh_label})..."
 if (( DEPLOY_DRY_RUN )); then
-    # Show the real non-secret args (like 72_zerotier.zsh prints network IDs) but
-    # NEVER echo the auth key.
+    # Show the real non-secret args but NEVER echo the auth key.
     local dry_ssh=""
     [[ $DOTFILES_OS == Linux ]] && dry_ssh=" --ssh"
     local dry_extra=""

@@ -38,6 +38,15 @@ _zshenv_dbg() { (( _ZSHENV_DEBUG )) && echo "[zshenv] $*" >&2; }
 
 _zshenv_dbg "start (depth=$_ZSHENV_DEPTH)"
 
+# Normalize a bare/relative $SHELL to an absolute path. Some harnesses (notably
+# the Claude Code Bash tool) export SHELL=zsh with no path. OpenSSH's `Match
+# exec` — used by ssh/config's optimistic LAN fast-path — runs the probe under
+# $SHELL and FATALLY aborts the whole connection if $SHELL isn't an executable
+# absolute path. Fix it for every zsh, including non-interactive `zsh -c`.
+if [[ $SHELL != /* ]]; then
+    export SHELL=${commands[zsh]:-/usr/bin/zsh}
+fi
+
 # Determine own path if ZDOTDIR isn't set or home symlink exists
 if [[ -z $ZDOTDIR || -L $HOME/.zshenv ]]; then
     local homezshenv=$HOME/.zshenv

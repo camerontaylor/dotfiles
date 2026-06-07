@@ -14,6 +14,11 @@ zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
 zf_chmod 700 $XDG_CONFIG_HOME/gnupg
 zf_chmod 700 $HOME/.ssh
+# ControlMaster multiplexed-connection sockets (ssh/config ControlPath). OpenSSH
+# will NOT create this dir itself; absent it, every connection silently falls
+# back to a fresh (unshared) connection.
+zf_mkdir -p $HOME/.ssh/sockets
+zf_chmod 700 $HOME/.ssh/sockets
 print "  ...done"
 
 print "Checking for ZDOTDIR env variable..."

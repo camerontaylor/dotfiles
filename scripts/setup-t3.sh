@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Topology (mirrors the portless daemon in setup-caddy.sh):
 #   t3 binds 127.0.0.1:3773 only. Caddy terminates TLS on :443 and reverse-
-#   proxies t3.<host>.webfront.app -> localhost:3773 over the ZeroTier mesh.
+#   proxies t3.<host>.webfront.app -> localhost:3773 over the Tailscale mesh.
 #   Nothing exposes 3773 directly; add the t3.<host> Caddy block first.
 #
 #   Linux  -> systemd service (runs as the login user, mise shims on PATH)
