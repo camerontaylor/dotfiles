@@ -59,19 +59,42 @@ if (( ${+commands[mise]} )); then
         fi
     fi
 
+    # mise hits the GitHub API for aqua release metadata and artifact
+    # attestation verification. Unauthenticated requests are capped at 60/hr
+    # and fail with 403 mid-install, leaving tools half-provisioned. Feed it a
+    # token from the usual sources if one is reachable.
+    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
+        if (( ${+commands[gh]} )) && gh auth token > /dev/null 2>&1; then
+            export MISE_GITHUB_TOKEN=$(gh auth token 2>/dev/null)
+        fi
+    fi
+    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
+        print "  ...no GitHub token found; mise may hit API rate limits"
+        print "     (export GITHUB_TOKEN, or run 'gh auth login')"
+    fi
+
+    # Capture output and replay it only on failure: quiet on success, but the
+    # actual error (rate limit, network, checksum) is visible when it matters.
+    local mise_log
+    mise_log=$(mktemp)
+
     print "Installing mise tools (node, bun, python, etc.)..."
-    if mise install > /dev/null 2>&1; then
+    if mise install > "$mise_log" 2>&1; then
         print "  ...done"
     else
-        print "  ...mise install had issues"
+        print "  ...mise install had issues:"
+        sed 's/^/    /' "$mise_log" >&2
     fi
 
     print "Upgrading mise tools..."
-    if mise upgrade --yes > /dev/null 2>&1; then
+    if mise upgrade --yes > "$mise_log" 2>&1; then
         print "  ...done"
     else
-        print "  ...mise upgrade had issues"
+        print "  ...mise upgrade had issues:"
+        sed 's/^/    /' "$mise_log" >&2
     fi
+
+    rm -f "$mise_log"
 fi
 
 # Brew fallback for tools listed in mise.toml. Runs only on macOS, only when a
