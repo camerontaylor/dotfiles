@@ -25,6 +25,12 @@ fd = "10"
 sd = "1"
 zoxide = "0"
 tree-sitter = "0"
+# Migrated from tools/ submodules (saved ~166M of submodule history). fzf has a
+# curated aqua backend; pnpm-shell-completion (Rust) has no mise registry entry
+# but ships GitHub release binaries, so use the github backend. (b4b4r07/httpstat
+# is a bash script with no release binaries — vendored under tools/vendor/ instead.)
+"aqua:junegunn/fzf" = "0"
+"github:g-plane/pnpm-shell-completion" = "0.5.5"
 awscli = "2"
 sops = "3"
 age = "1"

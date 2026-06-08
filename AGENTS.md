@@ -43,8 +43,9 @@ echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 
 **Key location**: `~/.config/sops/age/keys.txt` — **BACKUP THIS FILE** to your password manager!
 **Encrypted file pattern**: `zsh/env.d/9[0-9]_*.enc`, `zsh/rc.d/9[0-9]_*.enc`, `nvim/init/9[0-9]_*.enc`
-**Encryption**: `./scripts/save-secrets.zsh` skips overwriting newer `.enc` files unless `--force`
-**Decryption**: `./scripts/restore-secrets.zsh` overwrites plaintext files from tracked `.enc` secrets on demand
+**Encryption**: `./scripts/save-secrets.zsh` skips overwriting a newer `.enc` (and skips when content already matches) unless `--force`
+**Decryption**: `./scripts/restore-secrets.zsh` writes plaintext from tracked `.enc`, but skips a plaintext that is newer than its `.enc` unless `--force` (so local edits aren't clobbered)
+**On deploy**: `scripts/deploy.d/65_sops.zsh` restores `ssh/*.enc` with the same date guard; `./deploy.zsh --force` (`DEPLOY_FORCE=1`) overrides it
 
 ## Runtime Management (Vite+ + mise)
 Vite+ owns Node/npm/vp/pnpm and npm global packages. mise owns the remaining

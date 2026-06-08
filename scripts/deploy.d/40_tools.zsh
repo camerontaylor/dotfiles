@@ -1,40 +1,34 @@
-# Build-and-install submoduled tools: git-extras, git-quick-stats, fzf,
-# diff-so-fancy, wtp, moor. plus gh-prreview extension when gh is present.
+# Install non-mise CLI tools. The former tools/ submodules now come from mise
+# (fzf via aqua, pnpm-shell-completion via github) or are vendored under
+# tools/vendor/ (httpstat, spark, spectre-meltdown-checker, git-quick-stats).
+# This fragment: (1) symlinks vendored scripts that must live on PATH, (2)
+# best-effort installs the two tools that need a package manager (git-extras,
+# testssl), then (3) runs the pre-existing wtp / gh-prreview / moor setup.
 
-if (( ${+commands[make]} )); then
-    print "Installing git-extras..."
-    pushd tools/git-extras
-    PREFIX=$HOME/.local make install > /dev/null
-    popd
-    print "  ...done"
+# git-quick-stats must be on PATH so `git quick-stats` subcommand dispatch finds
+# it. httpstat/spark/spectre are reached via aliases in zsh/rc.d, so they need no
+# symlink. Vendored scripts have no build step and behave identically on both OSes.
+zf_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-stats
 
-    if (( ${+commands[which]} )); then
-        print "Installing git-quick-stats..."
-        pushd tools/git-quick-stats
-        PREFIX=$HOME/.local make install > /dev/null
-        popd
-        print "  ...done"
-    fi
-fi
-
-print "Installing fzf..."
-pushd tools/fzf
-if fzf_install_output=$(./install --bin); then
-    zf_ln -sfn $SCRIPT_DIR/tools/fzf/bin/fzf $HOME/.local/bin/fzf
-    zf_ln -sfn $SCRIPT_DIR/tools/fzf/bin/fzf-tmux $HOME/.local/bin/fzf-tmux
-    zf_ln -sfn $SCRIPT_DIR/tools/fzf/man/man1/fzf.1 $XDG_DATA_HOME/man/man1/fzf.1
-    zf_ln -sfn $SCRIPT_DIR/tools/fzf/man/man1/fzf-tmux.1 $XDG_DATA_HOME/man/man1/fzf-tmux.1
-    print "  ...done"
+# git-extras (80+ git subcommands + completion) and testssl (TLS scanner) have no
+# mise/aqua backend and are pure-shell, so they come from the system package
+# manager. brew on macOS (no sudo, safe from a git hook); on Linux we only detect
+# and hint, because auto-`sudo` from a post-merge/post-checkout hook would hang.
+if [[ $(uname -s) == Darwin ]] && (( ${+commands[brew]} )); then
+    for formula in git-extras testssl; do
+        brew list --formula $formula > /dev/null 2>&1 && continue
+        print "Installing $formula via brew..."
+        if brew install $formula > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed, install manually: brew install $formula"
+        fi
+    done
 else
-    print $fzf_install_output
-    print "  ...error detected, ignoring, please check the fzf installation guide"
-fi
-popd
-
-if (( ${+commands[perl]} )); then
-    print "Installing diff-so-fancy..."
-    zf_ln -sfn $SCRIPT_DIR/tools/diff-so-fancy/diff-so-fancy $HOME/.local/bin/diff-so-fancy
-    print "  ...done"
+    (( ${+commands[git-extras]} )) \
+        || print "  hint: git-extras not installed (e.g. paru -S git-extras)"
+    (( ${+commands[testssl]} )) || (( ${+commands[testssl.sh]} )) \
+        || print "  hint: testssl not installed (e.g. sudo pacman -S testssl.sh)"
 fi
 
 if (( ! ${+commands[wtp]} )); then

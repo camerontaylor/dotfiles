@@ -18,8 +18,21 @@ fi
 # Additional completions
 fpath=($ZDOTDIR/plugins/completions/src $ZDOTDIR/plugins/git-completion/src $fpath)
 
-# Enable git-extras completions
-source $DOTFILES/tools/git-extras/etc/git-extras-completion.zsh
+# Enable git-extras completions. git-extras is installed via the system package
+# manager now (brew / paru), so source its completion from wherever the package
+# placed it; skip silently when git-extras isn't installed.
+for _ge_comp in \
+    $HOMEBREW_PREFIX/share/zsh/site-functions/_git_extras \
+    /opt/homebrew/share/zsh/site-functions/_git_extras \
+    /usr/local/share/zsh/site-functions/_git_extras \
+    /usr/share/zsh/site-functions/_git_extras \
+    /usr/share/git-extras/etc/git-extras-completion.zsh; do
+    if [[ -r $_ge_comp ]]; then
+        source $_ge_comp
+        break
+    fi
+done
+unset _ge_comp
 
 # Make sure complist is loaded
 zmodload zsh/complist

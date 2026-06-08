@@ -1,1 +1,1 @@
-alias httpstat="$DOTFILES/tools/httpstat/httpstat"
+alias httpstat="$DOTFILES/tools/vendor/httpstat"
