@@ -9,6 +9,9 @@
 
 print "Verifying deployed CLI tools respond..."
 
+ensure_homebrew_path 2>/dev/null || true
+rehash
+
 # Pairs: <display name> <binary on PATH>
 # Listed roughly in order of "user-visible breakage if missing".
 local -a tool_checks=(

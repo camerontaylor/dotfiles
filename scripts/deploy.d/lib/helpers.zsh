@@ -27,13 +27,21 @@ brew_install_or_upgrade() {
         return 1
     fi
 
-    if (( ! ${+commands[$binary]} )); then
+    if ! brew list --formula $formula > /dev/null 2>&1; then
         if brew install $formula > /dev/null 2>&1; then
             rehash
             print "  ...done"
             return 0
         fi
         print "  ...failed to install $formula"
+        return 1
+    elif (( ! ${+commands[$binary]} )); then
+        if brew link $formula > /dev/null 2>&1 || brew link --overwrite $formula > /dev/null 2>&1; then
+            rehash
+            print "  ...linked"
+            return 0
+        fi
+        print "  ...$formula installed but $binary is not on PATH"
         return 1
     elif $upgrade_mode; then
         if brew upgrade $formula > /dev/null 2>&1; then
