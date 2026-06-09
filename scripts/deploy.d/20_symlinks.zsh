@@ -22,6 +22,7 @@ zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/agents $HOME/.agents
 zf_mkdir -p $XDG_CONFIG_HOME/waveterm
 zf_ln -sfn $SCRIPT_DIR/configs/waveterm/settings.json $XDG_CONFIG_HOME/waveterm/settings.json
 zf_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
