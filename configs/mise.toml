@@ -38,7 +38,8 @@ age = "1"
 # opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
 # NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases
 # and warns on every shell startup when a new version isn't yet published there.
-"github:usewhale/DeepSeek-COde-Whale" = "0.1.24"
+# CodeWhale is installed and upgraded from crates.io by
+# scripts/deploy.d/70_runtime_installs.zsh.
 
 [settings]
 # Respect version files: .node-version, .tool-versions

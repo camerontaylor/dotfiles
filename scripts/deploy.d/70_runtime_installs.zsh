@@ -1,5 +1,5 @@
-# curl-based installs for runtimes/CLIs without a mise backend:
-# Claude Code, Vite+, rustup/cargo, linear-cli.
+# curl/cargo installs for runtimes/CLIs without a mise backend:
+# Claude Code, Vite+, rustup/cargo, linear-cli, CodeWhale.
 
 if (( ! ${+commands[claude]} )); then
     print "Installing Claude Code..."
@@ -64,6 +64,8 @@ else
             npm:@oh-my-pi/pi-coding-agent
             npm:@aoagents/ao
             npm:@code-yeongyu/comment-checker
+            github:usewhale/DeepSeek-COde-Whale
+            github:usewhale/DeepSeek-Code-Whale
         )
 
         print "Removing stale mise Node/npm installs..."
@@ -147,6 +149,40 @@ if (( ${+commands[cargo]} )); then
             print "  ...failed to upgrade linear-cli"
         fi
     fi
+fi
+
+# CodeWhale: crates.io is the most direct update source for both the CLI and TUI.
+if (( ${+commands[cargo]} )); then
+    local codewhale_spec codewhale_package codewhale_binary codewhale_action
+    local -a codewhale_cargo_packages=(
+        codewhale-cli:codewhale
+        codewhale-tui:codewhale-tui
+    )
+
+    for codewhale_spec in "${codewhale_cargo_packages[@]}"; do
+        codewhale_package=${codewhale_spec%%:*}
+        codewhale_binary=${codewhale_spec#*:}
+
+        if (( ! ${+commands[$codewhale_binary]} )); then
+            codewhale_action=install
+        elif $upgrade_mode; then
+            codewhale_action=upgrade
+        else
+            continue
+        fi
+
+        if [[ $codewhale_action == install ]]; then
+            print "Installing $codewhale_package via cargo..."
+        else
+            print "Upgrading $codewhale_package via cargo..."
+        fi
+        if cargo install "$codewhale_package" --locked --force > /dev/null 2>&1; then
+            rehash
+            print "  ...done"
+        else
+            print "  ...failed to $codewhale_action $codewhale_package"
+        fi
+    done
 fi
 
 # ghx — GitHub CLI caching daemon. Brew-equipped hosts install it in
