@@ -27,7 +27,9 @@ zoxide = "0"
 tree-sitter = "0"
 awscli = "2"
 sops = "3"
-age = "1"
+# The registry's default age backend is aqua:FiloSottile/age, which does not
+# publish Intel macOS binaries. The GitHub backend supports this host.
+"github:FiloSottile/age" = "1.3.1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
 # opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
 # NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases

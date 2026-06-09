@@ -165,9 +165,11 @@ fi
 # them through mise on Intel Macs. brew bottles ship for both arches.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing fd via brew..."
-    brew_formula_install_or_upgrade fd || true
+    brew_install_or_upgrade fd fd || true
     print "Installing git-delta via brew..."
-    brew_formula_install_or_upgrade git-delta || true
+    brew_install_or_upgrade git-delta delta || true
+    print "Installing age via brew..."
+    brew_install_or_upgrade age age || true
 fi
 
 # engram tap install.
@@ -200,7 +202,7 @@ fi
 # is why we uninstall it FIRST. Hosts without brew use the curl installer in
 # 70_runtime_installs.zsh. Interactive gh->ghx shortcut lives in
 # zsh/rc.d/08_aliases.zsh.
-if (( ${+commands[brew]} )) && brew list --formula gh > /dev/null 2>&1; then
+if (( ${+commands[brew]} )) && (( ! ${+commands[ghx]} )) && brew list --formula gh > /dev/null 2>&1; then
     print "Removing brew gh (ghx's gh shim replaces it)..."
     brew uninstall gh > /dev/null 2>&1 || true
 fi
@@ -218,6 +220,26 @@ elif (( ${+commands[brew]} )) && $upgrade_mode; then
         print "  ...done"
     else
         print "  ...ghx already at latest or upgrade failed"
+    fi
+fi
+
+# ghx's `gh` shim needs a real GitHub CLI binary under ~/.ghx/bin. Its built-in
+# auto-download can fail on unauthenticated GitHub API rate limits, which leaves
+# both `gh` and `ghx` unable to answer even `--version`. Keep Homebrew's gh
+# installed but unlinked, then point ghx at that real binary.
+if (( ${+commands[brew]} )) && (( ${+commands[ghx]} )); then
+    if ! brew list --formula gh > /dev/null 2>&1; then
+        brew install gh > /dev/null 2>&1 || true
+    fi
+
+    local brew_gh_prefix
+    brew_gh_prefix=$(brew --prefix gh 2>/dev/null || true)
+    if [[ -x $brew_gh_prefix/bin/gh ]]; then
+        mkdir -p "$HOME/.ghx/bin"
+        ln -sf "$brew_gh_prefix/bin/gh" "$HOME/.ghx/bin/gh"
+        print "  ...ghx real gh linked"
+    else
+        print "  ...ghx installed but no real gh binary found"
     fi
 fi
 
