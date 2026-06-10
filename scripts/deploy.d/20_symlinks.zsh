@@ -64,6 +64,10 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/agents $HOME/.codex/agents
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/prompts $HOME/.codex/prompts
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/rules $HOME/.codex/rules
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/skills $HOME/.codex/skills
+# CodeWhale
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/config.toml $HOME/.codewhale/config.toml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/settings.toml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json

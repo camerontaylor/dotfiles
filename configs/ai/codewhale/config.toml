@@ -1,0 +1,23 @@
+mode = "yolo"
+allow_shell = true
+sandbox_mode = "danger-full-access"
+default_text_model = "deepseek-v4-pro"
+reasoning_effort = "auto"
+
+[projects."/Users/ctaylor/.local/dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/ctaylor/repos/webfront"]
+trust_level = "trusted"
+
+[projects."/Users/ctaylor/repos/worktrees/feature/grid-showcase-playground"]
+trust_level = "trusted"
+
+[projects."/Users/ctaylor/repos/worktrees/fix/form-4"]
+trust_level = "trusted"
+
+[projects."/Users/ctaylor/repos/worktrees/fix/system"]
+trust_level = "trusted"
+
+[update]
+check_for_updates = true

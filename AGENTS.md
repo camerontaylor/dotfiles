@@ -27,7 +27,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
-| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
+| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
 
 ## Secrets Encryption (SOPS + Age)
 Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:
