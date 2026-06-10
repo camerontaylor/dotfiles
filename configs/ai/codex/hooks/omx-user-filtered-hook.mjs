@@ -76,8 +76,36 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const NODE = '/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node';
-const ORIGINAL_HOOK = '/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/latest/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js';
+import { execSync } from 'node:child_process';
+
+const NODE = process.execPath;
+
+// Dynamic ORIGINAL_HOOK discovery: prefer the mise/npm-oh-my-codex path,
+// but fall back to the vite-plus installation on macOS.
+let ORIGINAL_HOOK = '/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/latest/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js';
+if (!existsSync(ORIGINAL_HOOK)) {
+  const candidates = [
+    '/Users/ctaylor/.vite-plus/js_runtime/node/24.16.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js',
+    '/Users/ctaylor/.vite-plus/js_runtime/node/24.15.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js',
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      ORIGINAL_HOOK = candidate;
+      break;
+    }
+  }
+  if (!existsSync(ORIGINAL_HOOK)) {
+    try {
+      const result = execSync('find /Users/ctaylor/.vite-plus -path "*/codex-native-hook.js" 2>/dev/null | head -1', { encoding: 'utf8' });
+      const found = result.trim();
+      if (found && existsSync(found)) {
+        ORIGINAL_HOOK = found;
+      }
+    } catch {
+      // Keep the default
+    }
+  }
+}
 const CONFIG_PATH = join(homedir(), '.codex', '.omx-config.json');
 
 const DEFAULT_PASS_THROUGH = {

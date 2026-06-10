@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node\" \"/home/ctaylor/.codex/hooks/omx-user-filtered-hook.mjs\" SessionStart",
+            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs SessionStart",
             "statusMessage": "OMX user-owned filtered SessionStart hook"
           }
         ],
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node\" \"/home/ctaylor/.codex/hooks/omx-user-filtered-hook.mjs\" PreToolUse",
+            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs PreToolUse",
             "statusMessage": "OMX user-owned filtered PreToolUse hook"
           }
         ],
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node\" \"/home/ctaylor/.codex/hooks/omx-user-filtered-hook.mjs\" UserPromptSubmit",
+            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs UserPromptSubmit",
             "statusMessage": "OMX user-owned filtered UserPromptSubmit hook"
           }
         ]
@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node\" \"/home/ctaylor/.codex/hooks/omx-user-filtered-hook.mjs\" Stop",
+            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs Stop",
             "statusMessage": "OMX user-owned filtered Stop hook",
             "timeout": 30
           }
@@ -52,7 +52,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/home/ctaylor/.local/share/mise/installs/node/24.15.0/bin/node\" \"/home/ctaylor/.codex/hooks/omx-user-filtered-hook.mjs\" PostToolUse",
+            "command": "bash ~/.codex/hooks/vp-fmt-on-edit.sh",
+            "statusMessage": "vp fmt --fix on Edit|Write"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.codex/hooks/git-commit-reformat-notice.sh",
+            "statusMessage": "git commit reformat notice"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs PostToolUse",
             "statusMessage": "OMX user-owned filtered PostToolUse hook"
           }
         ]
