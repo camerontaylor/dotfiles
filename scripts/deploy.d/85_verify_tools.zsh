@@ -37,6 +37,7 @@ local -a tool_checks=(
     node:node
     npm:npm
     pnpm:pnpm
+    psql:psql
 )
 
 typeset -a failed=()

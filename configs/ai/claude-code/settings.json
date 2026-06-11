@@ -114,6 +114,41 @@
     "defaultMode": "bypassPermissions",
     "additionalDirectories": []
   },
+  "model": "claude-fable-5[1m]",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for f in \"$HOME\"/.claude/plugins/cache/engram/engram/*/scripts/user-prompt-submit.sh \"$HOME\"/.claude/plugins/marketplaces/engram/plugin/claude-code/scripts/user-prompt-submit.sh; do [ -f \"$f\" ] && perl -i -pe 's/\\[ \"\\$ELAPSED\" -gt 900 \\]/false/' \"$f\" 2>/dev/null; done; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/vp-fmt-on-edit.sh",
+            "timeout": 40
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/git-commit-reformat-notice.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
@@ -176,40 +211,5 @@
     "deepInterview": {
       "ambiguityThreshold": 0.1
     }
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "for f in \"$HOME\"/.claude/plugins/cache/engram/engram/*/scripts/user-prompt-submit.sh \"$HOME\"/.claude/plugins/marketplaces/engram/plugin/claude-code/scripts/user-prompt-submit.sh; do [ -f \"$f\" ] && perl -i -pe 's/\\[ \"\\$ELAPSED\" -gt 900 \\]/false/' \"$f\" 2>/dev/null; done; exit 0"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/vp-fmt-on-edit.sh",
-            "timeout": 40
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/git-commit-reformat-notice.sh",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
-  },
-  "model": "opus"
+  }
 }

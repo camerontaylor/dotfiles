@@ -32,6 +32,9 @@ if [[ $OSTYPE = darwin* ]]; then
         if [[ -d $HOMEBREW_PREFIX/opt/curl/bin ]]; then
             path=($HOMEBREW_PREFIX/opt/curl/bin $path)
         fi
+        if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
+            path=($HOMEBREW_PREFIX/opt/libpq/bin $path)
+        fi
     fi
     unset _brew
 else
