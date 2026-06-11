@@ -205,6 +205,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -219,6 +220,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL ""
                 ANTHROPIC_MODEL ""
                 ANTHROPIC_SMALL_FAST_MODEL ""
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL ""
@@ -237,6 +239,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -249,6 +252,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_HAIKU_MODEL MiniMax-M2.7
                 ANTHROPIC_DEFAULT_OPUS_MODEL MiniMax-M2.7
                 ANTHROPIC_SMALL_FAST_MODEL MiniMax-M2.7
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${MINIMAX_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.minimax.io/anthropic
@@ -306,6 +310,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -320,6 +325,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccm_minimax_model"
                 ANTHROPIC_MODEL "$_ccm_minimax_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccm_small_fast_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
@@ -338,6 +344,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -350,6 +357,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_HAIKU_MODEL glm-5-turbo
                 ANTHROPIC_DEFAULT_OPUS_MODEL glm-5.1
                 ANTHROPIC_SMALL_FAST_MODEL glm-5-turbo
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${Z_AI_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.z.ai/api/anthropic
@@ -371,6 +379,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -385,6 +394,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_direct_opus_model"
                 ANTHROPIC_MODEL "$_ccfw_direct_sonnet_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccfw_direct_small_fast_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${FIREWORKS_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.fireworks.ai/inference
@@ -412,6 +422,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -426,6 +437,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfw_opus_model"
                 ANTHROPIC_MODEL "$_ccfw_opus_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccfw_small_fast_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
@@ -450,6 +462,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -464,6 +477,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccd_pro_model"
                 ANTHROPIC_MODEL "$_ccd_pro_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccd_flash_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
@@ -487,6 +501,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -501,6 +516,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccz_zai_model"
                 ANTHROPIC_MODEL "$_ccz_zai_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccz_small_fast_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
@@ -529,6 +545,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL
                 ANTHROPIC_MODEL
                 ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
@@ -543,6 +560,7 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_OPUS_MODEL "$_ccfast_opus_model"
                 ANTHROPIC_MODEL "$_ccfast_glm_model"
                 ANTHROPIC_SMALL_FAST_MODEL "$_ccfast_small_fast_model"
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY "$_ccfast_api_key"
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL "$AGENT_ALIAS_PORTKEY_BASE_URL"
@@ -559,9 +577,13 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_SONNET_MODEL
                 ANTHROPIC_DEFAULT_HAIKU_MODEL
                 ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
                 ANTHROPIC_API_KEY
                 ANTHROPIC_AUTH_TOKEN
                 ANTHROPIC_BASE_URL
+                ANTHROPIC_CUSTOM_HEADERS
                 API_TIMEOUT_MS
             )
             AGENT_ALIAS_ENV=(
@@ -570,9 +592,13 @@ agent_alias_define_env() {
                 ANTHROPIC_DEFAULT_SONNET_MODEL ""
                 ANTHROPIC_DEFAULT_HAIKU_MODEL ""
                 ANTHROPIC_DEFAULT_OPUS_MODEL ""
+                ANTHROPIC_MODEL ""
+                ANTHROPIC_SMALL_FAST_MODEL ""
+                CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN ""
                 ANTHROPIC_BASE_URL ""
+                ANTHROPIC_CUSTOM_HEADERS ""
                 API_TIMEOUT_MS ""
             )
             ;;
