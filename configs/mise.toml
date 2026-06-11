@@ -18,10 +18,14 @@ ast-grep = "0"
 # ghx auto-manages the real gh binary under ~/.ghx/bin. A mise-managed gh would
 # shadow that shim on PATH. See scripts/deploy.d/75_brew_setup.zsh.
 glab = "1"
-"aqua:dandavison/delta" = "0"
+# delta >=0.19 and fd >=10.4 dropped x86_64-apple-darwin release binaries
+# (aqua-registry supported_envs exclude darwin/amd64), which hard-fails
+# `mise install` on Intel macs (e.g. neptune). Pin the last x64-mac versions
+# there; everything else tracks latest.
+"aqua:dandavison/delta" = "{% if os() == 'macos' and arch() == 'x64' %}0.18.2{% else %}0{% endif %}"
 bat = "0"
 eza = "0"
-fd = "10"
+fd = "{% if os() == 'macos' and arch() == 'x64' %}10.3.0{% else %}10{% endif %}"
 sd = "1"
 zoxide = "0"
 tree-sitter = "0"
