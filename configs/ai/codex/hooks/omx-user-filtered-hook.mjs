@@ -4,8 +4,8 @@
  *
  * Why this exists
  * ---------------
- * OMX plugin/setup owns the default hook command that calls:
- *   dist/scripts/codex-native-hook.js
+ * OMX plugin/setup owns the default hook command that calls the installed
+ * codex-native-hook entrypoint.
  * That managed hook is useful for session context and explicit keyword routing,
  * but it also bundles stricter guardrails that this user wants disabled by
  * default: broad Bash non-zero PostToolUse blocking, Stop-hook workflow/final
@@ -20,11 +20,10 @@
  *
  * Important future-update warning
  * -------------------------------
- * Running `omx setup` may append fresh managed hooks back into hooks.json because
- * setup always installs its native wrappers. If that happens, remove hook commands
- * containing `codex-native-hook.js` again and keep this wrapper command. The
- * managed hook detector only recognizes direct commands to codex-native-hook.js;
- * this wrapper is intentionally named differently so setup preserves it as a
+ * Running `omx setup` or enabling plugin-scoped hooks may append fresh managed
+ * hooks because setup/plugin manifests install their native wrappers. If that
+ * happens, keep this wrapper as the only OMX entrypoint in ~/.codex/hooks.json.
+ * This wrapper is intentionally named differently so setup preserves it as a
  * user-owned hook.
  *
  * Config flags read from ~/.codex/.omx-config.json:
@@ -72,40 +71,40 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { execSync } from 'node:child_process';
-
 const NODE = process.execPath;
 
-// Dynamic ORIGINAL_HOOK discovery: prefer the mise/npm-oh-my-codex path,
-// but fall back to the vite-plus installation on macOS.
-let ORIGINAL_HOOK = '/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/latest/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js';
-if (!existsSync(ORIGINAL_HOOK)) {
+function discoverPluginCacheHook() {
+  const pluginBase = join(homedir(), '.codex', 'plugins', 'cache', 'oh-my-codex-local', 'oh-my-codex');
+  if (!existsSync(pluginBase)) return null;
+
+  const versions = readdirSync(pluginBase, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+
+  for (const version of versions) {
+    const hook = join(pluginBase, version, 'hooks', 'codex-native-hook.mjs');
+    if (existsSync(hook)) return hook;
+  }
+  return null;
+}
+
+function discoverOriginalHook() {
   const candidates = [
+    discoverPluginCacheHook(),
+    '/home/ctaylor/.local/share/mise/installs/npm-oh-my-codex/latest/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js',
     '/Users/ctaylor/.vite-plus/js_runtime/node/24.16.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js',
     '/Users/ctaylor/.vite-plus/js_runtime/node/24.15.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js',
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      ORIGINAL_HOOK = candidate;
-      break;
-    }
-  }
-  if (!existsSync(ORIGINAL_HOOK)) {
-    try {
-      const result = execSync('find /Users/ctaylor/.vite-plus -path "*/codex-native-hook.js" 2>/dev/null | head -1', { encoding: 'utf8' });
-      const found = result.trim();
-      if (found && existsSync(found)) {
-        ORIGINAL_HOOK = found;
-      }
-    } catch {
-      // Keep the default
-    }
-  }
+  ].filter(Boolean);
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
 }
+
+const ORIGINAL_HOOK = discoverOriginalHook();
 const CONFIG_PATH = join(homedir(), '.codex', '.omx-config.json');
 
 const DEFAULT_PASS_THROUGH = {

@@ -1,6 +1,6 @@
 # User-owned OMX filtered hooks
 
-`~/.codex/hooks.json` intentionally points at `~/.codex/hooks/omx-user-filtered-hook.mjs` instead of the OMX-managed `codex-native-hook.js` command.
+`~/.codex/hooks.json` intentionally points at `~/.codex/hooks/omx-user-filtered-hook.mjs` instead of the direct OMX-managed `codex-native-hook` command.
 
 The wrapper keeps useful stock OMX behavior by default:
 
@@ -18,9 +18,9 @@ The wrapper disables the behavior currently considered noisy/offensive by defaul
 
 ## Future updates
 
-Do not patch installed OMX plugin files under `~/.local/share/mise/installs/npm-oh-my-codex/...`.
+Do not patch installed OMX plugin files under `~/.codex/plugins/cache/...` or `~/.local/share/mise/installs/npm-oh-my-codex/...`.
 
-If `omx setup` or a plugin update re-adds direct `codex-native-hook.js` entries to `~/.codex/hooks.json`, remove those managed entries again and leave the wrapper entries. Direct `codex-native-hook.js` commands are setup-owned; this wrapper is user-owned.
+If `omx setup`, plugin-scoped hooks, or a plugin update re-adds direct `codex-native-hook` entries, remove/disable those managed entries again and leave the wrapper entries. Direct `codex-native-hook` commands are setup-owned; this wrapper is user-owned.
 
 ## Temporary overrides
 
