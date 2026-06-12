@@ -37,6 +37,7 @@ local -a tool_checks=(
     node:node
     npm:npm
     pnpm:pnpm
+    corepack:corepack
     psql:psql
 )
 
