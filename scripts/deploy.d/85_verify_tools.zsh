@@ -24,8 +24,10 @@ local -a tool_checks=(
     fzf:fzf
     delta:delta
     htop:htop
+    mosh:mosh
     gh:gh
     ghx:ghx
+    git-restore-mtime:git-restore-mtime
     glab:glab
     ast-grep:sg
     tree-sitter:tree-sitter

@@ -122,6 +122,13 @@ elif (( ${+commands[pacman]} )) && (( ! ${+commands[htop]} )); then
     fi
 fi
 
+# mosh — UDP-based remote shell that survives roaming/sleep; used for
+# connections to the eris remote box. No mise/aqua backend, so brew it is.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing mosh via brew..."
+    brew_formula_install_or_upgrade mosh || true
+fi
+
 # GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
 # gsed, gtar, gawk, gfind, gxargs) are referenced directly by the gnu_alias
 # helper in zsh/rc.d/08_aliases.zsh; the un-prefixed names are picked up via

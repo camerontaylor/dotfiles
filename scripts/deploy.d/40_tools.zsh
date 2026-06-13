@@ -2,30 +2,37 @@
 # (fzf via aqua, pnpm-shell-completion via github) or are vendored under
 # tools/vendor/ (httpstat, spark, spectre-meltdown-checker, git-quick-stats).
 # This fragment: (1) symlinks vendored scripts that must live on PATH, (2)
-# best-effort installs the two tools that need a package manager (git-extras,
-# testssl), then (3) runs the pre-existing wtp / gh-prreview / moor setup.
+# best-effort installs tools that need a package manager (git-extras,
+# git-restore-mtime, testssl), then (3) runs the pre-existing wtp /
+# gh-prreview / moor setup.
 
 # git-quick-stats must be on PATH so `git quick-stats` subcommand dispatch finds
 # it. httpstat/spark/spectre are reached via aliases in zsh/rc.d, so they need no
 # symlink. Vendored scripts have no build step and behave identically on both OSes.
 zf_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-stats
 
-# git-extras (80+ git subcommands + completion) and testssl (TLS scanner) have no
-# mise/aqua backend and are pure-shell, so they come from the system package
+# git-extras (80+ git subcommands + completion), git-restore-mtime, and testssl
+# (TLS scanner) have no mise/aqua backend, so they come from the system package
 # manager. The package layout differs per platform:
-#   macOS            : brew    — git-extras, testssl       (binary is `testssl`)
-#   Debian/Ubuntu    : apt     — git-extras, testssl.sh    (both in the archive)
-#   Arch-family      : testssl.sh from the official repo (pacman); git-extras is
-#                      AUR-only, so it needs an AUR helper (paru/yay) — pacman
-#                      can't fetch it. (29_testssl.zsh aliases testssl=testssl.sh.)
+#   macOS            : brew    — git-extras, git-tools, testssl
+#                                (git-tools provides git-restore-mtime)
+#   Debian/Ubuntu    : apt     — git-extras, git-restore-mtime, testssl.sh
+#   Arch-family      : testssl.sh from the official repo (pacman); git-extras and
+#                      git-tools are AUR-only, so they need an AUR helper
+#                      (paru/yay) — pacman can't fetch them.
+#                      (29_testssl.zsh aliases testssl=testssl.sh.)
 # sudo / AUR helpers can prompt for a password; the post-merge/post-checkout git
 # hook has no TTY to answer it, so a Linux install is only attempted when sudo is
 # already passwordless/cached or stdin is a terminal (interactive `./deploy.zsh`).
 # Otherwise we print a copy-paste hint instead of hanging — same guard as
 # 75_brew_setup.zsh's htop, honouring the no-sudo-in-hook rule.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
-    for formula in git-extras testssl; do
+    local brew_tool formula bin_name
+    for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl; do
+        formula=${brew_tool%%:*}
+        bin_name=${brew_tool#*:}
         brew list --formula $formula > /dev/null 2>&1 && continue
+        (( ${+commands[$bin_name]} )) && continue
         print "Installing $formula via brew..."
         if brew install $formula > /dev/null 2>&1; then
             print "  ...done"
@@ -51,6 +58,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
         *" debian "*|*" ubuntu "*)
             if (( ${+commands[apt-get]} )); then
                 recipes+=( "git-extras|sudo apt-get install -y git-extras" )
+                recipes+=( "git-restore-mtime|sudo apt-get install -y git-restore-mtime" )
                 recipes+=( "testssl testssl.sh|sudo apt-get install -y testssl.sh" )
             fi
             ;;
@@ -67,8 +75,10 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             [[ -z $aur ]] && (( ${+commands[yay]} )) && aur=yay
             if [[ -n $aur ]]; then
                 recipes+=( "git-extras|$aur -S --needed --noconfirm git-extras" )
+                recipes+=( "git-restore-mtime|$aur -S --needed --noconfirm git-tools" )
             else
                 recipes+=( "git-extras|" )   # no AUR helper -> hint only
+                recipes+=( "git-restore-mtime|" )
             fi
             ;;
     esac
@@ -77,6 +87,8 @@ elif [[ $DOTFILES_OS == Linux ]]; then
         # Unknown distro or no package manager detected — hint with the generic names.
         (( ${+commands[git-extras]} )) \
             || print "  hint: git-extras not installed — install via your package manager"
+        (( ${+commands[git-restore-mtime]} )) \
+            || print "  hint: git-restore-mtime not installed — install git-tools/git-restore-mtime via your package manager"
         (( ${+commands[testssl]} )) || (( ${+commands[testssl.sh]} )) \
             || print "  hint: testssl not installed — install via your package manager"
     else
