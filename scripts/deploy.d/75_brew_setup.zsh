@@ -123,10 +123,34 @@ elif (( ${+commands[pacman]} )) && (( ! ${+commands[htop]} )); then
 fi
 
 # mosh — UDP-based remote shell that survives roaming/sleep; used for
-# connections to the eris remote box. No mise/aqua backend, so brew it is.
+# connections across the home cluster. No mise/aqua backend, so it comes from
+# the platform package manager: brew on macOS, apt on Debian/Ubuntu, pacman on
+# Arch-family Linux. Mirrors htop's per-OS fanout above.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing mosh via brew..."
     brew_formula_install_or_upgrade mosh || true
+elif (( ${+commands[apt-get]} )) && (( ! ${+commands[mosh]} )); then
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        print "Installing mosh via apt..."
+        if sudo apt-get install -y mosh > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install mosh via apt"
+        fi
+    else
+        print "mosh missing; install it with: sudo apt-get install -y mosh"
+    fi
+elif (( ${+commands[pacman]} )) && (( ! ${+commands[mosh]} )); then
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        print "Installing mosh via pacman..."
+        if sudo pacman -S --needed --noconfirm mosh > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install mosh via pacman"
+        fi
+    else
+        print "mosh missing; install it with: sudo pacman -S --needed mosh"
+    fi
 fi
 
 # GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
