@@ -344,3 +344,36 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
         brew_cask_install_or_upgrade t3-code || true
     fi
 fi
+
+# AeroSpace cask — i3-like tiling window manager for macOS. Lives in the
+# maintainer's own tap (nikitabobko/tap), so the tap-qualified name is used for
+# both the `brew list` presence check and the install/upgrade.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask nikitabobko/tap/aerospace > /dev/null 2>&1; then
+        print "Installing AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    elif $upgrade_mode; then
+        print "Upgrading AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    fi
+fi
+
+# Karabiner-Elements cask — keyboard customizer / key remapper for macOS.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask karabiner-elements > /dev/null 2>&1; then
+        print "Installing Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    elif $upgrade_mode; then
+        print "Upgrading Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    fi
+fi
+
+# JankyBorders (borders) — optional focus-ring/window-border overlay that pairs
+# with AeroSpace (a tiling WM has no titlebars, so a colored border marks the
+# focused window). Formula in the maintainer's tap (felixkratz/formulae), so the
+# tap-qualified name is used for both the presence check and install/upgrade.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing JankyBorders..."
+    brew_formula_install_or_upgrade felixkratz/formulae/borders || true
+fi
