@@ -58,6 +58,12 @@ ensure_homebrew_path() {
 }
 
 if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
+    # Homebrew's tap-trust gate (HOMEBREW_REQUIRE_TAP_TRUST) makes brew ignore
+    # non-official taps until trusted; trust this specific formula so the install
+    # below isn't silently skipped. No-op on brew versions without `trust`.
+    if brew trust --help > /dev/null 2>&1; then
+        brew trust --formula satococoa/tap/wtp > /dev/null 2>&1 || true
+    fi
     local brew_output
     if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
         rehash

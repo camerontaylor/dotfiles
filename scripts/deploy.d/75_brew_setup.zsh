@@ -13,6 +13,19 @@ if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
     unset brew_bin
 fi
 
+# Trust the specific non-official tap formulae/casks this script installs before
+# any `brew install`/`brew list` touches them. Without this, a brew with
+# HOMEBREW_REQUIRE_TAP_TRUST set silently ignores these taps and every install
+# below would no-op. Trust the exact items, not the whole taps (see brew_trust).
+# wtp (satococoa/tap) is trusted in scripts/install-wtp.zsh, which runs earlier.
+if (( ${+commands[brew]} )); then
+    brew_trust --formula gentleman-programming/tap/engram
+    brew_trust --formula brunoborges/tap/ghx
+    brew_trust --formula felixkratz/formulae/borders
+    brew_trust --cask nikitabobko/tap/aerospace
+    brew_trust --cask manaflow-ai/cmux/cmux
+fi
+
 if (( ${+commands[brew]} )) && $upgrade_mode; then
     print "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
