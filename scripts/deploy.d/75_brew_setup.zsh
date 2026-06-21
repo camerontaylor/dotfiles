@@ -373,7 +373,19 @@ fi
 # with AeroSpace (a tiling WM has no titlebars, so a colored border marks the
 # focused window). Formula in the maintainer's tap (felixkratz/formulae), so the
 # tap-qualified name is used for both the presence check and install/upgrade.
+# It runs as a per-user LaunchAgent via `brew services`; start it once installed
+# (idempotent — a no-op if already loaded). `brew services` needs the formula
+# present, so only attempt the start when the install above succeeded.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing JankyBorders..."
     brew_formula_install_or_upgrade felixkratz/formulae/borders || true
+    if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
+        if brew services list 2>/dev/null | grep -qE '^borders[[:space:]]+(started|running)'; then
+            print "  ...borders service already running"
+        elif brew services start felixkratz/formulae/borders > /dev/null 2>&1; then
+            print "  ...borders service started"
+        else
+            print "  ...failed to start borders service"
+        fi
+    fi
 fi
