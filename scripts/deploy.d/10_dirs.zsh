@@ -8,7 +8,7 @@ print "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi,bat}
 zf_mkdir -p $XDG_CACHE_HOME/{zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv}/plugins,zsh,man/man1,nvim/site/pack/plugins}
-zf_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator}
+zf_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator,aerospace}
 zf_mkdir -p $HOME/{.claude,.codex,.codewhale,.omx,.ssh,.agent-orchestrator,.worktrees}
 zf_mkdir -p $XDG_STATE_HOME
 zf_mkdir -p $HOME/.local/{bin,etc}
