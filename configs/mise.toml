@@ -56,3 +56,6 @@ sops = "3"
 # Respect version files: .node-version, .tool-versions
 idiomatic_version_file = true
 trusted_config_paths = ["/home/ctaylor/repos/webfront"]
+
+[settings.python]
+compile = false
