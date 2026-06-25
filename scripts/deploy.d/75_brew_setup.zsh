@@ -402,3 +402,11 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
         fi
     fi
 fi
+
+# duti — sets default applications for file types / UTIs from the CLI. Consumed
+# by scripts/macos/macos-defaults.sh (77_macos_defaults.zsh) to point text/code
+# file types at VS Code. Plain formula in homebrew-core.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing duti..."
+    brew_formula_install_or_upgrade duti || true
+fi

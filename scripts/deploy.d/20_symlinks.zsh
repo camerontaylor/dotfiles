@@ -52,7 +52,8 @@ zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
 zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
 zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
 # Claude Code + OMC
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
+claude_code_config_dir=$SCRIPT_DIR/configs/ai/claude-code-with-non-matching-name
+zf_ln -sfn $claude_code_config_dir/CLAUDE.md $HOME/.claude/CLAUDE.md
 # RTK was nuked. Actively remove any stale link left by prior deploys so the
 # removal propagates to every machine on its next deploy (idempotent no-op once gone).
 if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
@@ -62,15 +63,15 @@ if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
         rm -f $HOME/.claude/RTK.md && print "  removed stale ~/.claude/RTK.md"
     fi
 fi
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.json $HOME/.claude/settings.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.local.json $HOME/.claude/settings.local.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/statusline-command.sh $HOME/.claude/statusline-command.sh
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hooks $HOME/.claude/hooks
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hud $HOME/.claude/hud
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/skills $HOME/.claude/skills
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/commands $HOME/.claude/commands
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/mcp.json $HOME/.claude/.mcp.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/omc-config.json $HOME/.claude/.omc-config.json
+zf_ln -sfn $claude_code_config_dir/settings.json $HOME/.claude/settings.json
+zf_ln -sfn $claude_code_config_dir/settings.local.json $HOME/.claude/settings.local.json
+zf_ln -sfn $claude_code_config_dir/statusline-command.sh $HOME/.claude/statusline-command.sh
+zf_ln -sfn $claude_code_config_dir/hooks $HOME/.claude/hooks
+zf_ln -sfn $claude_code_config_dir/hud $HOME/.claude/hud
+zf_ln -sfn $claude_code_config_dir/skills $HOME/.claude/skills
+zf_ln -sfn $claude_code_config_dir/commands $HOME/.claude/commands
+zf_ln -sfn $claude_code_config_dir/mcp.json $HOME/.claude/.mcp.json
+zf_ln -sfn $claude_code_config_dir/omc-config.json $HOME/.claude/.omc-config.json
 # Codex CLI + OMX
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/AGENTS.md $HOME/.codex/AGENTS.md
