@@ -102,3 +102,7 @@ gotchas there — see the global memory protocol for cadence.
   (iTerm2, fonts), `engram` tap. See `scripts/deploy.d/75_brew_setup.zsh`.
 - The 1:1 deploy fragments under `scripts/deploy.d/` are loaded by
   `deploy.zsh` in lex order. Two-digit prefix = phase.
+- Keyboard scheme, GUI navigation, and tiling window management (Karabiner +
+  AeroSpace) are documented in [`docs/keybindings/README.md`](docs/keybindings/README.md).
+  Source configs: `configs/karabiner/karabiner.ts` (generated) and
+  `configs/aerospace/aerospace.toml` (symlinked).

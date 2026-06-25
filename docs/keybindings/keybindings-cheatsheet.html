@@ -70,8 +70,8 @@
 </head>
 <body>
   <header>
-    <h1>macOS Keymap <span>— four modifier planes</span></h1>
-    <div class="tagline">Cmd = native Mac · Ctrl = terminal/emacs nav · Hyper (Caps) = launch &amp; actions · Alt = AeroSpace tiling. Each plane owns one job; keep them disjoint.</div>
+    <h1>Keymap <span>— four modifier planes · Mac + Linux</span></h1>
+    <div class="tagline">Cmd = native Mac · Ctrl = terminal/emacs nav · Hyper (Caps) = launch &amp; actions · Alt/Super = tiling (AeroSpace / Sway). One scheme across every machine; planes stay disjoint.</div>
   </header>
 
   <div class="legend">
@@ -185,6 +185,20 @@
         <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>w</kbd> / <kbd>q</kbd></span><span class="d">Close window / quit app</span></div>
         <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>,</kbd></span><span class="d">App preferences</span></div>
       </div>
+    </section>
+
+    <!-- LINUX / SWAY -->
+    <section class="card alt">
+      <h2>Linux / Sway — same scheme <em>$mod = Super ≈ ⌥</em></h2>
+      <div class="rows">
+        <div class="row"><span class="d">Focus / move / workspace / launch keys are <b>identical</b> — Super sits where ⌥ does on a Mac.</span></div>
+        <div class="row"><span class="k"><kbd>Caps</kbd></span><span class="d">Esc on tap, Hyper on hold (via keyd)</span></div>
+        <div class="row"><span class="k"><kbd>Super⇧</kbd><span class="plus">+</span><kbd>q</kbd></span><span class="d">Close window <span class="n">(Mac: ⌘W)</span></span></div>
+        <div class="row"><span class="k"><kbd>Super⇧</kbd><span class="plus">+</span><kbd>c</kbd></span><span class="d">Reload · <kbd>Super⇧r</kbd> restart</span></div>
+        <div class="row"><span class="k"><kbd>Super</kbd><span class="plus">+</span><kbd>,</kbd></span><span class="d">Tabbed/stacking <span class="n">(≈ accordion)</span></span></div>
+        <div class="row"><span class="k"><kbd>Home</kbd> / <kbd>End</kbd></span><span class="d">Line start/end <span class="n">native — no remap</span></span></div>
+      </div>
+      <div class="note">No Cmd plane on Linux (so close lives on Super) and no balance-sizes twin; everything else is a clean 1:1.</div>
     </section>
 
   </div>

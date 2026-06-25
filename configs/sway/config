@@ -1,0 +1,153 @@
+# ~/.config/sway/config
+# Complete Sway config matching the macOS AeroSpace + Karabiner setup.
+# $mod = Super sits where ⌥ Option does on a Mac, so the WM modifier is under the
+# same finger on every machine. Caps→Esc/Hyper is handled by keyd (system level),
+# so it works here identically to Karabiner on the Macs.
+
+### Variables ##################################################################
+set $mod Mod4
+set $hyper Mod4+Mod1+Control+Shift   # the all-mods chord keyd emits from Caps
+set $term ghostty
+set $menu fuzzel                       # search launcher (Raycast analogue)
+
+### Appearance #################################################################
+font pango:Inter 10
+default_border pixel 2
+gaps inner 8
+gaps outer 4
+# smart_gaps on          # uncomment to drop gaps when only one window is tiled
+
+# Wallpaper / colors (swaybg). Replace path or use a solid color.
+output * bg #1a1c20 solid_color
+
+### Outputs ####################################################################
+# List displays with `swaymsg -t get_outputs`, then pin them, e.g.:
+# output DP-1  mode 3840x2160@60Hz position 0 0 scale 1.5
+# output HDMI-A-1 mode 2560x1440@144Hz position 2560 0
+# (Headless boxes ceres/pluto/makemake won't run Sway at all — this is for the
+#  graphical machines: CachyOS box + Ollie's laptop.)
+
+### Inputs #####################################################################
+input "type:keyboard" {
+    repeat_delay 250
+    repeat_rate 40
+}
+input "type:touchpad" {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+# Caps Lock is owned by keyd (Esc/Hyper) — do NOT also remap it here.
+
+focus_follows_mouse yes
+mouse_warping none      # don't teleport the cursor on focus changes
+
+### Keybinds — Focus (i3 hjkl) #################################################
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+### Keybinds — Move window in the tree ########################################
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+### Keybinds — Layout #########################################################
+bindsym $mod+slash layout toggle split            # ≈ AeroSpace ⌥/
+bindsym $mod+comma layout toggle tabbed stacking  # ≈ AeroSpace ⌥, (depth)
+bindsym $mod+f fullscreen toggle
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle              # jump between tiled/floating
+
+### Keybinds — Resize #########################################################
+bindsym $mod+minus resize shrink width 5 ppt
+bindsym $mod+equal resize grow width 5 ppt
+# A proper resize mode, if you want finer control:
+mode "resize" {
+    bindsym h resize shrink width 5 ppt
+    bindsym l resize grow width 5 ppt
+    bindsym k resize shrink height 5 ppt
+    bindsym j resize grow height 5 ppt
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+r mode "resize"
+
+### Keybinds — Workspaces #####################################################
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+bindsym $mod+0 workspace number 10
+bindsym $mod+Tab workspace back_and_forth
+
+bindsym $mod+Shift+1 move container to workspace number 1; workspace number 1
+bindsym $mod+Shift+2 move container to workspace number 2; workspace number 2
+bindsym $mod+Shift+3 move container to workspace number 3; workspace number 3
+bindsym $mod+Shift+4 move container to workspace number 4; workspace number 4
+bindsym $mod+Shift+5 move container to workspace number 5; workspace number 5
+bindsym $mod+Shift+6 move container to workspace number 6; workspace number 6
+bindsym $mod+Shift+7 move container to workspace number 7; workspace number 7
+bindsym $mod+Shift+8 move container to workspace number 8; workspace number 8
+bindsym $mod+Shift+9 move container to workspace number 9; workspace number 9
+
+### Keybinds — Multi-monitor ##################################################
+bindsym $mod+Ctrl+h focus output left
+bindsym $mod+Ctrl+l focus output right
+bindsym $mod+Ctrl+Shift+h move workspace to output left
+bindsym $mod+Ctrl+Shift+l move workspace to output right
+
+### Keybinds — Window lifecycle & session #####################################
+bindsym $mod+Shift+q kill                 # Mac uses ⌘W — no Cmd plane on Linux
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+bindsym $mod+Shift+e exec swaynag -t warning -m 'Exit Sway?' \
+    -B 'Yes' 'swaymsg exit'
+
+### Keybinds — Launcher & screenshots #########################################
+bindsym $mod+d exec $menu
+bindsym Print exec grim - | wl-copy
+bindsym Shift+Print exec grim -g "$(slurp)" - | wl-copy
+
+### Keybinds — Hyper (Caps) launch plane ######################################
+bindsym $hyper+t exec $term
+bindsym $hyper+b exec google-chrome-stable
+bindsym $hyper+c exec code
+bindsym $hyper+f exec nautilus
+bindsym $hyper+s exec slack
+bindsym $hyper+n exec obsidian
+bindsym $hyper+m exec spotify
+bindsym $hyper+v exec cliphist list | fuzzel -d | cliphist decode | wl-copy
+bindsym $hyper+e exec wofi-emoji
+
+### Window rules ##############################################################
+for_window [window_role="dialog"] floating enable
+for_window [app_id="pavucontrol"] floating enable
+for_window [app_id="org.gnome.Calculator"] floating enable
+
+# Chrome profiles → fixed workspaces. Launch each with its own --class:
+#   google-chrome-stable --profile-directory="Default"   --class="chrome-me"
+#   google-chrome-stable --profile-directory="Profile 1" --class="chrome-work"
+for_window [app_id="chrome-me"]   move to workspace number 2
+for_window [app_id="chrome-work"] move to workspace number 3
+
+### Autostart #################################################################
+exec waybar                              # panel / taskbar / tray / clock
+exec mako                                # notifications
+exec wl-paste --watch cliphist store     # clipboard history
+# Idle + lock (tune times to taste):
+exec swayidle -w \
+    timeout 600 'swaylock -f' \
+    timeout 900 'swaymsg "output * power off"' \
+    resume 'swaymsg "output * power on"' \
+    before-sleep 'swaylock -f'
+
+### include /etc/sway/config.d/* ##############################################
+include /etc/sway/config.d/*
