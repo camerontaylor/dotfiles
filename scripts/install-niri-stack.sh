@@ -6,7 +6,7 @@
 #
 # Idempotent: pacman --needed skips already-installed packages.
 # Mirrors the layout in ~/.local/dotfiles/configs/{niri,waybar,mako,
-# fuzzel,swaylock} — those configs are symlinked by deploy.d/20_symlinks.zsh.
+# fuzzel,hypr} — those configs are symlinked by deploy.d/20_symlinks.zsh.
 
 set -euo pipefail
 
@@ -24,7 +24,7 @@ PACMAN_PKGS=(
   # Terminal + fallback launcher
   ghostty fuzzel
   # Notifications, lock, idle daemon
-  mako swaylock swayidle
+  mako hyprlock hypridle
   # Screenshot + clipboard + clipboard history + clipboard persistence
   grim slurp cliphist wl-clipboard wl-clip-persist
   # X11 compat layer (niri has no built-in XWayland)

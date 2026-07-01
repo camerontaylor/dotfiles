@@ -94,8 +94,9 @@ if [[ $DOTFILES_OS == Linux ]]; then
     zf_ln -sfn $SCRIPT_DIR/configs/mako/config $XDG_CONFIG_HOME/mako/config
     zf_mkdir -p $XDG_CONFIG_HOME/fuzzel
     zf_ln -sfn $SCRIPT_DIR/configs/fuzzel/fuzzel.ini $XDG_CONFIG_HOME/fuzzel/fuzzel.ini
-    zf_mkdir -p $XDG_CONFIG_HOME/swaylock
-    zf_ln -sfn $SCRIPT_DIR/configs/swaylock/config $XDG_CONFIG_HOME/swaylock/config
+    zf_mkdir -p $XDG_CONFIG_HOME/hypr
+    zf_ln -sfn $SCRIPT_DIR/configs/hypr/hyprlock.conf $XDG_CONFIG_HOME/hypr/hyprlock.conf
+    zf_ln -sfn $SCRIPT_DIR/configs/hypr/hypridle.conf $XDG_CONFIG_HOME/hypr/hypridle.conf
     zf_mkdir -p $XDG_CONFIG_HOME/wpaperd
     zf_ln -sfn $SCRIPT_DIR/configs/wpaperd/config.toml $XDG_CONFIG_HOME/wpaperd/config.toml
 fi

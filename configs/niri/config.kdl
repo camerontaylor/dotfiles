@@ -95,8 +95,8 @@ spawn-sh-at-startup "wl-paste --type text --watch cliphist store"
 spawn-sh-at-startup "wl-paste --type image --watch cliphist store"
 spawn-sh-at-startup "systemctl --user start vicinae.service"
 
-// Idle: dim → lock @ 5min, monitors off @ 10min, lock on suspend.
-spawn-sh-at-startup "swayidle -w timeout 300 'swaylock -f' timeout 600 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors' before-sleep 'swaylock -f'"
+// Idle: lock @ 5min, monitors off @ 10min, lock on suspend. (hypridle + hyprlock)
+spawn-at-startup "hypridle"
 
 // ── Window rules ───────────────────────────────────────────────────────────
 window-rule {
@@ -132,7 +132,7 @@ binds {
     Mod+Space   hotkey-overlay-title="Launcher: vicinae"       { spawn "vicinae" "toggle"; }
     Mod+Shift+D hotkey-overlay-title="Fallback launcher: fuzzel" { spawn "fuzzel"; }
     Mod+V       hotkey-overlay-title="Clipboard history"       { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
-    Super+Alt+L hotkey-overlay-title="Lock screen: swaylock"   { spawn "swaylock"; }
+    Super+Alt+L hotkey-overlay-title="Lock screen: hyprlock"   { spawn "hyprlock"; }
     Mod+Shift+Q hotkey-overlay-title="Power menu: wlogout"     { spawn "wlogout"; }
     Mod+Shift+W hotkey-overlay-title="Next wallpaper"          { spawn "wpaperctl" "next-wallpaper"; }
     Mod+B       hotkey-overlay-title="Bluetooth: blueman"      { spawn "blueman-manager"; }
