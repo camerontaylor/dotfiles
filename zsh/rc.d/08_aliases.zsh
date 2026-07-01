@@ -57,10 +57,12 @@ gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 if (( ${+commands[eza]} )); then
     alias ls="eza --group-directories-first --color=auto --hyperlink"
     alias ll="eza -l --git --almost-all --group-directories-first"
+    alias lln="eza -l --git --almost-all --group-directories-first -snew"
     alias tree="eza --tree --git-ignore"
 else
     alias ls="ls --group-directories-first --color=auto --hyperlink=auto --classify"
     alias ll="LC_COLLATE=C ls -l -v --almost-all --human-readable"
+    alias lln="ls -l -t -r --almost-all --human-readable"
 fi
 gnu_alias diff --color=auto --new-file --text --recursive --unified
 

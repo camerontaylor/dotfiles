@@ -58,6 +58,15 @@ if (( ${+commands[sops]} )) && [[ -f $age_key_dir/keys.txt ]]; then
     local _ssh_enc _ssh_target _ssh_tmp
     for _ssh_enc in $SCRIPT_DIR/ssh/*.enc(N); do
         _ssh_target=$SCRIPT_DIR/ssh/${${_ssh_enc:t}%.enc}
+        # Don't clobber a locally-edited plaintext that is newer than the
+        # tracked .enc — that silently dropped hand-edited ssh/config before.
+        # Skip the decrypt but still (re)assert the ~/.ssh symlink. Override
+        # with `deploy.zsh --force` (DEPLOY_FORCE=1) to force a full restore.
+        if (( ! ${DEPLOY_FORCE:-0} )) && [[ -f $_ssh_target && $_ssh_target -nt $_ssh_enc ]]; then
+            print "  Skipping ${_ssh_enc:t}: ${_ssh_target:t} is newer (deploy.zsh --force to overwrite)"
+            zf_ln -sfn $_ssh_target $HOME/.ssh/${_ssh_target:t}
+            continue
+        fi
         _ssh_tmp=$(mktemp)
         if sops --decrypt $_ssh_enc > $_ssh_tmp 2>/dev/null; then
             if [[ $_ssh_target == *.pub ]]; then

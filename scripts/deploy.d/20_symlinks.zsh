@@ -19,9 +19,23 @@ zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+# AeroSpace tiling-WM config. macOS-only tool, but AeroSpace only ever READS this
+# file (never writes back), so a repo symlink is safe and gives both Macs an
+# identical config; the link is an inert dangling file on Linux. Karabiner is
+# deliberately NOT symlinked here — its JSON is GUI-owned and machine-specific, so
+# it is generated from configs/karabiner/karabiner.ts in 78_karabiner.zsh instead.
+zf_ln -sfn $SCRIPT_DIR/configs/aerospace/aerospace.toml $XDG_CONFIG_HOME/aerospace/aerospace.toml
+# Sway config — the Linux counterpart to AeroSpace, same one-modifier scheme
+# ($mod = Super where ⌥ sits on a Mac). Mirror the aerospace handling: Sway only
+# READS this file, so an unconditional repo symlink is safe and gives every
+# graphical Linux box an identical config; on macOS (and headless Linux that
+# never starts Sway) the link is an inert dangling file. The Caps→Esc/Hyper half
+# is delivered system-wide by keyd, installed separately in 79_keyd.zsh.
+zf_ln -sfn $SCRIPT_DIR/configs/sway/config $XDG_CONFIG_HOME/sway/config
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/agents $HOME/.agents
 zf_mkdir -p $XDG_CONFIG_HOME/waveterm
 zf_ln -sfn $SCRIPT_DIR/configs/waveterm/settings.json $XDG_CONFIG_HOME/waveterm/settings.json
 zf_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
@@ -63,6 +77,10 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/agents $HOME/.codex/agents
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/prompts $HOME/.codex/prompts
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/rules $HOME/.codex/rules
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/skills $HOME/.codex/skills
+# CodeWhale
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/config.toml $HOME/.codewhale/config.toml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/settings.toml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json

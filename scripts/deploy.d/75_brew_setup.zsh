@@ -13,6 +13,19 @@ if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
     unset brew_bin
 fi
 
+# Trust the specific non-official tap formulae/casks this script installs before
+# any `brew install`/`brew list` touches them. Without this, a brew with
+# HOMEBREW_REQUIRE_TAP_TRUST set silently ignores these taps and every install
+# below would no-op. Trust the exact items, not the whole taps (see brew_trust).
+# wtp (satococoa/tap) is trusted in scripts/install-wtp.zsh, which runs earlier.
+if (( ${+commands[brew]} )); then
+    brew_trust --formula gentleman-programming/tap/engram
+    brew_trust --formula brunoborges/tap/ghx
+    brew_trust --formula felixkratz/formulae/borders
+    brew_trust --cask nikitabobko/tap/aerospace
+    brew_trust --cask manaflow-ai/cmux/cmux
+fi
+
 if (( ${+commands[brew]} )) && $upgrade_mode; then
     print "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
@@ -122,6 +135,37 @@ elif (( ${+commands[pacman]} )) && (( ! ${+commands[htop]} )); then
     fi
 fi
 
+# mosh — UDP-based remote shell that survives roaming/sleep; used for
+# connections across the home cluster. No mise/aqua backend, so it comes from
+# the platform package manager: brew on macOS, apt on Debian/Ubuntu, pacman on
+# Arch-family Linux. Mirrors htop's per-OS fanout above.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing mosh via brew..."
+    brew_formula_install_or_upgrade mosh || true
+elif (( ${+commands[apt-get]} )) && (( ! ${+commands[mosh]} )); then
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        print "Installing mosh via apt..."
+        if sudo apt-get install -y mosh > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install mosh via apt"
+        fi
+    else
+        print "mosh missing; install it with: sudo apt-get install -y mosh"
+    fi
+elif (( ${+commands[pacman]} )) && (( ! ${+commands[mosh]} )); then
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        print "Installing mosh via pacman..."
+        if sudo pacman -S --needed --noconfirm mosh > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to install mosh via pacman"
+        fi
+    else
+        print "mosh missing; install it with: sudo pacman -S --needed mosh"
+    fi
+fi
+
 # GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
 # gsed, gtar, gawk, gfind, gxargs) are referenced directly by the gnu_alias
 # helper in zsh/rc.d/08_aliases.zsh; the un-prefixed names are picked up via
@@ -161,13 +205,26 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     brew_formula_install_or_upgrade rsync || true
 fi
 
+# PostgreSQL client tools. Homebrew's libpq formula provides psql without
+# installing or starting a local PostgreSQL server.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing PostgreSQL client tools via brew..."
+    brew_formula_install_or_upgrade libpq || true
+    if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
+        path=($HOMEBREW_PREFIX/opt/libpq/bin $path)
+        rehash
+    fi
+fi
+
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
 # them through mise on Intel Macs. brew bottles ship for both arches.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing fd via brew..."
-    brew_formula_install_or_upgrade fd || true
+    brew_install_or_upgrade fd fd || true
     print "Installing git-delta via brew..."
-    brew_formula_install_or_upgrade git-delta || true
+    brew_install_or_upgrade git-delta delta || true
+    print "Installing age via brew..."
+    brew_install_or_upgrade age age || true
 fi
 
 # engram tap install.
@@ -200,7 +257,7 @@ fi
 # is why we uninstall it FIRST. Hosts without brew use the curl installer in
 # 70_runtime_installs.zsh. Interactive gh->ghx shortcut lives in
 # zsh/rc.d/08_aliases.zsh.
-if (( ${+commands[brew]} )) && brew list --formula gh > /dev/null 2>&1; then
+if (( ${+commands[brew]} )) && (( ! ${+commands[ghx]} )) && brew list --formula gh > /dev/null 2>&1; then
     print "Removing brew gh (ghx's gh shim replaces it)..."
     brew uninstall gh > /dev/null 2>&1 || true
 fi
@@ -218,6 +275,26 @@ elif (( ${+commands[brew]} )) && $upgrade_mode; then
         print "  ...done"
     else
         print "  ...ghx already at latest or upgrade failed"
+    fi
+fi
+
+# ghx's `gh` shim needs a real GitHub CLI binary under ~/.ghx/bin. Its built-in
+# auto-download can fail on unauthenticated GitHub API rate limits, which leaves
+# both `gh` and `ghx` unable to answer even `--version`. Keep Homebrew's gh
+# installed but unlinked, then point ghx at that real binary.
+if (( ${+commands[brew]} )) && (( ${+commands[ghx]} )); then
+    if ! brew list --formula gh > /dev/null 2>&1; then
+        brew install gh > /dev/null 2>&1 || true
+    fi
+
+    local brew_gh_prefix
+    brew_gh_prefix=$(brew --prefix gh 2>/dev/null || true)
+    if [[ -x $brew_gh_prefix/bin/gh ]]; then
+        mkdir -p "$HOME/.ghx/bin"
+        ln -sf "$brew_gh_prefix/bin/gh" "$HOME/.ghx/bin/gh"
+        print "  ...ghx real gh linked"
+    else
+        print "  ...ghx installed but no real gh binary found"
     fi
 fi
 
@@ -278,5 +355,50 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     elif $upgrade_mode; then
         print "Upgrading T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
+    fi
+fi
+
+# AeroSpace cask — i3-like tiling window manager for macOS. Lives in the
+# maintainer's own tap (nikitabobko/tap), so the tap-qualified name is used for
+# both the `brew list` presence check and the install/upgrade.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask nikitabobko/tap/aerospace > /dev/null 2>&1; then
+        print "Installing AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    elif $upgrade_mode; then
+        print "Upgrading AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    fi
+fi
+
+# Karabiner-Elements cask — keyboard customizer / key remapper for macOS.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask karabiner-elements > /dev/null 2>&1; then
+        print "Installing Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    elif $upgrade_mode; then
+        print "Upgrading Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    fi
+fi
+
+# JankyBorders (borders) — optional focus-ring/window-border overlay that pairs
+# with AeroSpace (a tiling WM has no titlebars, so a colored border marks the
+# focused window). Formula in the maintainer's tap (felixkratz/formulae), so the
+# tap-qualified name is used for both the presence check and install/upgrade.
+# It runs as a per-user LaunchAgent via `brew services`; start it once installed
+# (idempotent — a no-op if already loaded). `brew services` needs the formula
+# present, so only attempt the start when the install above succeeded.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing JankyBorders..."
+    brew_formula_install_or_upgrade felixkratz/formulae/borders || true
+    if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
+        if brew services list 2>/dev/null | grep -qE '^borders[[:space:]]+(started|running)'; then
+            print "  ...borders service already running"
+        elif brew services start felixkratz/formulae/borders > /dev/null 2>&1; then
+            print "  ...borders service started"
+        else
+            print "  ...failed to start borders service"
+        fi
     fi
 fi

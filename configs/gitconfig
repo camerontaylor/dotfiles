@@ -95,3 +95,5 @@
 	insteadOf = https://github.com/
 [coderabbit]
 	machineId = cli/b3691d24787149248d400912f75f04ac
+[alias]
+	recent-files = "!git log --name-only --pretty=format:\"-- %cs %ct\" | awk '/^-- / { date=$2; next } NF && !seen[$0]++ { print date \"\\t\" $0 }'"

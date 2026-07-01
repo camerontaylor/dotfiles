@@ -27,9 +27,13 @@ fi
 if [[ ! -v XDG_STATE_HOME ]]; then
     export XDG_STATE_HOME=$HOME/.local/state
 fi
-if [[ ! -v XDG_RUNTIME_DIR ]]; then
+_systemd_runtime_dir="/run/user/${EUID:-$(id -u)}"
+if [[ -d $_systemd_runtime_dir && -O $_systemd_runtime_dir ]]; then
+    export XDG_RUNTIME_DIR=$_systemd_runtime_dir
+elif [[ ! -v XDG_RUNTIME_DIR || -z $XDG_RUNTIME_DIR ]]; then
     export XDG_RUNTIME_DIR=${TMPDIR:-/tmp}/runtime-$USER
 fi
+unset _systemd_runtime_dir
 
 # ensure that XDG_RUNTIME_DIR dir exists, as it can be under tmpfs
 if [[ ! -d $XDG_RUNTIME_DIR ]]; then

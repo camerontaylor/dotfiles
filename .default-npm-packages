@@ -10,6 +10,7 @@ opencode-ai@latest
 t3@latest
 oh-my-claude-sisyphus@latest
 pnpm@11.5.1
+corepack@latest
 tsx@latest
 portless@latest
 agent-browser@latest
@@ -19,3 +20,4 @@ oxlint@latest
 @oh-my-pi/pi-coding-agent@latest
 @aoagents/ao@latest
 grab@latest
+continues@latest

@@ -27,7 +27,8 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
-| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
+| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
+| Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
 
 ## Secrets Encryption (SOPS + Age)
 Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:
@@ -43,8 +44,9 @@ echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 
 **Key location**: `~/.config/sops/age/keys.txt` — **BACKUP THIS FILE** to your password manager!
 **Encrypted file pattern**: `zsh/env.d/9[0-9]_*.enc`, `zsh/rc.d/9[0-9]_*.enc`, `nvim/init/9[0-9]_*.enc`
-**Encryption**: `./scripts/save-secrets.zsh` skips overwriting newer `.enc` files unless `--force`
-**Decryption**: `./scripts/restore-secrets.zsh` overwrites plaintext files from tracked `.enc` secrets on demand
+**Encryption**: `./scripts/save-secrets.zsh` skips overwriting a newer `.enc` (and skips when content already matches) unless `--force`
+**Decryption**: `./scripts/restore-secrets.zsh` writes plaintext from tracked `.enc`, but skips a plaintext that is newer than its `.enc` unless `--force` (so local edits aren't clobbered)
+**On deploy**: `scripts/deploy.d/65_sops.zsh` restores `ssh/*.enc` with the same date guard; `./deploy.zsh --force` (`DEPLOY_FORCE=1`) overrides it
 
 ## Runtime Management (Vite+ + mise)
 Vite+ owns Node/npm/vp/pnpm and npm global packages. mise owns the remaining
@@ -93,7 +95,13 @@ polyglot runtimes and non-npm CLIs. See `configs/mise.toml` and
 │   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
 │   └── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
 ├── configs/
-│   └── mise.toml       # Global runtime versions (bun, ruby, python, sops, age)
+│   ├── mise.toml       # Global runtime versions (bun, ruby, python, sops, age)
+│   ├── karabiner/      # macOS: karabiner.ts → generated karabiner.json (Hyper, text nav)
+│   ├── aerospace/      # macOS: aerospace.toml → tiling WM (symlinked)
+│   ├── keyd/           # Linux: default.conf → /etc/keyd (Caps→Esc/Hyper, via 79_keyd.zsh)
+│   └── sway/           # Linux: config → tiling WM (symlinked)
+├── docs/
+│   └── keybindings/    # README + printable cheat sheet (keyboard/nav/GUI/WM)
 ├── zsh/
 │   ├── .zshenv         # Entry point, sets ZDOTDIR
 │   ├── env.d/          # ALL shells (export PATH, XDG vars, mise shims)

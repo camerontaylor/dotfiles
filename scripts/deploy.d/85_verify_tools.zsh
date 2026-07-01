@@ -9,6 +9,9 @@
 
 print "Verifying deployed CLI tools respond..."
 
+ensure_homebrew_path 2>/dev/null || true
+rehash
+
 # Pairs: <display name> <binary on PATH>
 # Listed roughly in order of "user-visible breakage if missing".
 local -a tool_checks=(
@@ -21,8 +24,10 @@ local -a tool_checks=(
     fzf:fzf
     delta:delta
     htop:htop
+    mosh:mosh
     gh:gh
     ghx:ghx
+    git-restore-mtime:git-restore-mtime
     glab:glab
     ast-grep:sg
     tree-sitter:tree-sitter
@@ -34,6 +39,8 @@ local -a tool_checks=(
     node:node
     npm:npm
     pnpm:pnpm
+    corepack:corepack
+    psql:psql
 )
 
 typeset -a failed=()

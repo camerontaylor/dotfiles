@@ -49,14 +49,36 @@ if (( ! ${+commands[mise]} )); then
     fi
 fi
 
+# Run a mise subcommand quietly, but if it fails surface the captured output
+# (last $1 lines) instead of swallowing it into /dev/null. mktemp keeps this
+# BSD-clean; we only print on failure so success stays quiet.
+run_mise_step() {
+    local label=$1 tail_lines=$2; shift 2
+    local log; log=$(mktemp "${TMPDIR:-/tmp}/mise-step.XXXXXX") || return 1
+    # Capture rc on the line right after the command: in zsh, reading $? after
+    # an `if cmd; then ...; fi` block yields 0 when the then-branch is skipped,
+    # so we must grab it before any further construct runs.
+    "$@" > "$log" 2>&1
+    local rc=$?
+    if (( rc == 0 )); then
+        print "  ...done"
+        rm -f "$log"
+        return 0
+    fi
+    print "  ...$label had issues (exit $rc); last $tail_lines lines of output:"
+    if [[ -s $log ]]; then
+        tail -n "$tail_lines" "$log" | sed 's/^/    | /'
+    else
+        print "    | (no output captured)"
+    fi
+    rm -f "$log"
+    return $rc
+}
+
 if (( ${+commands[mise]} )); then
     if $upgrade_mode; then
         print "Upgrading mise..."
-        if mise self-update --yes --no-plugins > /dev/null 2>&1; then
-            print "  ...done"
-        else
-            print "  ...mise self-update had issues"
-        fi
+        run_mise_step "mise self-update" 20 mise self-update --yes --no-plugins
     fi
 
     # mise hits the GitHub API for aqua release metadata and artifact
@@ -73,28 +95,11 @@ if (( ${+commands[mise]} )); then
         print "     (export GITHUB_TOKEN, or run 'gh auth login')"
     fi
 
-    # Capture output and replay it only on failure: quiet on success, but the
-    # actual error (rate limit, network, checksum) is visible when it matters.
-    local mise_log
-    mise_log=$(mktemp)
-
     print "Installing mise tools (node, bun, python, etc.)..."
-    if mise install > "$mise_log" 2>&1; then
-        print "  ...done"
-    else
-        print "  ...mise install had issues:"
-        sed 's/^/    /' "$mise_log" >&2
-    fi
+    run_mise_step "mise install" 30 mise install
 
     print "Upgrading mise tools..."
-    if mise upgrade --yes > "$mise_log" 2>&1; then
-        print "  ...done"
-    else
-        print "  ...mise upgrade had issues:"
-        sed 's/^/    /' "$mise_log" >&2
-    fi
-
-    rm -f "$mise_log"
+    run_mise_step "mise upgrade" 20 mise upgrade --yes
 fi
 
 # Brew fallback for tools listed in mise.toml. Runs only on macOS, only when a

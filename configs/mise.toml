@@ -18,21 +18,39 @@ ast-grep = "0"
 # ghx auto-manages the real gh binary under ~/.ghx/bin. A mise-managed gh would
 # shadow that shim on PATH. See scripts/deploy.d/75_brew_setup.zsh.
 glab = "1"
-"aqua:dandavison/delta" = "0"
+# delta >=0.19 and fd >=10.4 dropped x86_64-apple-darwin release binaries
+# (aqua-registry supported_envs exclude darwin/amd64), which hard-fails
+# `mise install` on Intel macs (e.g. neptune). Pin the last x64-mac versions
+# there; everything else tracks latest.
+"aqua:dandavison/delta" = "{% if os() == 'macos' and arch() == 'x64' %}0.18.2{% else %}0{% endif %}"
 bat = "0"
 eza = "0"
-fd = "10"
+fd = "{% if os() == 'macos' and arch() == 'x64' %}10.3.0{% else %}10{% endif %}"
 sd = "1"
+# portless must be a mise-managed tool (not just ~/.vite-plus/bin, which only
+# interactive shells have on PATH): the GitHub runner units run
+# `mise exec --cd ~/repos/webfront -- run.sh`, and the repo's portless-env.sh
+# needs the CLI in that non-interactive env to export PUBLIC_URL/PORTLESS_NAME.
+"npm:portless" = "latest"
 zoxide = "0"
 tree-sitter = "0"
+# Migrated from tools/ submodules (saved ~166M of submodule history). fzf has a
+# curated aqua backend; pnpm-shell-completion (Rust) has no mise registry entry
+# but ships GitHub release binaries, so use the github backend. (b4b4r07/httpstat
+# is a bash script with no release binaries — vendored under tools/vendor/ instead.)
+"aqua:junegunn/fzf" = "0"
+"github:g-plane/pnpm-shell-completion" = "0.5.5"
 awscli = "2"
 sops = "3"
-age = "1"
+# The registry's default age backend is aqua:FiloSottile/age, which does not
+# publish Intel macOS binaries. The GitHub backend supports this host.
+"github:FiloSottile/age" = "1.3.1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
 # opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
 # NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases
 # and warns on every shell startup when a new version isn't yet published there.
-"github:usewhale/DeepSeek-COde-Whale" = "0.1.24"
+# CodeWhale is installed and upgraded from crates.io by
+# scripts/deploy.d/70_runtime_installs.zsh.
 
 [settings]
 # Respect version files: .node-version, .tool-versions

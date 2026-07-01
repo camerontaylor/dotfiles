@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>macOS Keymap — Cameron</title>
+<style>
+  :root{
+    --ink:#1a1c20; --paper:#ffffff; --muted:#6b7178; --line:#e4e7ea;
+    --hyper:#5b3fb5;  --hyper-bg:#efeafb;
+    --alt:#0f766e;    --alt-bg:#e3f4f1;
+    --ctrl:#b45309;   --ctrl-bg:#fbf0df;
+    --cmd:#374151;    --cmd-bg:#eceef1;
+    --uc:#9d174d;     --uc-bg:#fbe7ef;
+  }
+  *{box-sizing:border-box}
+  html{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#f3f4f6}
+  body{margin:0;padding:28px;max-width:1040px;margin-inline:auto}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:6px}
+  h1{font-size:20px;margin:0;letter-spacing:-.01em}
+  h1 span{color:var(--muted);font-weight:500}
+  .tagline{font-size:11.5px;color:var(--muted);max-width:46ch;text-align:right;line-height:1.45}
+
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 18px;font-size:11px;color:var(--muted)}
+  .legend b{font-weight:600;color:var(--ink)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+  .grid{column-count:2;column-gap:18px}
+  @media (max-width:760px){.grid{column-count:1}}
+
+  .card{break-inside:avoid;background:var(--paper);border:1px solid var(--line);
+    border-radius:8px;margin:0 0 14px;overflow:hidden}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:0;
+    padding:7px 12px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+  .card h2 em{font-style:normal;font-weight:500;opacity:.85;text-transform:none;letter-spacing:0;font-size:10.5px}
+  .rows{padding:6px 12px 10px}
+  .row{display:flex;align-items:baseline;gap:10px;padding:3px 0;font-size:12px;line-height:1.4;
+    border-bottom:1px dotted var(--line)}
+  .row:last-child{border-bottom:0}
+  .row .k{flex:0 0 auto;white-space:nowrap}
+  .row .d{flex:1 1 auto;color:var(--ink)}
+  .row .n{flex:0 0 auto;color:var(--muted);font-size:10.5px;font-style:italic}
+
+  kbd{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;
+    border:1px solid #cfd4d9;border-bottom-width:2px;border-radius:4px;
+    padding:1px 5px;background:#fafbfc;color:var(--ink);white-space:nowrap}
+  .plus{color:var(--muted);padding:0 1px;font-size:10px}
+
+  /* plane theming */
+  .hyper h2{background:var(--hyper)} .hyper kbd{background:var(--hyper-bg);border-color:#c8b9ef}
+  .alt h2{background:var(--alt)}     .alt kbd{background:var(--alt-bg);border-color:#a9d8d1}
+  .ctrl h2{background:var(--ctrl)}   .ctrl kbd{background:var(--ctrl-bg);border-color:#e6c98f}
+  .cmd h2{background:var(--cmd)}     .cmd kbd{background:var(--cmd-bg);border-color:#c5cbd2}
+  .uc h2{background:var(--uc)}       .uc kbd{background:var(--uc-bg);border-color:#e8aac4}
+
+  .note{font-size:10.5px;color:var(--muted);padding:2px 12px 10px;line-height:1.45}
+  footer{margin-top:8px;font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+
+  @page{size:A4;margin:12mm}
+  @media print{
+    html{background:#fff}
+    body{padding:0;max-width:none}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .grid{column-count:2}
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Keymap <span>— four modifier planes · Mac + Linux</span></h1>
+    <div class="tagline">Cmd = native Mac · Ctrl = terminal/emacs nav · Hyper (Caps) = launch &amp; actions · Alt/Super = tiling (AeroSpace / Sway). One scheme across every machine; planes stay disjoint.</div>
+  </header>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--cmd)"></span><b>Cmd</b> native</span>
+    <span><span class="dot" style="background:var(--ctrl)"></span><b>Ctrl</b> emacs / terminal</span>
+    <span><span class="dot" style="background:var(--hyper)"></span><b>Hyper</b> Caps Lock</span>
+    <span><span class="dot" style="background:var(--alt)"></span><b>Alt</b> AeroSpace</span>
+    <span><span class="dot" style="background:var(--uc)"></span><b>UC</b> Universal Control</span>
+    <span>Keys: <kbd>⌘</kbd> Cmd · <kbd>⌃</kbd> Ctrl · <kbd>⌥</kbd> Opt · <kbd>⇧</kbd> Shift · <kbd>⇪</kbd> Caps/Hyper</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- HYPER -->
+    <section class="card hyper">
+      <h2>Hyper — Caps Lock <em>tap = ⎋ Escape</em></h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>t</kbd></span><span class="d">Terminal (Ghostty)</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>b</kbd></span><span class="d">Browser</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>c</kbd></span><span class="d">Code editor</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>f</kbd></span><span class="d">Finder</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>s</kbd></span><span class="d">Slack</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>n</kbd></span><span class="d">Notes (Obsidian)</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>m</kbd></span><span class="d">Music</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>v</kbd></span><span class="d">Raycast clipboard history</span></div>
+        <div class="row"><span class="k"><kbd>⇪</kbd><span class="plus">+</span><kbd>e</kbd></span><span class="d">Raycast emoji picker</span></div>
+      </div>
+      <div class="note">Hold for the layer, tap for Escape. Edit the app list in <span class="mono">karabiner.ts</span>.</div>
+    </section>
+
+    <!-- ALT / AEROSPACE -->
+    <section class="card alt">
+      <h2>Alt — AeroSpace tiling</h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>h j k l</kbd></span><span class="d">Focus left / down / up / right</span></div>
+        <div class="row"><span class="k"><kbd>⌥⇧</kbd><span class="plus">+</span><kbd>h j k l</kbd></span><span class="d">Move window in tree</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>1</kbd>…<kbd>9</kbd></span><span class="d">Go to workspace</span></div>
+        <div class="row"><span class="k"><kbd>⌥⇧</kbd><span class="plus">+</span><kbd>1</kbd>…<kbd>9</kbd></span><span class="d">Send window → workspace + follow</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>⇥</kbd></span><span class="d">Last workspace (back-and-forth)</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>/</kbd></span><span class="d">Toggle tile orientation</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>,</kbd></span><span class="d">Toggle accordion layout</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>f</kbd></span><span class="d">Fullscreen (zoom)</span></div>
+        <div class="row"><span class="k"><kbd>⌥⇧</kbd><span class="plus">+</span><kbd>␣</kbd></span><span class="d">Float / unfloat window</span></div>
+        <div class="row"><span class="k"><kbd>⌥</kbd><span class="plus">+</span><kbd>-</kbd> / <kbd>=</kbd></span><span class="d">Shrink / grow · <kbd>⌥0</kbd> balance</span></div>
+        <div class="row"><span class="k"><kbd>⌥⌃</kbd><span class="plus">+</span><kbd>h</kbd> / <kbd>l</kbd></span><span class="d">Focus other monitor</span></div>
+        <div class="row"><span class="k"><kbd>⌥⇧</kbd><span class="plus">+</span><kbd>;</kbd></span><span class="d">Enter service mode ↓</span></div>
+      </div>
+    </section>
+
+    <!-- SERVICE MODE -->
+    <section class="card alt">
+      <h2>AeroSpace — service mode <em>after ⌥⇧;</em></h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>⎋</kbd></span><span class="d">Reload config &amp; exit</span></div>
+        <div class="row"><span class="k"><kbd>r</kbd></span><span class="d">Flatten / reset nested layout</span></div>
+        <div class="row"><span class="k"><kbd>⌫</kbd></span><span class="d">Close all windows but current</span></div>
+        <div class="row"><span class="k"><kbd>⌥⇧</kbd><span class="plus">+</span><kbd>h j k l</kbd></span><span class="d">Join with neighbour (build grids)</span></div>
+      </div>
+    </section>
+
+    <!-- TEXT NAV (global) -->
+    <section class="card cmd">
+      <h2>Text nav — global (GUI) <em>Linux-style; terminals excluded</em></h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>Home</kbd> / <kbd>End</kbd></span><span class="d">Start / end of line</span><span class="n">→ ⌘←/→</span></div>
+        <div class="row"><span class="k"><kbd>⇧</kbd><span class="plus">+</span><kbd>Home/End</kbd></span><span class="d">Select to line start / end</span></div>
+        <div class="row"><span class="k"><kbd>⌃</kbd><span class="plus">+</span><kbd>←</kbd> / <kbd>→</kbd></span><span class="d">Word left / right</span><span class="n">→ ⌥←/→</span></div>
+        <div class="row"><span class="k"><kbd>⌃⇧</kbd><span class="plus">+</span><kbd>←</kbd> / <kbd>→</kbd></span><span class="d">Select by word</span></div>
+        <div class="row"><span class="k"><kbd>⌃</kbd><span class="plus">+</span><kbd>Home/End</kbd></span><span class="d">Start / end of document</span><span class="n">→ ⌘↑/↓</span></div>
+        <div class="row"><span class="k"><kbd>⌃</kbd><span class="plus">+</span><kbd>⌫</kbd></span><span class="d">Delete word back</span><span class="n">→ ⌥⌫</span></div>
+        <div class="row"><span class="k"><kbd>⌃</kbd><span class="plus">+</span><kbd>⌦</kbd></span><span class="d">Delete word forward</span></div>
+      </div>
+    </section>
+
+    <!-- EMACS / TERMINAL -->
+    <section class="card ctrl">
+      <h2>Emacs nav — works in terminal &amp; native fields</h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>⌃a</kbd> / <kbd>⌃e</kbd></span><span class="d">Start / end of line</span></div>
+        <div class="row"><span class="k"><kbd>⌃f</kbd> / <kbd>⌃b</kbd></span><span class="d">Forward / back one char</span></div>
+        <div class="row"><span class="k"><kbd>⌃p</kbd> / <kbd>⌃n</kbd></span><span class="d">Previous / next line</span></div>
+        <div class="row"><span class="k"><kbd>⌃d</kbd> / <kbd>⌃h</kbd></span><span class="d">Delete forward / back</span></div>
+        <div class="row"><span class="k"><kbd>⌃k</kbd></span><span class="d">Kill to end of line</span><span class="n">own buffer</span></div>
+        <div class="row"><span class="k"><kbd>⌃y</kbd></span><span class="d">Yank (paste killed text)</span></div>
+        <div class="row"><span class="k"><kbd>⌃t</kbd></span><span class="d">Transpose characters</span></div>
+      </div>
+      <div class="note"><kbd>⌃k</kbd> appends on repeat &amp; uses its own buffer, not the clipboard — <span class="mono">⌃k ⌃k</span> from line start cuts a whole line you can <kbd>⌃y</kbd> repeatedly.</div>
+    </section>
+
+    <!-- UNIVERSAL CONTROL -->
+    <section class="card uc">
+      <h2>Universal Control — split brain</h2>
+      <div class="rows">
+        <div class="row"><span class="d"><b>Set once per Mac:</b></span></div>
+        <div class="row"><span class="d">Displays → “Push through the edge…” → <b>OFF</b></span></div>
+        <div class="row"><span class="d">Connect deliberately: Control Center → Display → other Mac</span></div>
+        <div class="row"><span class="d">Desktop&nbsp;&amp;&nbsp;Dock → “Displays have separate Spaces” → <b>OFF</b></span></div>
+        <div class="row"><span class="d">Run AeroSpace on <b>both</b> Macs; sync config via dotfiles</span></div>
+      </div>
+      <div class="note">Turning off edge-push makes handoff deterministic — no surprise jumps when AeroSpace nudges the cursor or you hit a screen edge.</div>
+    </section>
+
+    <!-- NATIVE MAC ESSENTIALS -->
+    <section class="card cmd">
+      <h2>Native Mac — keep these</h2>
+      <div class="rows">
+        <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>c v x z</kbd></span><span class="d">Copy / paste / cut / undo</span></div>
+        <div class="row"><span class="k"><kbd>⌘⇧</kbd><span class="plus">+</span><kbd>z</kbd></span><span class="d">Redo</span></div>
+        <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>␣</kbd></span><span class="d">Raycast (set as launcher)</span></div>
+        <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>⇥</kbd></span><span class="d">App switcher · <kbd>⌘`</kbd> same-app windows</span></div>
+        <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>w</kbd> / <kbd>q</kbd></span><span class="d">Close window / quit app</span></div>
+        <div class="row"><span class="k"><kbd>⌘</kbd><span class="plus">+</span><kbd>,</kbd></span><span class="d">App preferences</span></div>
+      </div>
+    </section>
+
+    <!-- LINUX / SWAY -->
+    <section class="card alt">
+      <h2>Linux / Sway — same scheme <em>$mod = Super ≈ ⌥</em></h2>
+      <div class="rows">
+        <div class="row"><span class="d">Focus / move / workspace / launch keys are <b>identical</b> — Super sits where ⌥ does on a Mac.</span></div>
+        <div class="row"><span class="k"><kbd>Caps</kbd></span><span class="d">Esc on tap, Hyper on hold (via keyd)</span></div>
+        <div class="row"><span class="k"><kbd>Super⇧</kbd><span class="plus">+</span><kbd>q</kbd></span><span class="d">Close window <span class="n">(Mac: ⌘W)</span></span></div>
+        <div class="row"><span class="k"><kbd>Super⇧</kbd><span class="plus">+</span><kbd>c</kbd></span><span class="d">Reload · <kbd>Super⇧r</kbd> restart</span></div>
+        <div class="row"><span class="k"><kbd>Super</kbd><span class="plus">+</span><kbd>,</kbd></span><span class="d">Tabbed/stacking <span class="n">(≈ accordion)</span></span></div>
+        <div class="row"><span class="k"><kbd>Home</kbd> / <kbd>End</kbd></span><span class="d">Line start/end <span class="n">native — no remap</span></span></div>
+      </div>
+      <div class="note">No Cmd plane on Linux (so close lives on Super) and no balance-sizes twin; everything else is a clean 1:1.</div>
+    </section>
+
+  </div>
+
+  <footer>
+    Generated config: <span class="mono">karabiner.ts</span> → <span class="mono">~/.config/karabiner/karabiner.json</span> · <span class="mono">~/.config/aerospace/aerospace.toml</span> · Raycast set to <kbd>⌘␣</kbd>. Keyspaces: Hyper→launch, Alt→AeroSpace, Cmd→native. Print: ⌘P, scale to fit.
+  </footer>
+</body>
+</html>

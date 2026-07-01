@@ -70,6 +70,16 @@ encrypt_if_changed() {
     local enc_file=$2
     local compare_status
 
+    # Don't clobber a newer .enc with older plaintext. After a `git pull` the
+    # tracked .enc can be ahead of this machine's plaintext (e.g. another box
+    # rotated the secret); re-encrypting stale plaintext over it would silently
+    # drop that change. Skip-only — it never *forces* a re-encrypt, so the
+    # content check below still suppresses SOPS nonce churn. --force overrides.
+    if [[ -f $enc_file && $force == false && $enc_file -nt $plaintext ]]; then
+        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
+        return 0
+    fi
+
     if [[ -f $enc_file && $force == false ]]; then
         if encrypted_matches_plaintext "$plaintext" "$enc_file"; then
             print "Skipping ${plaintext}: encrypted ${enc_file} already matches plaintext"

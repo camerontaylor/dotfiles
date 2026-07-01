@@ -29,6 +29,10 @@ setopt extended_glob err_exit
 # Argument parsing — fail-closed on unknown flags or missing --only value.
 local upgrade_mode=false
 export DEPLOY_DRY_RUN=0
+# Force overrides the "don't clobber newer plaintext" date guards in the
+# secrets-restore fragments (e.g. 65_sops.zsh). Off by default so a routine
+# deploy never silently overwrites locally-edited secrets with stale .enc.
+export DEPLOY_FORCE=0
 typeset -ga deploy_only=()
 while (( $# > 0 )); do
     case $1 in
@@ -37,6 +41,9 @@ while (( $# > 0 )); do
             ;;
         --dry-run|-n)
             DEPLOY_DRY_RUN=1
+            ;;
+        --force|-f)
+            DEPLOY_FORCE=1
             ;;
         --only=*)
             deploy_only+=("${1#--only=}")
@@ -50,10 +57,12 @@ while (( $# > 0 )); do
             shift
             ;;
         --help|-h)
-            print "usage: deploy.zsh [--upgrade|-u] [--dry-run|-n] [--only NAME ...]"
+            print "usage: deploy.zsh [--upgrade|-u] [--dry-run|-n] [--force|-f] [--only NAME ...]"
             print ""
             print "  --upgrade    run brew/mise/cargo upgrades in addition to installs"
             print "  --dry-run    fragments print intentions via [dry-run] without mutating"
+            print "  --force      overwrite locally-edited secrets from .enc even when the"
+            print "               plaintext is newer (bypasses the date guard)"
             print "  --only NAME  run only fragments whose basename matches NAME"
             print "               (e.g., --only 30_submodules); repeat for multiple"
             exit 0
@@ -87,7 +96,7 @@ XDG_STATE_HOME=$HOME/.local/state
 # run on a fresh machine doesn't fail with "no such file or directory".
 mkdir -p $XDG_STATE_HOME
 exec > >(tee -a "$XDG_STATE_HOME/dotfiles-deploy.log") 2>&1
-print "=== deploy started at $(date -Iseconds) (upgrade_mode=$upgrade_mode dry_run=$DEPLOY_DRY_RUN only=${deploy_only:-all}) ==="
+print "=== deploy started at $(date -Iseconds) (upgrade_mode=$upgrade_mode dry_run=$DEPLOY_DRY_RUN force=$DEPLOY_FORCE only=${deploy_only:-all}) ==="
 
 export DOTFILES_OS=$(uname -s)
 export DOTFILES_ARCH=$(uname -m)
