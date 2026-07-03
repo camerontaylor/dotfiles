@@ -10,6 +10,29 @@ Reproducible OBS Studio setup for **two-track recording**:
 Recording output is **Advanced** mode with `RecTracks=3` (records tracks 1 and 2
 as separate tracks in one file). Files land in `~/Movies`.
 
+## How to record (quick start)
+
+1. Open **OBS** (`open -a OBS`). It comes up on the `TwoTrack` profile + scene
+   collection already selected.
+2. In the **Audio Mixer** panel, confirm both meters react: **Mic/Aux** when you
+   talk, **Desktop Audio** when something plays. If a meter is dead, see
+   [macOS permissions](#macos-permissions) below.
+3. Click **Start Recording** (Controls panel, bottom-right). Click **Stop
+   Recording** when done.
+4. The file lands in `~/Movies` (e.g. `2026-07-04 15-30-00.mov`) as **one video
+   file with two separate audio tracks** — track 1 mic, track 2 desktop.
+
+Pull the tracks apart later in any editor, or with ffmpeg:
+
+```sh
+# mic only (track 1) and desktop only (track 2) to separate files
+ffmpeg -i "$f" -map 0:a:0 mic.wav
+ffmpeg -i "$f" -map 0:a:1 desktop.wav
+```
+
+Tip: set a Start/Stop Recording hotkey in **Settings → Hotkeys** so you don't
+have to click. The preview being black is normal (see [Note on video](#note-on-video)).
+
 ## Opt-in
 
 This is **not** installed by default. `scripts/deploy.d/77_obs.zsh` only acts on
