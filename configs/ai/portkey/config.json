@@ -158,7 +158,7 @@
                 "provider": "anthropic",
                 "api_key_env": "FIREWORKS_API_KEY",
                 "override_params": {
-                  "model": "accounts/fireworks/models/glm-5p1"
+                  "model": "accounts/fireworks/models/glm-5p2"
                 },
                 "weight": 3,
                 "request_timeout": 45000,
@@ -527,7 +527,7 @@
                 "provider": "anthropic",
                 "api_key_env": "FIREWORKS_API_KEY",
                 "override_params": {
-                  "model": "accounts/fireworks/models/glm-5p1"
+                  "model": "accounts/fireworks/models/glm-5p2"
                 },
                 "request_timeout": 45000,
                 "custom_host": "https://api.fireworks.ai/inference/v1",
@@ -540,7 +540,7 @@
             "api_key_env": "FIREWORKS_API_KEY",
             "custom_host": "https://api.fireworks.ai/inference/v1",
             "override_params": {
-              "model": "accounts/fireworks/models/glm-5p1"
+              "model": "accounts/fireworks/models/glm-5p2"
             },
             "request_timeout": 45000
           },

@@ -108,7 +108,7 @@ model_list:
 
   - model_name: glm-5.2-fast
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/glm-5p1
+      model: fireworks_ai/accounts/fireworks/models/glm-5p2
       api_key: os.environ/FIREWORKS_API_KEY
       rpm: 600
       max_parallel_requests: 12
@@ -264,7 +264,7 @@ model_list:
 
   - model_name: fleet-sonnet  # workhorse role
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/glm-5p1
+      model: fireworks_ai/accounts/fireworks/models/glm-5p2
       api_key: os.environ/FIREWORKS_API_KEY
 
   # ANTHROPIC_DEFAULT_HAIKU_MODEL slot — the "small subagent" tier. Mapped

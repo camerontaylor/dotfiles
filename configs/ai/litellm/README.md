@@ -109,7 +109,7 @@ quota.
 |---|---|
 | `kimi-k2.6` | `accounts/fireworks/models/kimi-k2p6` (262K ctx) |
 | `kimi-k2.5` | `accounts/fireworks/models/kimi-k2p5` |
-| `glm-5.2-fast` | `accounts/fireworks/models/glm-5p1` |
+| `glm-5.2-fast` | `accounts/fireworks/models/glm-5p2` |
 | `minimax-m2.7` | `accounts/fireworks/models/minimax-m2p7` |
 
 Note: `minimax-m2.5` on Fireworks is **commented out** — Fireworks doesn't
