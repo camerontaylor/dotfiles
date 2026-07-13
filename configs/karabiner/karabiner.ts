@@ -156,6 +156,7 @@ const hyperLayer: Rule = {
     // Raycast deeplinks (you registered it — lean on it)
     hyper("v", raycast("raycast://extensions/raycast/clipboard-history/clipboard-history")),
     hyper("e", raycast("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols")),
+    hyper("z", raycast("raycast://extensions/GastroGeek/folder-search/search")), // folder search (was ⌘Z — clashed with undo)
 
     // Optional: emit the real ⌘⌃⌥⇧ chord for apps that want a literal Hyper hotkey
     hyper("spacebar", key("spacebar", ["left_command", "left_control", "left_option", "left_shift"])),

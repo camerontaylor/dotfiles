@@ -63,6 +63,7 @@ emits the Karabiner JSON rather than being hand-written. It produces three rules
    | `c` | VS Code | `g` | ChatGPT |
    | `f` | Finder | `v` | Raycast clipboard history |
    | `s` | Slack | `e` | Raycast emoji picker |
+   | | | `z` | Raycast folder search |
 
    `Hyper+Space` emits the literal `⌘⌃⌥⇧` chord for apps that want a real Hyper
    hotkey. **Edit the app names in `karabiner.ts`** to match what you install.
