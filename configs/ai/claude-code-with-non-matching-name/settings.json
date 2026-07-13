@@ -114,6 +114,7 @@
     "defaultMode": "bypassPermissions",
     "additionalDirectories": []
   },
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -153,13 +154,13 @@
     "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
   },
   "enabledPlugins": {
-    "code-review@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
     "explanatory-output-style@claude-plugins-official": true,
     "gitlab@claude-plugins-official": false,
     "memsearch@memsearch-plugins": false,
-    "oh-my-claudecode@omc": true,
+    "oh-my-claudecode@omc": false,
     "engram@engram": true,
-    "code-simplifier@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": false,
     "storybook-assistant@storybook-assistant": false,
     "skill-creator@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": false,
