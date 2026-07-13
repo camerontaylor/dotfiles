@@ -107,11 +107,31 @@ alt-shift-j = ['join-with down',  'mode main']
 alt-shift-k = ['join-with up',    'mode main']
 alt-shift-l = ['join-with right', 'mode main']
 
-# ---- Optional: pin apps to workspaces / float utility windows -----------------
-# [[on-window-detected]]
-# if.app-id = 'com.tinyspeck.slackmacgap'
-# run = 'move-node-to-workspace 5'
-#
-# [[on-window-detected]]
-# if.app-id = 'com.apple.systempreferences'
-# run = 'layout floating'
+# ---- App → workspace pinning & per-workspace behavior --------------------------
+# Rules are first-match-wins, so app-specific pins must come BEFORE the
+# catch-all workspace-1 float rule below.
+
+# cmux lives alone on workspace 2. (Existing windows are re-detected on
+# aerospace startup/reload, so this also applies retroactively.)
+[[on-window-detected]]
+if.app-id = 'com.cmuxterm.app'
+run = 'move-node-to-workspace 2'
+
+# Chrome → workspace 3, but only the "Cameron" profile. All Chrome profiles
+# share one bundle id (com.google.Chrome), so we discriminate on the window
+# title: with 2+ profiles Chrome suffixes titles with " - Google Chrome - <profile>".
+# Caveat: apps that set their title late can slip past this check (AeroSpace
+# evaluates it once, at window detection) — if a window escapes, alt-shift-3 it.
+[[on-window-detected]]
+if.app-id = 'com.google.Chrome'
+if.window-title-regex-substring = 'Google Chrome - Cameron'
+run = 'move-node-to-workspace 3'
+
+# Workspace 1 is the "civilian" workspace: anything that opens there floats,
+# so native maximize/drag/resize behave like a WM-less Mac. Tiling still
+# applies everywhere else, and alt-shift-space re-tiles a window on demand.
+# (Only affects windows *created* on ws 1; windows moved there later keep
+# their layout.)
+[[on-window-detected]]
+if.workspace = '1'
+run = 'layout floating'
