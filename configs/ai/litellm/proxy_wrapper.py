@@ -46,7 +46,7 @@ remain only for the USE_CCR=0 rollback hatch):
 4. Strip CCR-translated chat-completions message fields that are Anthropic
    transcript metadata rather than OpenAI Chat Completions input. The concrete
    production failure this prevents is Fireworks rejecting `messages[*].thinking`
-   when ccz falls back from exhausted Z.AI glm-5.1-bg to glm-5.1-fast/kimi.
+   when ccz falls back from exhausted Z.AI glm-5.2-bg to glm-5.2-fast/kimi.
 """
 import json
 import sys
@@ -120,7 +120,7 @@ _CHAT_TOP_LEVEL_PARAMS_TO_DROP = (
 # Reason: LiteLLM 1.83.14's experimental Anthropic pass-through
 # (`POST /v1/messages?beta=true`) truncates outbound SSE streams to the
 # client. Verified empirically against multiple upstreams (Fireworks
-# glm-5.1-fast AND Cerebras zai-glm-4.7) — both stop emitting SSE chunks
+# glm-5.2-fast AND Cerebras zai-glm-4.7) — both stop emitting SSE chunks
 # after only a handful of content_block_delta events, never sending
 # message_stop, and uvicorn logs "ASGI callable returned without
 # completing response." This is upstream of the proxy_wrapper layer; the
@@ -132,9 +132,9 @@ _CHAT_TOP_LEVEL_PARAMS_TO_DROP = (
 #
 # When LiteLLM is upgraded (or a config switch unbreaks streaming),
 # repopulate this set with the direct-Fireworks deployments:
-#   {"kimi-k2.6", "kimi-k2.5", "glm-5.1-fast", "minimax-m2.7",
+#   {"kimi-k2.6", "kimi-k2.5", "glm-5.2-fast", "minimax-m2.7",
 #    "fleet-opus", "fleet-sonnet"}
-# and verify a streamed glm-5.1-fast request emits a `message_stop` event
+# and verify a streamed glm-5.2-fast request emits a `message_stop` event
 # before re-enabling.
 #
 # Source of truth: model_list in config.yaml.

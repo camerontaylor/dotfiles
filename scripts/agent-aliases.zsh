@@ -355,7 +355,7 @@ agent_alias_define_env() {
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
                 ANTHROPIC_DEFAULT_SONNET_MODEL glm-5-turbo
                 ANTHROPIC_DEFAULT_HAIKU_MODEL glm-5-turbo
-                ANTHROPIC_DEFAULT_OPUS_MODEL glm-5.1
+                ANTHROPIC_DEFAULT_OPUS_MODEL glm-5.2
                 ANTHROPIC_SMALL_FAST_MODEL glm-5-turbo
                 CLAUDE_CODE_SUBAGENT_MODEL ""
                 ANTHROPIC_API_KEY ""
@@ -405,7 +405,7 @@ agent_alias_define_env() {
             # Portkey fleet with fallback chains encoded in
             # ~/.local/dotfiles/configs/ai/portkey/config.json:
             #   fleet-opus       → Fireworks Kimi-K2.6 [→ Z.AI → MiniMax]
-            #   fleet-sonnet     → Fireworks GLM-5.1   [→ Kimi → MiniMax M2.7]
+            #   fleet-sonnet     → Fireworks GLM-5.2   [→ Kimi → MiniMax M2.7]
             #   fleet-haiku      → OpenRouter BYOK → Cerebras openai/gpt-oss-120b
             #   fleet-small-fast → OpenRouter BYOK → Cerebras openai/gpt-oss-120b
             local _ccfw_opus_model="fleet-opus"

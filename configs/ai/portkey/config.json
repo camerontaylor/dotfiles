@@ -35,7 +35,7 @@
             "api_key_env": "Z_AI_API_KEY",
             "custom_host": "https://api.z.ai/api/anthropic/v1",
             "override_params": {
-              "model": "glm-5.1"
+              "model": "glm-5.2"
             },
             "request_timeout": 30000
           },
@@ -95,7 +95,7 @@
             "api_key_env": "Z_AI_API_KEY",
             "custom_host": "https://api.z.ai/api/anthropic/v1",
             "override_params": {
-              "model": "glm-5.1"
+              "model": "glm-5.2"
             },
             "request_timeout": 45000
           },
@@ -112,7 +112,7 @@
       }
     },
     "fleet-sonnet": {
-      "description": "Workhorse route: intended weighted Fireworks GLM-5.1 plus Z.AI, with MiniMax and Kimi fallbacks.",
+      "description": "Workhorse route: intended weighted Fireworks GLM-5.2 plus Z.AI, with MiniMax and Kimi fallbacks.",
       "portkey_config": {
         "strategy": {
           "mode": "fallback",
@@ -169,7 +169,7 @@
                 "api_key_env": "Z_AI_API_KEY",
                 "custom_host": "https://api.z.ai/api/anthropic/v1",
                 "override_params": {
-                  "model": "glm-5.1"
+                  "model": "glm-5.2"
                 },
                 "weight": 2,
                 "request_timeout": 45000
@@ -518,7 +518,7 @@
                 "api_key_env": "Z_AI_API_KEY",
                 "custom_host": "https://api.z.ai/api/anthropic/v1",
                 "override_params": {
-                  "model": "glm-5.1"
+                  "model": "glm-5.2"
                 },
                 "request_timeout": 45000,
                 "weight": 4
