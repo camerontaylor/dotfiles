@@ -1,0 +1,137 @@
+# ~/.config/aerospace/aerospace.toml
+# i3/sway-style tiling for macOS. Put an identical copy on BOTH Macs — each runs
+# its own instance; Universal Control roams input between them at a different
+# layer, so they don't conflict. The only thing that *could* clash is the mouse
+# being warped to a screen edge, so mouse-follows-focus is deliberately tame.
+
+start-at-login = true
+
+# ---- Universal Control safety -------------------------------------------------
+# Do NOT warp the mouse on every focus change (that's the one behavior that can
+# fling the cursor at a display edge and trip Universal Control's handoff, and it
+# also breaks dragging windows between monitors). We only recenter on an explicit
+# monitor switch, and 'monitor-lazy-center' keeps the pointer mid-screen, away
+# from the edges UC listens on.
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+# (on-focus-changed intentionally left unset.)
+
+# Also recommended outside this file (do once, per Mac):
+#   System Settings → Displays → "Push through the edge…" : OFF
+#   then connect deliberately via Control Center → Display → <other Mac>.
+#   System Settings → Desktop & Dock → "Displays have separate Spaces" : OFF
+#   (AeroSpace is far more stable with one Space; see its docs.)
+
+# ---- Normalization & layout ---------------------------------------------------
+enable-normalization-flatten-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = true
+
+accordion-padding = 30
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'   # wide screen→horizontal, tall→vertical
+
+[gaps]
+inner.horizontal = 8
+inner.vertical   = 8
+outer.left   = 8
+outer.bottom = 8
+outer.top    = 8
+outer.right  = 8
+
+# ---- Main mode ----------------------------------------------------------------
+[mode.main.binding]
+# Layout
+alt-slash = 'layout tiles horizontal vertical'      # toggle tile orientation
+alt-comma = 'layout accordion horizontal vertical'  # toggle accordion
+alt-f     = 'fullscreen'                             # zoom focused window
+alt-shift-space = 'layout floating tiling'           # float / unfloat
+
+# Focus (i3 hjkl). Stop at the workspace boundary so focus never shoves the
+# cursor off-screen toward the other Mac.
+alt-h = 'focus --boundaries-action stop left'
+alt-j = 'focus --boundaries-action stop down'
+alt-k = 'focus --boundaries-action stop up'
+alt-l = 'focus --boundaries-action stop right'
+
+# Move windows within the tree
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+# Resize
+alt-minus  = 'resize smart -50'
+alt-equal  = 'resize smart +50'
+alt-0      = 'balance-sizes'
+
+# Workspaces 1–9 (+ a couple of mnemonics)
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+alt-tab = 'workspace-back-and-forth'
+
+# Send focused window to workspace (then follow it)
+alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
+alt-shift-2 = ['move-node-to-workspace 2', 'workspace 2']
+alt-shift-3 = ['move-node-to-workspace 3', 'workspace 3']
+alt-shift-4 = ['move-node-to-workspace 4', 'workspace 4']
+alt-shift-5 = ['move-node-to-workspace 5', 'workspace 5']
+alt-shift-6 = ['move-node-to-workspace 6', 'workspace 6']
+alt-shift-7 = ['move-node-to-workspace 7', 'workspace 7']
+alt-shift-8 = ['move-node-to-workspace 8', 'workspace 8']
+alt-shift-9 = ['move-node-to-workspace 9', 'workspace 9']
+
+# Multi-monitor (within one Mac): bounce focus / workspaces between displays
+alt-ctrl-h = 'focus-monitor left'
+alt-ctrl-l = 'focus-monitor right'
+alt-shift-ctrl-h = ['move-workspace-to-monitor left',  'workspace-back-and-forth']
+alt-shift-ctrl-l = ['move-workspace-to-monitor right', 'workspace-back-and-forth']
+
+# Enter service mode for the less-frequent stuff
+alt-shift-semicolon = 'mode service'
+
+# ---- Service mode (one-shot maintenance commands) -----------------------------
+[mode.service.binding]
+esc = ['reload-config', 'mode main']
+r   = ['flatten-workspace-tree', 'mode main']   # reset nested layout
+f   = ['layout floating tiling', 'mode main']
+backspace = ['close-all-windows-but-current', 'mode main']
+# join the focused window with a neighbour (build grids)
+alt-shift-h = ['join-with left',  'mode main']
+alt-shift-j = ['join-with down',  'mode main']
+alt-shift-k = ['join-with up',    'mode main']
+alt-shift-l = ['join-with right', 'mode main']
+
+# ---- App → workspace pinning & per-workspace behavior --------------------------
+# Rules are first-match-wins, so app-specific pins must come BEFORE the
+# catch-all workspace-1 float rule below.
+
+# cmux lives alone on workspace 2. (Existing windows are re-detected on
+# aerospace startup/reload, so this also applies retroactively.)
+[[on-window-detected]]
+if.app-id = 'com.cmuxterm.app'
+run = 'move-node-to-workspace 2'
+
+# Chrome → workspace 3, but only the "Cameron" profile. All Chrome profiles
+# share one bundle id (com.google.Chrome), so we discriminate on the window
+# title: with 2+ profiles Chrome suffixes titles with " - Google Chrome - <profile>".
+# Caveat: apps that set their title late can slip past this check (AeroSpace
+# evaluates it once, at window detection) — if a window escapes, alt-shift-3 it.
+[[on-window-detected]]
+if.app-id = 'com.google.Chrome'
+if.window-title-regex-substring = 'Google Chrome - Cameron'
+run = 'move-node-to-workspace 3'
+
+# Workspace 1 is the "civilian" workspace: anything that opens there floats,
+# so native maximize/drag/resize behave like a WM-less Mac. Tiling still
+# applies everywhere else, and alt-shift-space re-tiles a window on demand.
+# (Only affects windows *created* on ws 1; windows moved there later keep
+# their layout.)
+[[on-window-detected]]
+if.workspace = '1'
+run = 'layout floating'

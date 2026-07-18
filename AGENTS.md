@@ -28,6 +28,9 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
 | AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
+| Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
+| macOS App Shortcuts / Finder `defaults` / default-app associations | `scripts/macos/macos-defaults.sh` (shortcuts + Finder prefs + `duti` file-type→VS Code; change-aware, backs up to `$XDG_STATE_HOME/macos-defaults/`; applied on deploy by `77_macos_defaults.zsh`, needs `duti` from brew). Capture hand-set shortcuts with `capture-shortcuts.sh`. See [`scripts/macos/README.md`](scripts/macos/README.md) |
+| macOS Raycast script command | drop a `*.sh` in `raycast/` (version-controlled; add the dir once in Raycast settings). See [`raycast/README.md`](raycast/README.md) |
 
 ## Secrets Encryption (SOPS + Age)
 Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:
@@ -92,16 +95,26 @@ polyglot runtimes and non-npm CLIs. See `configs/mise.toml` and
 ├── deploy.zsh          # Main installer + git hooks
 ├── scripts/
 │   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
-│   └── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
+│   ├── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
+│   ├── deploy.d/                # NN_*.zsh install fragments (sourced in order)
+│   └── macos/                   # macOS settings: defaults + shortcut capture (README inside)
 ├── configs/
-│   └── mise.toml       # Global runtime versions (bun, ruby, python, sops, age)
+│   ├── mise.toml       # Global runtime versions (bun, ruby, python, sops, age)
+│   ├── karabiner/      # macOS: karabiner.ts → generated karabiner.json (Hyper, text nav)
+│   ├── aerospace/      # macOS: aerospace.toml → tiling WM (symlinked)
+│   ├── keyd/           # Linux: default.conf → /etc/keyd (Caps→Esc/Hyper, via 79_keyd.zsh)
+│   └── sway/           # Linux: config → tiling WM (symlinked)
+├── docs/
+│   └── keybindings/    # README + printable cheat sheet (keyboard/nav/GUI/WM)
 ├── zsh/
 │   ├── .zshenv         # Entry point, sets ZDOTDIR
 │   ├── env.d/          # ALL shells (export PATH, XDG vars, mise shims)
 │   ├── rc.d/           # Interactive only (plugins, completions, prompts)
 │   └── fpath/          # Autoloaded functions (evalcache, dotfiles-encrypt, etc.)
 ├── nvim/               # Lua config (0.11.0+): mini.nvim, mason, blink.cmp
-├── vim/                # Legacy VimScript (deprecated)
 ├── tmux/               # Solarized, vim-aware pane nav
-└── tools/              # fzf, diff-so-fancy, git-extras (submodules)
+├── yazi/               # Yazi file manager config + plugins
+├── raycast/            # macOS: Raycast script commands (add dir in Raycast settings)
+└── tools/              # git-diff-pager + vendored submodules
 ```
+(Vim was removed — Neovim is the only editor.)

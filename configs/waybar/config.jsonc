@@ -1,0 +1,73 @@
+// waybar — bar for niri. Managed by ~/.local/dotfiles/configs/waybar.
+// Reload: `pkill -SIGUSR2 waybar` (live reloads config + style.css).
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "spacing": 6,
+  "margin-top": 4,
+  "margin-left": 8,
+  "margin-right": 8,
+
+  "modules-left":   ["niri/workspaces", "niri/window"],
+  "modules-center": ["clock"],
+  "modules-right":  ["custom/notifications", "tray", "pulseaudio", "network", "battery"],
+
+  "niri/workspaces": {
+    "format": "{index}",
+    "format-icons": {
+      "default":  "●",
+      "active":   "◉",
+      "empty":    "○"
+    }
+  },
+
+  "niri/window": {
+    "format": "{title}",
+    "max-length": 60,
+    "separate-outputs": true
+  },
+
+  "clock": {
+    "format": "{:%a %b %d  %H:%M}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+
+  "pulseaudio": {
+    "format": "{icon}  {volume}%",
+    "format-muted": "  muted",
+    "format-icons": {
+      "headphone":  "",
+      "default":   ["", "", ""]
+    },
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-click-right": "pavucontrol"
+  },
+
+  "network": {
+    "format-wifi": "  {essid}",
+    "format-ethernet": "  {ipaddr}",
+    "format-disconnected": "  offline",
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}\n↓ {bandwidthDownBits}   ↑ {bandwidthUpBits}"
+  },
+
+  "battery": {
+    "format": "{icon}  {capacity}%",
+    "format-charging": "  {capacity}%",
+    "format-icons": ["", "", "", "", ""],
+    "states": { "warning": 25, "critical": 10 },
+    "tooltip-format": "{timeTo}, {power}W"
+  },
+
+  "tray": {
+    "icon-size": 16,
+    "spacing": 8
+  },
+
+  "custom/notifications": {
+    "exec": "n=$(makoctl list 2>/dev/null | grep -c '^Notification ' || echo 0); [ \"$n\" -gt 0 ] && echo \"  $n\" || echo \"\"",
+    "interval": 3,
+    "on-click": "makoctl dismiss --all",
+    "on-click-right": "makoctl restore"
+  }
+}

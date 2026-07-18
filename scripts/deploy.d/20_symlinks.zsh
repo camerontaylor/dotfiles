@@ -9,6 +9,7 @@ zf_ln -sfn $SCRIPT_DIR/nvim/ftplugin $XDG_CONFIG_HOME/nvim/ftplugin
 zf_ln -sfn $SCRIPT_DIR/nvim/plugins $XDG_DATA_HOME/nvim/site/pack/plugins/start
 zf_ln -sfn $SCRIPT_DIR/tmux $XDG_CONFIG_HOME/tmux
 zf_ln -sfn $SCRIPT_DIR/configs/ghostty $XDG_CONFIG_HOME/ghostty/config
+zf_ln -sfn $SCRIPT_DIR/configs/cmux/cmux.json $XDG_CONFIG_HOME/cmux/cmux.json
 zf_ln -sfn $SCRIPT_DIR/configs/gitconfig $XDG_CONFIG_HOME/git/config
 zf_ln -sfn $SCRIPT_DIR/configs/gitattributes $XDG_CONFIG_HOME/git/attributes
 zf_ln -sfn $SCRIPT_DIR/configs/gitignore $XDG_CONFIG_HOME/git/ignore
@@ -19,6 +20,19 @@ zf_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 zf_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 zf_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 zf_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+# AeroSpace tiling-WM config. macOS-only tool, but AeroSpace only ever READS this
+# file (never writes back), so a repo symlink is safe and gives both Macs an
+# identical config; the link is an inert dangling file on Linux. Karabiner is
+# deliberately NOT symlinked here — its JSON is GUI-owned and machine-specific, so
+# it is generated from configs/karabiner/karabiner.ts in 78_karabiner.zsh instead.
+zf_ln -sfn $SCRIPT_DIR/configs/aerospace/aerospace.toml $XDG_CONFIG_HOME/aerospace/aerospace.toml
+# Sway config — the Linux counterpart to AeroSpace, same one-modifier scheme
+# ($mod = Super where ⌥ sits on a Mac). Mirror the aerospace handling: Sway only
+# READS this file, so an unconditional repo symlink is safe and gives every
+# graphical Linux box an identical config; on macOS (and headless Linux that
+# never starts Sway) the link is an inert dangling file. The Caps→Esc/Hyper half
+# is delivered system-wide by keyd, installed separately in 79_keyd.zsh.
+zf_ln -sfn $SCRIPT_DIR/configs/sway/config $XDG_CONFIG_HOME/sway/config
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
@@ -38,7 +52,8 @@ zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
 zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
 zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
 # Claude Code + OMC
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/CLAUDE.md $HOME/.claude/CLAUDE.md
+claude_code_config_dir=$SCRIPT_DIR/configs/ai/claude-code-with-non-matching-name
+zf_ln -sfn $claude_code_config_dir/CLAUDE.md $HOME/.claude/CLAUDE.md
 # RTK was nuked. Actively remove any stale link left by prior deploys so the
 # removal propagates to every machine on its next deploy (idempotent no-op once gone).
 if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
@@ -48,15 +63,15 @@ if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
         rm -f $HOME/.claude/RTK.md && print "  removed stale ~/.claude/RTK.md"
     fi
 fi
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.json $HOME/.claude/settings.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/settings.local.json $HOME/.claude/settings.local.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/statusline-command.sh $HOME/.claude/statusline-command.sh
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hooks $HOME/.claude/hooks
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/hud $HOME/.claude/hud
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/skills $HOME/.claude/skills
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/commands $HOME/.claude/commands
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/mcp.json $HOME/.claude/.mcp.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/claude-code/omc-config.json $HOME/.claude/.omc-config.json
+zf_ln -sfn $claude_code_config_dir/settings.json $HOME/.claude/settings.json
+zf_ln -sfn $claude_code_config_dir/settings.local.json $HOME/.claude/settings.local.json
+zf_ln -sfn $claude_code_config_dir/statusline-command.sh $HOME/.claude/statusline-command.sh
+zf_ln -sfn $claude_code_config_dir/hooks $HOME/.claude/hooks
+zf_ln -sfn $claude_code_config_dir/hud $HOME/.claude/hud
+zf_ln -sfn $claude_code_config_dir/skills $HOME/.claude/skills
+zf_ln -sfn $claude_code_config_dir/commands $HOME/.claude/commands
+zf_ln -sfn $claude_code_config_dir/mcp.json $HOME/.claude/.mcp.json
+zf_ln -sfn $claude_code_config_dir/omc-config.json $HOME/.claude/.omc-config.json
 # Codex CLI + OMX
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/AGENTS.md $HOME/.codex/AGENTS.md
@@ -88,4 +103,21 @@ zf_ln -sfn $SCRIPT_DIR/configs/wake-peers/displaywakeup $HOME/.displaywakeup
 for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
     zf_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
 done
+# niri Wayland desktop stack (Linux only)
+if [[ $DOTFILES_OS == Linux ]]; then
+    zf_mkdir -p $XDG_CONFIG_HOME/niri
+    zf_ln -sfn $SCRIPT_DIR/configs/niri/config.kdl $XDG_CONFIG_HOME/niri/config.kdl
+    zf_mkdir -p $XDG_CONFIG_HOME/waybar
+    zf_ln -sfn $SCRIPT_DIR/configs/waybar/config.jsonc $XDG_CONFIG_HOME/waybar/config.jsonc
+    zf_ln -sfn $SCRIPT_DIR/configs/waybar/style.css $XDG_CONFIG_HOME/waybar/style.css
+    zf_mkdir -p $XDG_CONFIG_HOME/mako
+    zf_ln -sfn $SCRIPT_DIR/configs/mako/config $XDG_CONFIG_HOME/mako/config
+    zf_mkdir -p $XDG_CONFIG_HOME/fuzzel
+    zf_ln -sfn $SCRIPT_DIR/configs/fuzzel/fuzzel.ini $XDG_CONFIG_HOME/fuzzel/fuzzel.ini
+    zf_mkdir -p $XDG_CONFIG_HOME/hypr
+    zf_ln -sfn $SCRIPT_DIR/configs/hypr/hyprlock.conf $XDG_CONFIG_HOME/hypr/hyprlock.conf
+    zf_ln -sfn $SCRIPT_DIR/configs/hypr/hypridle.conf $XDG_CONFIG_HOME/hypr/hypridle.conf
+    zf_mkdir -p $XDG_CONFIG_HOME/wpaperd
+    zf_ln -sfn $SCRIPT_DIR/configs/wpaperd/config.toml $XDG_CONFIG_HOME/wpaperd/config.toml
+fi
 print "  ...done"

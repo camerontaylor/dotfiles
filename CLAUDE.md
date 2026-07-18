@@ -102,3 +102,20 @@ gotchas there — see the global memory protocol for cadence.
   (iTerm2, fonts), `engram` tap. See `scripts/deploy.d/75_brew_setup.zsh`.
 - The 1:1 deploy fragments under `scripts/deploy.d/` are loaded by
   `deploy.zsh` in lex order. Two-digit prefix = phase.
+- Keyboard scheme, GUI navigation, and tiling window management are documented in
+  [`docs/keybindings/README.md`](docs/keybindings/README.md). macOS: Karabiner
+  (`configs/karabiner/karabiner.ts`, generated) + AeroSpace
+  (`configs/aerospace/aerospace.toml`, symlinked). Linux: keyd
+  (`configs/keyd/default.conf` → `/etc/keyd`, via `79_keyd.zsh`) + Sway
+  (`configs/sway/config`, symlinked).
+- Other reproducible macOS settings (App Shortcuts like ForkLift ⌘⇧., Finder
+  `defaults`, and `duti` default-app associations → VS Code) live in
+  [`scripts/macos/`](scripts/macos/README.md) and are applied on macOS deploy by
+  `scripts/deploy.d/77_macos_defaults.zsh`. It's change-aware (only relaunches
+  Finder on an actual change) and drift-correcting, but backs up each overwritten
+  value to `$XDG_STATE_HOME/macos-defaults/` first. `duti` is installed via brew
+  (`75_brew_setup.zsh`). macOS doesn't sync these; Raycast/Text Replacements sync
+  themselves.
+- Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
+  [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
+  in Raycast settings; the files are version-controlled and ride along to every Mac.

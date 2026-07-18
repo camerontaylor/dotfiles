@@ -27,6 +27,7 @@ bat = "0"
 eza = "0"
 fd = "{% if os() == 'macos' and arch() == 'x64' %}10.3.0{% else %}10{% endif %}"
 sd = "1"
+yq = "4"
 # portless must be a mise-managed tool (not just ~/.vite-plus/bin, which only
 # interactive shells have on PATH): the GitHub runner units run
 # `mise exec --cd ~/repos/webfront -- run.sh`, and the repo's portless-env.sh
@@ -56,3 +57,6 @@ sops = "3"
 # Respect version files: .node-version, .tool-versions
 idiomatic_version_file = true
 trusted_config_paths = ["/home/ctaylor/repos/webfront"]
+
+[settings.python]
+compile = false

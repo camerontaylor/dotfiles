@@ -1,0 +1,65 @@
+/* waybar style — Catppuccin Mocha-ish palette. */
+* {
+  font-family: "JetBrainsMono Nerd Font", "Noto Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+}
+
+window#waybar {
+  background: rgba(17, 17, 27, 0.85);
+  color: #cdd6f4;
+  border-radius: 10px;
+}
+
+#workspaces {
+  margin: 0 6px;
+}
+#workspaces button {
+  padding: 0 8px;
+  color: #6c7086;
+  background: transparent;
+  transition: color 120ms ease, background 120ms ease;
+}
+#workspaces button.active {
+  color: #89b4fa;
+}
+#workspaces button:hover {
+  color: #cdd6f4;
+  background: rgba(180, 190, 254, 0.10);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+#window {
+  color: #a6adc8;
+  padding: 0 10px;
+}
+
+#clock {
+  color: #cdd6f4;
+  padding: 0 12px;
+}
+
+#custom-notifications,
+#tray,
+#pulseaudio,
+#network,
+#battery {
+  padding: 0 10px;
+  color: #cdd6f4;
+}
+
+#custom-notifications { color: #f9e2af; }
+#pulseaudio.muted     { color: #6c7086; }
+#network.disconnected { color: #f38ba8; }
+
+#battery.warning  { color: #f9e2af; }
+#battery.critical { color: #f38ba8; animation: blink 1s steps(2) infinite; }
+#battery.charging { color: #a6e3a1; }
+
+@keyframes blink {
+  to { color: #cdd6f4; }
+}

@@ -13,6 +13,19 @@ if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
     unset brew_bin
 fi
 
+# Trust the specific non-official tap formulae/casks this script installs before
+# any `brew install`/`brew list` touches them. Without this, a brew with
+# HOMEBREW_REQUIRE_TAP_TRUST set silently ignores these taps and every install
+# below would no-op. Trust the exact items, not the whole taps (see brew_trust).
+# wtp (satococoa/tap) is trusted in scripts/install-wtp.zsh, which runs earlier.
+if (( ${+commands[brew]} )); then
+    brew_trust --formula gentleman-programming/tap/engram
+    brew_trust --formula brunoborges/tap/ghx
+    brew_trust --formula felixkratz/formulae/borders
+    brew_trust --cask nikitabobko/tap/aerospace
+    brew_trust --cask manaflow-ai/cmux/cmux
+fi
+
 if (( ${+commands[brew]} )) && $upgrade_mode; then
     print "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
@@ -343,4 +356,57 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
         print "Upgrading T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
     fi
+fi
+
+# AeroSpace cask — i3-like tiling window manager for macOS. Lives in the
+# maintainer's own tap (nikitabobko/tap), so the tap-qualified name is used for
+# both the `brew list` presence check and the install/upgrade.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask nikitabobko/tap/aerospace > /dev/null 2>&1; then
+        print "Installing AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    elif $upgrade_mode; then
+        print "Upgrading AeroSpace..."
+        brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
+    fi
+fi
+
+# Karabiner-Elements cask — keyboard customizer / key remapper for macOS.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask karabiner-elements > /dev/null 2>&1; then
+        print "Installing Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    elif $upgrade_mode; then
+        print "Upgrading Karabiner-Elements..."
+        brew_cask_install_or_upgrade karabiner-elements || true
+    fi
+fi
+
+# JankyBorders (borders) — optional focus-ring/window-border overlay that pairs
+# with AeroSpace (a tiling WM has no titlebars, so a colored border marks the
+# focused window). Formula in the maintainer's tap (felixkratz/formulae), so the
+# tap-qualified name is used for both the presence check and install/upgrade.
+# It runs as a per-user LaunchAgent via `brew services`; start it once installed
+# (idempotent — a no-op if already loaded). `brew services` needs the formula
+# present, so only attempt the start when the install above succeeded.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing JankyBorders..."
+    brew_formula_install_or_upgrade felixkratz/formulae/borders || true
+    if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
+        if brew services list 2>/dev/null | grep -qE '^borders[[:space:]]+(started|running)'; then
+            print "  ...borders service already running"
+        elif brew services start felixkratz/formulae/borders > /dev/null 2>&1; then
+            print "  ...borders service started"
+        else
+            print "  ...failed to start borders service"
+        fi
+    fi
+fi
+
+# duti — sets default applications for file types / UTIs from the CLI. Consumed
+# by scripts/macos/macos-defaults.sh (77_macos_defaults.zsh) to point text/code
+# file types at VS Code. Plain formula in homebrew-core.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing duti..."
+    brew_formula_install_or_upgrade duti || true
 fi

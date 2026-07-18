@@ -81,6 +81,20 @@ if (( ${+commands[mise]} )); then
         run_mise_step "mise self-update" 20 mise self-update --yes --no-plugins
     fi
 
+    # mise hits the GitHub API for aqua release metadata and artifact
+    # attestation verification. Unauthenticated requests are capped at 60/hr
+    # and fail with 403 mid-install, leaving tools half-provisioned. Feed it a
+    # token from the usual sources if one is reachable.
+    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
+        if (( ${+commands[gh]} )) && gh auth token > /dev/null 2>&1; then
+            export MISE_GITHUB_TOKEN=$(gh auth token 2>/dev/null)
+        fi
+    fi
+    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
+        print "  ...no GitHub token found; mise may hit API rate limits"
+        print "     (export GITHUB_TOKEN, or run 'gh auth login')"
+    fi
+
     print "Installing mise tools (node, bun, python, etc.)..."
     run_mise_step "mise install" 30 mise install
 

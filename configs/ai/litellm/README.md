@@ -50,7 +50,7 @@ ccl -p "hi"
 # Other entry points (each is a Claude Code variant pointed at a routing tier):
 ccc                    # direct Anthropic OAuth, NO proxy (real Opus quota)
 ccl                    # proxy → MiniMax (sonnet/haiku-tier via claude-sonnet-4-6)
-ccfw                   # proxy → Fireworks fleet (kimi-k2.6, glm-5.1, etc.)
+ccfw                   # proxy → Fireworks fleet (kimi-k2.6, glm-5.2, etc.)
 ccz                    # proxy → Z.AI background tier, single-stream (was: cczbg)
 ccz-direct             # direct Z.AI api.z.ai shim, kept as fallback (was: ccz)
 cc-fast                # proxy → GLM-4.7 on Cerebras (~3000 t/s foreground)
@@ -93,7 +93,7 @@ risk if you send parallel requests to a Z.AI Coding Plan key.
 
 | `model_name` | Upstream | Notes |
 |---|---|---|
-| `glm-5.1-bg` | `glm-5.1` on api.z.ai/api/paas/v4 | 200K context, ~50 t/s reasoning |
+| `glm-5.2-bg` | `glm-5.2` on api.z.ai/api/paas/v4 | 200K context, ~50 t/s reasoning |
 | `glm-5-bg` | `glm-5` | |
 | `glm-5-turbo-bg` | `glm-5-turbo` | |
 
@@ -109,7 +109,7 @@ quota.
 |---|---|
 | `kimi-k2.6` | `accounts/fireworks/models/kimi-k2p6` (262K ctx) |
 | `kimi-k2.5` | `accounts/fireworks/models/kimi-k2p5` |
-| `glm-5.1-fast` | `accounts/fireworks/models/glm-5p1` |
+| `glm-5.2-fast` | `accounts/fireworks/models/glm-5p2` |
 | `minimax-m2.7` | `accounts/fireworks/models/minimax-m2p7` |
 
 Note: `minimax-m2.5` on Fireworks is **commented out** — Fireworks doesn't
@@ -150,8 +150,8 @@ block instead of every alias function.
 
 | Role | Routes to | Used by | Fallback chain |
 |---|---|---|---|
-| `fleet-opus` | `kimi-k2.6` (Fireworks) | `ccfw` foreground | `glm-5.1-fast` → `minimax-m2.7` |
-| `fleet-sonnet` | `glm-5.1-fast` (Fireworks) | `ccfw` sub-agents | `kimi-k2.6` → `minimax-m2.7` |
+| `fleet-opus` | `kimi-k2.6` (Fireworks) | `ccfw` foreground | `glm-5.2-fast` → `minimax-m2.7` |
+| `fleet-sonnet` | `glm-5.2-fast` (Fireworks) | `ccfw` sub-agents | `kimi-k2.6` → `minimax-m2.7` |
 | `fleet-haiku` | `llama3.1-8b` (Cerebras free) | `ccfw`/`ccz`/`cc-fast` sub-agents | `cerebras-paid-8b` → `minimax-m2.7` |
 
 Why `fleet-` prefix and not bare `opus`/`sonnet`/`haiku`? See Gotcha #2.
@@ -202,8 +202,8 @@ Direct curl / `ccl-probe cerebras-paid-glm-4.7` works fine because there's no
 client-side gate. But `claude --model cerebras-paid-glm-4.7` 400s with "may
 not exist or you may not have access".
 
-`glm-4.7-cerebras` (with `glm-` prefix matching the existing `glm-5.1-bg` /
-`glm-5.1-fast` pattern) passes the classifier. Both entries point at the same
+`glm-4.7-cerebras` (with `glm-` prefix matching the existing `glm-5.2-bg` /
+`glm-5.2-fast` pattern) passes the classifier. Both entries point at the same
 `cerebras/zai-glm-4.7` upstream — pick `cerebras-paid-glm-4.7` for direct
 curl, `glm-4.7-cerebras` for `claude --model`.
 

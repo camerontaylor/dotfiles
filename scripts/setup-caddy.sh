@@ -13,7 +13,7 @@ set -euo pipefail
 #
 # Prerequisites:
 #   1. Set the machine's hostname.
-#   2. Source CF_API_Token: source zsh/env.d/91_cloudflare_secrets.zsh
+#   2. Source CF_API_TOKEN: source zsh/env.d/91_cloudflare_secrets.zsh
 #   3. Install portless: mise use -g npm:portless
 #   4. Create Cloudflare DNS records for {hostname}.webfront.app and wildcard.
 
@@ -206,12 +206,12 @@ launchd_job_running() {
 }
 
 preflight() {
-  if [[ -z "${CF_API_Token:-}" ]]; then
-    echo "ERROR: CF_API_Token not set. Source zsh/env.d/91_cloudflare_secrets.zsh first."
+  if [[ -z "${CF_API_TOKEN:-}" ]]; then
+    echo "ERROR: CF_API_TOKEN not set. Source zsh/env.d/91_cloudflare_secrets.zsh first."
     exit 1
   fi
-  if [[ ! "$CF_API_Token" =~ ^[A-Za-z0-9._-]+$ ]]; then
-    echo "ERROR: CF_API_Token contains unsupported characters for the service env file."
+  if [[ ! "$CF_API_TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "ERROR: CF_API_TOKEN contains unsupported characters for the service env file."
     exit 1
   fi
 
@@ -388,7 +388,7 @@ EOF
 write_caddy_env() {
   ensure_caddy_config_dir
   sudo tee "$CADDY_ENV_PATH" > /dev/null <<EOF
-CF_API_TOKEN=${CF_API_Token}
+CF_API_TOKEN=${CF_API_TOKEN}
 EOF
   sudo chmod 600 "$CADDY_ENV_PATH"
 }
