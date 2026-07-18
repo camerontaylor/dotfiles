@@ -51,8 +51,8 @@ zf_ln -sfn $SCRIPT_DIR/gpg/gpg-agent.conf $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
 zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
 zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
 zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
-# Claude Code + OMC
-claude_code_config_dir=$SCRIPT_DIR/configs/ai/claude-code-with-non-matching-name
+# Claude Code
+claude_code_config_dir=$SCRIPT_DIR/configs/ai/claude-code
 zf_ln -sfn $claude_code_config_dir/CLAUDE.md $HOME/.claude/CLAUDE.md
 # RTK was nuked. Actively remove any stale link left by prior deploys so the
 # removal propagates to every machine on its next deploy (idempotent no-op once gone).
@@ -67,11 +67,10 @@ zf_ln -sfn $claude_code_config_dir/settings.json $HOME/.claude/settings.json
 zf_ln -sfn $claude_code_config_dir/settings.local.json $HOME/.claude/settings.local.json
 zf_ln -sfn $claude_code_config_dir/statusline-command.sh $HOME/.claude/statusline-command.sh
 zf_ln -sfn $claude_code_config_dir/hooks $HOME/.claude/hooks
-zf_ln -sfn $claude_code_config_dir/hud $HOME/.claude/hud
 zf_ln -sfn $claude_code_config_dir/skills $HOME/.claude/skills
 zf_ln -sfn $claude_code_config_dir/commands $HOME/.claude/commands
+zf_ln -sfn $claude_code_config_dir/agents $HOME/.claude/agents
 zf_ln -sfn $claude_code_config_dir/mcp.json $HOME/.claude/.mcp.json
-zf_ln -sfn $claude_code_config_dir/omc-config.json $HOME/.claude/.omc-config.json
 # Codex CLI + OMX
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/AGENTS.md $HOME/.codex/AGENTS.md
