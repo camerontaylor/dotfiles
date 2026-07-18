@@ -51,6 +51,8 @@ Invoke the Agent tool with `subagent_type: "planner"`. The prompt MUST include: 
 - The **chosen option justified against the drivers** — not just asserted
 - Deliberate mode only: **pre-mortem** (3 scenarios, each framed "it's 6 months later and this failed because…") and an **expanded test plan** covering unit / integration / e2e / observability
 
+Name the planner agent on first spawn (`name: ralplan-planner-<slug>`) so it can be resumed across iterations.
+
 The planner is read-only; it returns the full plan text in its final message. Hold that text — do not write it to disk yet.
 
 ### Step 2 — Architect review (sequential)
@@ -68,7 +70,7 @@ Await completion before Step 3. Never launch architect and critic together.
 
 Invoke `subagent_type: "critic"` with the draft plan, the architect's full review, and the spec (if any). The critic applies its complete review protocol — pre-commitment predictions, claim verification against the codebase, the six-pass detection scan (duplication, ambiguity, underspecification, principles alignment, coverage gaps, inconsistency), multi-perspective review, and gap analysis — and returns exactly one verdict:
 
-- **APPROVE** — plan is actionable; may carry non-blocking suggestions. Proceed to Step 5.
+- **APPROVE** — plan is actionable; may carry non-blocking suggestions. Proceed to Step 4.5.
 - **ITERATE** — plan needs revision; MUST come with specific, actionable deltas (not "add more detail"). Proceed to Step 4.
 - **REJECT** — fundamental flaw: the approach itself is wrong, not fixable by revision. Stop the loop and return to the user with the critic's reasoning; the user decides whether to reframe the task, abandon it, or override.
 
@@ -79,11 +81,22 @@ Any CRITICAL-severity finding blocks APPROVE.
 On ITERATE:
 
 1. Collect **all** feedback from both the architect and the critic.
-2. Re-invoke the **planner** with: the prior plan, the full feedback, and the instruction to address every delta or explicitly justify rejecting it (with rationale recorded in the plan's changelog).
+2. **Resume, don't respawn**: send the consolidated feedback to the named planner via SendMessage rather than spawning a fresh planner — it retains its codebase research context, so a revision doesn't re-pay the full exploration cost. Include: the prior plan, the full feedback, and the instruction to address every delta or explicitly justify rejecting it (with rationale recorded in the plan's changelog). If the resume fails, fall back to a fresh planner spawn and note the fallback in the consensus trail. The architect and critic are fresh spawns every pass — their independence is the point; the planner's continuity is the efficiency. (Known tradeoff: a resumed planner can anchor on its own draft; the fresh reviewers are the mitigation.)
 3. **Return to Step 2** — the architect re-reviews the revised plan.
 4. **Return to Step 3** — the critic re-evaluates.
 
 One iteration = one full planner → architect → critic pass. Count them. If the critic has not returned APPROVE after **5 iterations**, stop looping: take the best version of the plan, list the unresolved objections verbatim in the consensus trail, and present it honestly to the user as "consensus not reached." Do not spin further.
+
+### Step 4.5 — Intent reconciliation gate
+
+Consensus among agents is not consent from the human. Before finalization, reconcile the approved plan against the user's actual intent so the loop has not silently baked in assumptions that conflict with what the user wants.
+
+1. **Collect open items** from the RALPLAN-DR and the architect/critic feedback held in your context: every assumption any role resolved by assumption rather than stated fact; every ambiguity flagged during review; every decision the loop made without explicit user input.
+2. **Cross-check prior artifacts**: re-scan the matched `specs/*-spec.md` (and its Assumptions table) for conflicts with the plan. Cite the conflicting artifact and section for anything found.
+3. **Confirm one at a time** via `AskUserQuestion`, weakest/highest-impact first — each question states the assumption, where it came from, and 2-4 concrete resolutions.
+4. **Divergence re-enters the loop**: if an answer contradicts the plan, route the correction back through Step 4's revision loop, within the same 5-iteration cap.
+5. **Record resolutions** under an `## Intent Reconciliation` section of the plan (assumption → user resolution).
+6. **Skip if clean**: if the plan has no open assumptions and no prior-artifact conflicts, say so and skip straight to Step 5 — never invent filler questions.
 
 ### Step 5 — Write the artifact
 
@@ -119,6 +132,9 @@ Risks & mitigations / Verification
 ## Traceability (if spec)
 | FR/SC | Covered by | Notes |
 
+## Intent Reconciliation
+<assumption → user resolution> | none open — gate skipped clean
+
 ## ADR
 Decision / Drivers / Alternatives considered / Why chosen / Consequences / Follow-ups
 
@@ -151,8 +167,9 @@ Unresolved objections: none | <list>
 - [ ] Every FR-###/SC-### from the spec traced or explicitly excluded
 - [ ] ADR present: Decision / Drivers / Alternatives / Why / Consequences / Follow-ups
 - [ ] Consensus trail records every iteration's verdicts
+- [ ] Intent reconciliation ran after APPROVE: open assumptions confirmed with the user one at a time, or gate skipped clean and said so
 - [ ] Deliberate mode (if active): pre-mortem ×3 + unit/integration/e2e/observability test plan
 - [ ] Plan written to `plans/ralplan-<slug>.md`, marked `pending approval`
 - [ ] No source files touched, nothing executed, no execution offered as part of this skill
 
-<!-- Adapted from oh-my-claudecode (MIT, © 2025 Yeachan Heo). Detection passes adapted from GitHub spec-kit (MIT). -->
+<!-- Adapted from oh-my-claudecode (MIT, © 2025 Yeachan Heo). Detection passes adapted from GitHub spec-kit (MIT). Intent-reconciliation gate and persisted-planner pattern adapted from gajae-code (MIT, © Yeachan Heo). -->
