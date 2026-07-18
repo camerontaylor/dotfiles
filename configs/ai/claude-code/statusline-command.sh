@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Claude Code statusLine wrapper
-# Blends PS1-style user@host:dir prefix with the OMC HUD output.
+# Claude Code statusLine: PS1-style user@host:dir prefix + model name.
 
 # Read stdin once into a variable so it can be reused
 input=$(cat)
@@ -14,12 +13,11 @@ user=$(whoami)
 host=$(hostname -s)
 prefix=$(printf '\033[01;32m%s@%s\033[00m:\033[01;34m%s\033[00m' "$user" "$host" "$cwd")
 
-# Run the OMC HUD with the same stdin, capture its output
-hud_output=$(printf '%s' "$input" | node /home/ctaylor/.claude/hud/omc-hud.mjs 2>/dev/null)
+# Model display name, if present in the statusline payload
+model=$(printf '%s' "$input" | jq -r '.model.display_name // empty' 2>/dev/null)
 
-# Combine: prefix | HUD output (skip separator if HUD produced nothing)
-if [ -n "$hud_output" ]; then
-    printf '%s \033[00m|\033[00m %s\n' "$prefix" "$hud_output"
+if [ -n "$model" ]; then
+    printf '%s \033[00m|\033[00m %s\n' "$prefix" "$model"
 else
     printf '%s\n' "$prefix"
 fi

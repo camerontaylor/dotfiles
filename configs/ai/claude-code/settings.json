@@ -8,8 +8,6 @@
     "ENABLE_LSP_TOOL": "0",
     "LANGFUSE_HOST": "https://telemetry.webfront.app",
     "LANGFUSE_PUBLIC_KEY": "pk-lf-local-claude-code",
-    "OMC_DISABLE_TOOLS": "lsp,ast,memory,shared-memory,trace",
-    "OMC_LSP_TOOLS": "false",
     "TRACE_TO_LANGFUSE": "true"
   },
   "permissions": {
@@ -90,41 +88,20 @@
       "Bash(done)",
       "Bash(while read f)",
       "Bash(do echo \"=== $f ===\")",
-      "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
       "Bash(python3:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "mcp__exa__get_code_context_exa",
-      "mcp__plugin_oh-my-claudecode_t__python_repl",
       "mcp__exa__web_search_exa",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
-      "Skill(commit-commands:commit)",
-      "mcp__plugin_oh-my-claudecode_x__check_job_status",
-      "mcp__plugin_oh-my-claudecode_x__wait_for_job",
-      "mcp__plugin_oh-my-claudecode_t__ast_grep_replace",
-      "mcp__plugin_oh-my-claudecode_t__state_read",
-      "mcp__plugin_oh-my-claudecode_t__state_write",
-      "mcp__plugin_oh-my-claudecode_t__state_clear",
-      "mcp__plugin_oh-my-claudecode_t__state_list_active",
-      "mcp__plugin_oh-my-claudecode_t__notepad_read",
-      "mcp__plugin_oh-my-claudecode_t__notepad_write_priority",
-      "mcp__plugin_oh-my-claudecode_t__notepad_write_working"
+      "Skill(commit-commands:commit)"
     ],
     "defaultMode": "bypassPermissions",
     "additionalDirectories": []
   },
+  "model": "claude-fable-5[1m]",
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "for f in \"$HOME\"/.claude/plugins/cache/engram/engram/*/scripts/user-prompt-submit.sh \"$HOME\"/.claude/plugins/marketplaces/engram/plugin/claude-code/scripts/user-prompt-submit.sh; do [ -f \"$f\" ] && perl -i -pe 's/\\[ \"\\$ELAPSED\" -gt 900 \\]/false/' \"$f\" 2>/dev/null; done; exit 0"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -146,19 +123,30 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/repos/hart-agent-homes/tools/distiller/hooks/session-end.sh",
+            "timeout": 15,
+            "statusMessage": "Distilling session into skill library"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
     "type": "command",
-    "command": "node ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hud/omc-hud.mjs"
+    "command": "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/statusline-command.sh"
   },
   "enabledPlugins": {
     "code-review@claude-plugins-official": true,
     "explanatory-output-style@claude-plugins-official": true,
     "gitlab@claude-plugins-official": false,
     "memsearch@memsearch-plugins": false,
-    "oh-my-claudecode@omc": true,
-    "engram@engram": true,
+    "engram@engram": false,
     "code-simplifier@claude-plugins-official": true,
     "storybook-assistant@storybook-assistant": false,
     "skill-creator@claude-plugins-official": false,
@@ -171,12 +159,6 @@
       "source": {
         "source": "github",
         "repo": "Gentleman-Programming/engram"
-      }
-    },
-    "omc": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/Yeachan-Heo/oh-my-claudecode.git"
       }
     },
     "openai-codex": {
@@ -205,10 +187,5 @@
   "teammateMode": "tmux",
   "remoteControlAtStartup": true,
   "agentPushNotifEnabled": true,
-  "skipAutoPermissionPrompt": true,
-  "omc": {
-    "deepInterview": {
-      "ambiguityThreshold": 0.1
-    }
-  }
+  "skipAutoPermissionPrompt": true
 }
