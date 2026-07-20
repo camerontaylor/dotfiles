@@ -474,6 +474,10 @@ setup_portless_systemd() {
 [Unit]
 Description=Portless HTTP proxy for $DOMAIN
 After=network.target
+# Fail visibly instead of restart-looping forever (see t3-serve for the war
+# story); systemctl reset-failed to retry after fixing the cause.
+StartLimitIntervalSec=600
+StartLimitBurst=20
 
 [Service]
 Type=simple

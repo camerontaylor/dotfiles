@@ -144,6 +144,12 @@ setup_t3_systemd() {
 [Unit]
 Description=T3 Code server for $HOSTNAME (loopback :$T3_PORT, fronted by Caddy)
 After=network.target
+# Fail visibly instead of restart-looping forever: 20 crashes inside 10 min
+# parks the unit in 'failed' (systemctl reset-failed to retry). A silent
+# crash-loop once ran for a week and flooded ~/.codex/logs_2.sqlite with 25M
+# TRACE rows before anyone noticed.
+StartLimitIntervalSec=600
+StartLimitBurst=20
 
 [Service]
 Type=simple
