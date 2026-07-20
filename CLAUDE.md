@@ -123,6 +123,11 @@ gotchas there — see the global memory protocol for cadence.
   traffic takes the wire at line rate while the wifi default route is
   untouched. The fast-path `Match` blocks atop `ssh/config` probe wired →
   wifi → Tailscale, so `ssh ceres` etc. pick the fastest live path.
+- File sharing: ceres serves `smb://10.77.0.74/downloads` (Samba,
+  `configs/samba/smb.conf`, installed by `scripts/setup-ceres-share.sh`;
+  `/srv/downloads` is its own btrfs subvolume so snapper root snapshots skip
+  it). Mac-friendly via vfs_fruit; auth is the `ctaylor` Samba user
+  (`sudo smbpasswd` on ceres to rotate).
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
