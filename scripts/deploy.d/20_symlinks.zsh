@@ -91,6 +91,10 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
+# npm globals list: mise's node backend reads ~/.default-npm-packages and
+# reinstalls the listed globals automatically whenever it installs a node
+# version, so a node bump can't silently drop the globals.
+zf_ln -sfn $SCRIPT_DIR/.default-npm-packages $HOME/.default-npm-packages
 # wake-peers (Universal Control screen-wake fanout). The sleepwatcher
 # LaunchAgent itself is activated only on macOS peer hosts by
 # scripts/deploy.d/76_wake_peers.zsh; these symlinks are cross-platform

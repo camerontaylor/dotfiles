@@ -7,7 +7,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/.local/dotfiles/configs/ai/portkey
-Environment=PATH=%h/.vite-plus/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=%S/portkey/env
 Environment=PORT=8787
 Environment=PORTKEY_API_KEY=%h/.local/state/portkey/local-api-key
