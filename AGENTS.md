@@ -19,7 +19,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Want to add... | Location |
 |----------------|----------|
 | Runtime (ruby, python, bun, etc.) | `configs/mise.toml` → `[tools]` section |
-| Node/npm/vp/pnpm or npm global package | `.default-npm-packages` plus `scripts/deploy.d/70_runtime_installs.zsh` |
+| npm global package (pnpm, tsx, AI CLIs, …) | `.default-npm-packages` (installed via mise node's npm by `scripts/deploy.d/70_runtime_installs.zsh`) |
 | CLI tool with mise registry backend | `configs/mise.toml` → `[tools]` (preferred — aqua/cargo backends covered for ~13 common CLIs already) |
 | Cargo CLI without mise backend (e.g. linear-cli) | `scripts/deploy.d/70_runtime_installs.zsh` |
 | Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
@@ -50,17 +50,18 @@ echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 **Decryption**: `./scripts/restore-secrets.zsh` writes plaintext from tracked `.enc`, but skips a plaintext that is newer than its `.enc` unless `--force` (so local edits aren't clobbered)
 **On deploy**: `scripts/deploy.d/65_sops.zsh` restores `ssh/*.enc` with the same date guard; `./deploy.zsh --force` (`DEPLOY_FORCE=1`) overrides it
 
-## Runtime Management (Vite+ + mise)
-Vite+ owns Node/npm/vp/pnpm and npm global packages. mise owns the remaining
-polyglot runtimes and non-npm CLIs. See `configs/mise.toml` and
-`.default-npm-packages`.
-- `vp env doctor` — verify Vite+'s Node/npm shims
-- `npm ls -g --depth=0` — show npm globals installed through Vite+'s npm
-- `mise install` — install all non-npm tools defined in config
+## Runtime Management (mise)
+mise owns ALL runtimes — including Node/npm — plus non-npm CLIs. npm globals
+live in `.default-npm-packages` and install through mise node's npm (deploy
+fragment `70_runtime_installs.zsh`, and mise's own default-packages hook on
+node installs). Never reintroduce a second node manager: systemd units resolve
+node through mise shims, and a split-brain (interactive node ≠ service node)
+crash-looped three services for a week in 2026-07.
+- `npm ls -g --depth=0` — show npm globals installed through mise node's npm
+- `mise install` — install all tools defined in config
 - `mise ls` — show installed tools and versions
 - **Config**: `configs/mise.toml` → symlinked to `~/.config/mise/config.toml`
 - **env.d/08_mise.zsh**: Sets XDG paths, adds shims to PATH (all shells)
-- **env.d/09_vite_plus.zsh**: Sources `~/.vite-plus/env` (all shells)
 - **rc.d/22_mise.zsh**: `mise activate zsh` hook + pnpm completions (interactive)
 
 ## How to Add Things

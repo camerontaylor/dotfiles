@@ -92,13 +92,14 @@ Add a new AI tool config under `configs/ai/<tool>/` and a symlink in
 
 ## Runtime management
 
-Two managers split the work (see [`AGENTS.md`](AGENTS.md) for the full table):
+One manager owns runtimes (see [`AGENTS.md`](AGENTS.md) for the full table):
 
-* **mise** ([`configs/mise.toml`](configs/mise.toml)) owns polyglot runtimes
-  (Python, Ruby, Bun, …) and non-npm CLIs (ripgrep, fd, bat, eza, sd, zoxide,
-  fzf, sops, age, …). It's the source of truth for tool versions.
-* **Vite+** (`vp`) owns Node, npm, pnpm, and npm global packages (see
-  [`.default-npm-packages`](.default-npm-packages)).
+* **mise** ([`configs/mise.toml`](configs/mise.toml)) owns Node (and npm/npm
+  globals via [`.default-npm-packages`](.default-npm-packages)), polyglot
+  runtimes (Python, Ruby, Bun, …) and non-npm CLIs (ripgrep, fd, bat, eza, sd,
+  zoxide, fzf, sops, age, …). It's the source of truth for tool versions, and
+  its shims dir is the ONE tool PATH shared by interactive shells and systemd
+  units alike.
 * **Homebrew** (macOS only, [`75_brew_setup.zsh`](scripts/deploy.d/75_brew_setup.zsh))
   provides the GNU userland, casks (Ghostty, fonts, AeroSpace, Karabiner,
   JankyBorders), and the `engram` tap — i.e. only what mise can't deliver.
