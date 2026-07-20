@@ -7,3 +7,5 @@ proxy.pid
 proxy.port
 routes.json
 logs/
+proxy.tld
+proxy.tlds
