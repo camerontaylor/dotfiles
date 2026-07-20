@@ -116,6 +116,13 @@ gotchas there — see the global memory protocol for cadence.
   value to `$XDG_STATE_HOME/macos-defaults/` first. `duti` is installed via brew
   (`75_brew_setup.zsh`). macOS doesn't sync these; Raycast/Text Replacements sync
   themselves.
+- Office wired LAN: the office switch interconnects the planet boxes but has
+  no router uplink, so ethernet gets no DHCP (internet stays on wifi).
+  `scripts/setup-office-lan.sh` pins a static, gateway-less `10.77.0.x` on each
+  box's wired NIC (last octet mirrors the box's wifi octet) so inter-box
+  traffic takes the wire at line rate while the wifi default route is
+  untouched. The fast-path `Match` blocks atop `ssh/config` probe wired →
+  wifi → Tailscale, so `ssh ceres` etc. pick the fastest live path.
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
