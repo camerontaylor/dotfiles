@@ -4,8 +4,15 @@
 bun = "1"
 python = "3"
 uv = "0.11.16"
-# Node/npm/vp are managed by Vite+ from deploy.zsh. npm globals live in
-# ~/.local/dotfiles/.default-npm-packages instead of mise shims.
+# node is mise-managed: the ONE node on every PATH — interactive shells and
+# systemd units alike resolve it via ~/.local/share/mise/shims. Pin the major:
+# an unattended major bump breaks native-module ABIs (node-pty in t3) and any
+# service resolving node through mise. Bump explicitly, then re-run
+# ./deploy.zsh so npm globals reinstall into the new prefix.
+# npm globals live in ~/.local/dotfiles/.default-npm-packages, installed
+# through mise node's npm by scripts/deploy.d/70_runtime_installs.zsh (and by
+# mise itself on node install, via the ~/.default-npm-packages symlink).
+node = "24"
 # CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
 # Aqua backends (prebuilt binaries) are preferred where available, falling back
 # to cargo. linear-cli has no mise backend → still installed via cargo in deploy.zsh.
@@ -28,10 +35,11 @@ eza = "0"
 fd = "{% if os() == 'macos' and arch() == 'x64' %}10.3.0{% else %}10{% endif %}"
 sd = "1"
 yq = "4"
-# portless must be a mise-managed tool (not just ~/.vite-plus/bin, which only
-# interactive shells have on PATH): the GitHub runner units run
-# `mise exec --cd ~/repos/webfront -- run.sh`, and the repo's portless-env.sh
-# needs the CLI in that non-interactive env to export PUBLIC_URL/PORTLESS_NAME.
+# portless is ALSO a mise npm: tool (besides the npm global): the GitHub
+# runner units run `mise exec --cd ~/repos/webfront -- run.sh`, that repo's
+# mise config requires npm:portless, and its portless-env.sh needs the CLI in
+# that non-interactive env to export PUBLIC_URL/PORTLESS_NAME. Do NOT add this
+# to the obsolete-uninstall list in 70_runtime_installs.zsh.
 "npm:portless" = "latest"
 zoxide = "0"
 tree-sitter = "0"
