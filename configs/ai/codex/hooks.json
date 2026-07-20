@@ -52,16 +52,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.codex/hooks/vp-fmt-on-edit.sh",
-            "statusMessage": "vp fmt --fix on Edit|Write"
-          }
-        ],
-        "matcher": "Edit|Write"
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "bash ~/.codex/hooks/git-commit-reformat-notice.sh",
             "statusMessage": "git commit reformat notice"
           }

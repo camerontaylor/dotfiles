@@ -104,16 +104,6 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/vp-fmt-on-edit.sh",
-            "timeout": 40
-          }
-        ]
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {
