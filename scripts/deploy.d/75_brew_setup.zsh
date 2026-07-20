@@ -410,3 +410,16 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing duti..."
     brew_formula_install_or_upgrade duti || true
 fi
+
+# pinentry-mac — native macOS dialog for gpg-agent passphrase prompts. Without
+# it, brew gnupg's default pinentry is the curses one, which paints its prompt
+# INTO whatever TTY gpg-agent last saw — so background SSH/GPG operations (e.g.
+# the nightly dotfiles.pull LaunchAgent pulling over git+ssh) ambush an
+# unrelated terminal's UI. The generated gpg-agent.conf (20_symlinks.zsh)
+# routes pinentry through scripts/pinentry-auto, which prefers this when
+# present. gnupg itself is not deploy-managed; the wrapper degrades gracefully
+# if either half is missing.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    print "Installing pinentry-mac..."
+    brew_formula_install_or_upgrade pinentry-mac || true
+fi

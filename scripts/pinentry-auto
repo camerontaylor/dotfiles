@@ -1,0 +1,27 @@
+#!/bin/sh
+# Select the best available pinentry for this host at run time.
+#
+# gpg-agent's pinentry-program option takes a single absolute path — no tilde
+# expansion, no PATH lookup, no per-OS branching — so the generated
+# gpg-agent.conf (see scripts/deploy.d/20_symlinks.zsh) points at this wrapper
+# and the host branching happens here instead:
+#   - macOS: prefer pinentry-mac (native dialog; installed by
+#     scripts/deploy.d/75_brew_setup.zsh) so background SSH/GPG passphrase
+#     prompts never hijack a random terminal's TTY with pinentry-curses.
+#   - Linux / fallback: the stock pinentry (curses is correct on headless eris).
+#
+# gpg-agent may spawn this under a launchd/systemd-sanitised PATH, so probe
+# absolute locations first and only fall back to PATH lookup last.
+
+for candidate in \
+    /opt/homebrew/bin/pinentry-mac \
+    /usr/local/bin/pinentry-mac \
+    /opt/homebrew/bin/pinentry \
+    /usr/local/bin/pinentry \
+    /usr/bin/pinentry; do
+    if [ -x "$candidate" ]; then
+        exec "$candidate" "$@"
+    fi
+done
+
+exec pinentry "$@"

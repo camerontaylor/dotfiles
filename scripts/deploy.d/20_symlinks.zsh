@@ -47,7 +47,25 @@ zf_ln -sfn $SCRIPT_DIR/yazi/theme.toml $XDG_CONFIG_HOME/yazi/theme.toml
 zf_ln -sfn $SCRIPT_DIR/yazi/yazi.toml $XDG_CONFIG_HOME/yazi/yazi.toml
 zf_ln -sfn $SCRIPT_DIR/yazi/plugins $XDG_CONFIG_HOME/yazi/plugins
 zf_ln -sfn $SCRIPT_DIR/gpg/gpg.conf $XDG_CONFIG_HOME/gnupg/gpg.conf
-zf_ln -sfn $SCRIPT_DIR/gpg/gpg-agent.conf $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
+# gpg-agent.conf is GENERATED, not symlinked: pinentry-program needs an
+# absolute path (gpg-agent execs it verbatim — no ~, no PATH lookup) and $HOME
+# differs per host, so we render the shared base (gpg/gpg-agent.conf) plus a
+# host-resolved pinentry-program line pointing at the pinentry-auto wrapper,
+# which picks pinentry-mac on macOS and stock pinentry elsewhere. Write to a
+# temp file + mv: the target may still be the old symlink INTO the repo, and a
+# direct `>` would follow it and clobber the base file.
+zf_ln -sfn $SCRIPT_DIR/scripts/pinentry-auto $HOME/.local/bin/pinentry-auto
+if (( DEPLOY_DRY_RUN )); then
+    print "  [dry-run] generate $XDG_CONFIG_HOME/gnupg/gpg-agent.conf"
+else
+    {
+        cat $SCRIPT_DIR/gpg/gpg-agent.conf
+        print "pinentry-program $HOME/.local/bin/pinentry-auto"
+    } > $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp
+    mv -f $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
+    # Pick the change up without killing cached passphrases / SSH keys.
+    (( ${+commands[gpgconf]} )) && gpgconf --reload gpg-agent 2> /dev/null || true
+fi
 zf_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
 zf_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
 zf_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
