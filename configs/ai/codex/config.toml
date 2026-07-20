@@ -39,4 +39,6 @@ enabled = true
 
 [marketplaces.oh-my-codex-local]
 source_type = "local"
-source = "/Users/ctaylor/.vite-plus/js_runtime/node/24.16.0/lib/node_modules/oh-my-codex"
+# oh-my-codex is an npm global under the mise-managed node (see
+# .default-npm-packages); the major-pinned `24` symlink survives minor bumps.
+source = "/Users/ctaylor/.local/share/mise/installs/node/24/lib/node_modules/oh-my-codex"

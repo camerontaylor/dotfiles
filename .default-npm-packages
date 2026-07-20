@@ -22,3 +22,9 @@ oxlint@latest
 @aoagents/ao@latest
 grab@latest
 continues@latest
+# openclaw-gateway.service (user unit) runs the openclaw global through mise
+# shims — keep it here or the gateway loses its binary on a node bump.
+openclaw@latest
+# tsc/tsserver + the LSP server nvim's ts_ls uses.
+typescript@latest
+typescript-language-server@latest
