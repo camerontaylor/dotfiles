@@ -127,7 +127,12 @@ gotchas there — see the global memory protocol for cadence.
   `configs/samba/smb.conf`, installed by `scripts/setup-ceres-share.sh`;
   `/srv/downloads` is its own btrfs subvolume so snapper root snapshots skip
   it). Mac-friendly via vfs_fruit; auth is the `ctaylor` Samba user
-  (`sudo smbpasswd` on ceres to rotate).
+  (`sudo smbpasswd` on ceres to rotate). The laptop (quaoar) two-way syncs
+  `~/Downloads` ↔ ceres `/srv/downloads` via Syncthing (pacman-installed for
+  its `syncthing@ctaylor.service` unit — the one always-on-daemon exception
+  to the mise rule; quaoar dials ceres's static wired/wifi/tailscale
+  addresses, so it syncs from anywhere; `.stignore` keeps in-progress
+  browser downloads out).
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
