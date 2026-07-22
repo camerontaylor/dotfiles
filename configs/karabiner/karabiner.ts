@@ -1,11 +1,15 @@
 /**
  * karabiner.ts — typed, self-contained Karabiner-Elements config generator.
  *
- * Philosophy: Cmd stays the primary Mac modifier (we don't fight the OS or the
- * terminal). We fix the two things that actually hurt coming from Linux —
- * (1) Caps Lock becomes a Hyper key (Esc on tap), and (2) Home/End/word/doc
- * navigation behaves like Linux in GUI apps — and we leave terminals untouched
- * so readline/emacs nav keeps working there.
+ * Scope: the Caps Lock → Hyper (hold) / Escape (tap) mod-tap and the whole
+ * Hyper launch layer now live in the *keyboard firmware* (Keychron Launcher,
+ * see `../keychron/`) so they survive keyboard/mouse sharing (Universal Control)
+ * to another Mac — firmware emits the modifiers below the HID layer, and Raycast
+ * catches the resulting chord at the high layer. What remains here is the one
+ * thing neither firmware nor Raycast can express: Linux-style text navigation
+ * that is *app-aware* (terminals excluded so readline/emacs nav survives). That
+ * needs Karabiner's grabbed-HID, frontmost-app-conditioned remapping, and is
+ * therefore host-only by nature.
  *
  * Run:   npx tsx karabiner.ts        (or: bun karabiner.ts)
  * Writes ~/.config/karabiner/karabiner.json  (BACK UP your existing file first).
@@ -28,23 +32,18 @@ type Mod =
 interface To {
   key_code?: string;
   modifiers?: Mod[];
-  shell_command?: string;
-  set_variable?: { name: string; value: number };
 }
 interface From {
   key_code?: string;
   modifiers?: { mandatory?: Mod[]; optional?: Mod[] };
 }
 type Condition =
-  | { type: "variable_if" | "variable_unless"; name: string; value: number }
   | { type: "frontmost_application_if" | "frontmost_application_unless"; bundle_identifiers: string[] };
 
 interface Manipulator {
   type: "basic";
   from: From;
   to?: To[];
-  to_if_alone?: To[];
-  to_after_key_up?: To[];
   conditions?: Condition[];
   description?: string;
 }
@@ -53,8 +52,6 @@ interface Rule { description: string; manipulators: Manipulator[] }
 // ----------------------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------------------
-const app = (name: string): To => ({ shell_command: `open -a '${name}'` });
-const raycast = (deeplink: string): To => ({ shell_command: `open '${deeplink}'` });
 const key = (key_code: string, modifiers?: Mod[]): To => ({ key_code, modifiers });
 
 // Terminals keep their native nav — don't let the GUI nav layer touch them.
@@ -84,34 +81,12 @@ const nav = (
   conditions: [TERMINALS],
 });
 
-/** A Hyper-layer binding: hold Caps + <k> -> action. */
-const hyper = (k: string, ...actions: To[]): Manipulator => ({
-  type: "basic",
-  from: { key_code: k, modifiers: { optional: ["any"] } },
-  to: actions,
-  conditions: [{ type: "variable_if", name: "hyper", value: 1 }],
-});
-
 // ----------------------------------------------------------------------------
 // Rules
 // ----------------------------------------------------------------------------
 
-// 1) Caps Lock = Hyper (hold) / Escape (tap)
-const hyperKey: Rule = {
-  description: "Caps Lock → Hyper layer on hold, Escape on tap",
-  manipulators: [
-    {
-      type: "basic",
-      from: { key_code: "caps_lock", modifiers: { optional: ["any"] } },
-      to: [{ set_variable: { name: "hyper", value: 1 } }],
-      to_after_key_up: [{ set_variable: { name: "hyper", value: 0 } }],
-      to_if_alone: [{ key_code: "escape" }],
-    },
-  ],
-};
-
-// 2) Linux-style text navigation in GUI apps (terminals excluded)
-//    Edit/disable any block you don't want — these are deliberate, not magic.
+// Linux-style text navigation in GUI apps (terminals excluded).
+// Edit/disable any block you don't want — these are deliberate, not magic.
 const textNav: Rule = {
   description: "Linux-style text navigation (GUI apps only)",
   manipulators: [
@@ -139,34 +114,10 @@ const textNav: Rule = {
   ],
 };
 
-// 3) Hyper launches & actions. EDIT the app names to match what you install.
-//    Mnemonic letters; keep these disjoint from AeroSpace (Alt) and Raycast.
-const hyperLayer: Rule = {
-  description: "Hyper layer: launch apps + Raycast actions",
-  manipulators: [
-    hyper("t", app("Ghostty")),               // Terminal
-    hyper("b", app("Google Chrome")),          // Browser  (e.g. Arc / Firefox)
-    hyper("c", app("Visual Studio Code")),     // Code     (e.g. Cursor / Zed)
-    hyper("f", app("Finder")),
-    hyper("s", app("Slack")),
-    hyper("n", app("Obsidian")),               // Notes
-    hyper("m", app("Spotify")),                // Music
-    hyper("g", app("ChatGPT")),                // swap for Claude / etc.
-
-    // Raycast deeplinks (you registered it — lean on it)
-    hyper("v", raycast("raycast://extensions/raycast/clipboard-history/clipboard-history")),
-    hyper("e", raycast("raycast://extensions/raycast/emoji-symbols/search-emoji-symbols")),
-    hyper("z", raycast("raycast://extensions/GastroGeek/folder-search/search")), // folder search (was ⌘Z — clashed with undo)
-
-    // Optional: emit the real ⌘⌃⌥⇧ chord for apps that want a literal Hyper hotkey
-    hyper("spacebar", key("spacebar", ["left_command", "left_control", "left_option", "left_shift"])),
-  ],
-};
-
 // ----------------------------------------------------------------------------
 // Emit
 // ----------------------------------------------------------------------------
-const rules: Rule[] = [hyperKey, textNav, hyperLayer];
+const rules: Rule[] = [textNav];
 
 const config = {
   global: { show_in_menu_bar: true },
