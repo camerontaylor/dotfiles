@@ -41,9 +41,9 @@ model_list:
   # If GLM models 401 here, swap api_base to https://api.z.ai/api/coding/paas/v4
   # (Coding Plan endpoint variant).
   # ============================================
-  - model_name: glm-5.2-bg
+  - model_name: glm-5.3-bg
     litellm_params:
-      model: openai/glm-5.2
+      model: openai/glm-5.3
       api_base: https://api.z.ai/api/paas/v4
       api_key: os.environ/Z_AI_API_KEY
       max_parallel_requests: 1
@@ -106,9 +106,9 @@ model_list:
       rpm: 600
       max_parallel_requests: 16
 
-  - model_name: glm-5.2-fast
+  - model_name: glm-5.3-fast
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/glm-5p2
+      model: fireworks_ai/accounts/fireworks/models/glm-5p3
       api_key: os.environ/FIREWORKS_API_KEY
       rpm: 600
       max_parallel_requests: 12
@@ -216,7 +216,7 @@ model_list:
 
   # Z.AI GLM-4.7 hosted on Cerebras infrastructure (paid tier only). Provides
   # GLM's reasoning at Cerebras's wafer-scale tokens/sec. Distinct from the
-  # glm-5.2-bg / glm-5.2-fast deployments which hit Z.AI / Fireworks directly.
+  # glm-5.3-bg / glm-5.3-fast deployments which hit Z.AI / Fireworks directly.
   - model_name: cerebras-paid-glm-4.7
     litellm_params:
       model: cerebras/zai-glm-4.7
@@ -264,7 +264,7 @@ model_list:
 
   - model_name: fleet-sonnet  # workhorse role
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/glm-5p2
+      model: fireworks_ai/accounts/fireworks/models/glm-5p3
       api_key: os.environ/FIREWORKS_API_KEY
 
   # ANTHROPIC_DEFAULT_HAIKU_MODEL slot — the "small subagent" tier. Mapped
@@ -295,7 +295,7 @@ model_list:
       context_length: 8192
 
   # cc-fast target: GLM-4.7 hosted on Cerebras's wafer-scale silicon (~3000 t/s).
-  # Distinct from glm-5.2-bg (Z.AI direct) and glm-5.2-fast (Fireworks).
+  # Distinct from glm-5.3-bg (Z.AI direct) and glm-5.3-fast (Fireworks).
   - model_name: glm-4.7-cerebras
     litellm_params:
       model: cerebras/zai-glm-4.7
@@ -320,15 +320,15 @@ router_settings:
   #   slow/cheap (Z.ai bg → MiniMax direct). Better to fail loudly than to
   #   silently degrade onto extremely fast expensive slop.
   fallbacks:
-    - glm-5.2-bg: [glm-5.2-fast, kimi-k2.6]
-    - glm-5-bg: [glm-5.2-fast, kimi-k2.6]
+    - glm-5.3-bg: [glm-5.3-fast, kimi-k2.6]
+    - glm-5-bg: [glm-5.3-fast, kimi-k2.6]
     - glm-5-turbo-bg: [minimax-m2.7]
     - cerebras-free-8b: [cerebras-paid-8b]
     # cerebras-free-oss120 disabled (free tier blocked from gpt-oss-120b);
     # cerebras-paid-oss120 has no fallback — it IS the workhorse 120B slot.
     - fleet-haiku: [minimax-m2.7]
     - fleet-small-fast: [cerebras-paid-8b, cerebras-paid-oss120, minimax-m2.5]
-    - fleet-opus: [glm-5.2-bg, minimax-m2.5]
+    - fleet-opus: [glm-5.3-bg, minimax-m2.5]
     - fleet-sonnet: [kimi-k2.6, minimax-m2.7]
 
   # Context-aware fallback for 8K Cerebras free. fleet-haiku is gpt-oss-120b
