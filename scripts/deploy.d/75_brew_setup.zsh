@@ -423,3 +423,14 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     print "Installing pinentry-mac..."
     brew_formula_install_or_upgrade pinentry-mac || true
 fi
+
+# ForkLift cask — dual-pane macOS file manager / FTP-SFTP client.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask forklift > /dev/null 2>&1; then
+        print "Installing ForkLift..."
+        brew_cask_install_or_upgrade forklift || true
+    elif $upgrade_mode; then
+        print "Upgrading ForkLift..."
+        brew_cask_install_or_upgrade forklift || true
+    fi
+fi
