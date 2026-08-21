@@ -2,7 +2,7 @@
   "cleanupPeriodDays": 90,
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "90",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
     "CLAUDE_CODE_SHELL": "zsh",
     "ENABLE_LSP_TOOL": "0",
@@ -100,7 +100,7 @@
     "defaultMode": "bypassPermissions",
     "additionalDirectories": []
   },
-  "model": "claude-fable-5[1m]",
+  "model": "opus[1m]",
   "hooks": {
     "PostToolUse": [
       {
@@ -154,7 +154,8 @@
     "skill-creator@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": false,
     "feature-dev@claude-plugins-official": false,
-    "claude-code-setup@claude-plugins-official": false
+    "claude-code-setup@claude-plugins-official": false,
+    "typescript-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "engram": {
