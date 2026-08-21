@@ -367,12 +367,14 @@ agent_alias_define_env() {
         ccx-direct|ccx-direct-happy|ccx)
             # OpenRouter stealth ox-alpha via OpenRouter's Anthropic-compat
             # /api/v1/messages endpoint (verified 2026-08-21). Free while in
-            # stealth trial; prompts logged upstream for training — never use
+            # stealth trial; prompts+completions retained by the anonymous
+            # provider (not trained on, per OpenRouter policy) — never use
             # for personal/court/triage data. One model fills every tier
             # (one-base-URL constraint, same as ccm-direct/ccz-direct).
-            # TRIAL WINDOW: listed 2026-08-16, no published end date; remove
-            # this case (and the zsh/env.d ccx aliases + the openclaw.json
-            # entry) once the stealth/ox-alpha slug 404s.
+            # TRIAL WINDOW: listed 2026-08-16; free window ends ~2026-08-28
+            # (OpenCode announcement 2026-08-21: "free for the next week").
+            # Remove this case (and the zsh/env.d ccx aliases + the
+            # openclaw.json entry) once the stealth/ox-alpha slug 404s.
             AGENT_ALIAS_ENV_NAMES=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC

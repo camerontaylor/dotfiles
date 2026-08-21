@@ -96,11 +96,13 @@ alias ccz-direct-happy='CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NON
 
 # OpenRouter stealth ox-alpha direct via OpenRouter's Anthropic-compat
 # /api/v1/messages endpoint (verified 2026-08-21; prompt caching works).
-# Free while in stealth trial — prompts are logged upstream for training, so
-# never point this at personal/court/triage data. Single model fills every
-# tier (one-base-URL constraint); subagents inherit it and cost nothing.
-# TRIAL WINDOW: listed 2026-08-16; no end date published — stealth slugs are
-# retired without notice when the lab de-anonymizes (typically within weeks).
+# Free while in stealth trial. Data policy (per OpenRouter, 2026-08-21):
+# prompts+completions ARE retained by the anonymous provider, NOT used for
+# training. Retention by an unknown lab still means: never point this at
+# personal/court/triage data. Single model fills every tier (one-base-URL
+# constraint); subagents inherit it and cost nothing.
+# TRIAL WINDOW: listed 2026-08-16; OpenCode announced 2026-08-21 "free for
+# the next week" → expect the free window to END ~2026-08-28.
 # When `--model stealth/ox-alpha` starts 404ing, the trial is over: delete
 # these ccx aliases and the openrouter/stealth/ox-alpha entry in openclaw.json.
 # If a Portkey fleet-ccx route is added later, repoint plain `ccx` there.
