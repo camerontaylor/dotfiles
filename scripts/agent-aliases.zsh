@@ -364,6 +364,46 @@ agent_alias_define_env() {
                 API_TIMEOUT_MS 3000000
             )
             ;;
+        ccx-direct|ccx-direct-happy|ccx)
+            # OpenRouter stealth ox-alpha via OpenRouter's Anthropic-compat
+            # /api/v1/messages endpoint (verified 2026-08-21). Free while in
+            # stealth trial; prompts logged upstream for training — never use
+            # for personal/court/triage data. One model fills every tier
+            # (one-base-URL constraint, same as ccm-direct/ccz-direct).
+            # TRIAL WINDOW: listed 2026-08-16, no published end date; remove
+            # this case (and the zsh/env.d ccx aliases + the openclaw.json
+            # entry) once the stealth/ox-alpha slug 404s.
+            AGENT_ALIAS_ENV_NAMES=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+                ENABLE_TOOL_SEARCH
+                ANTHROPIC_DEFAULT_SONNET_MODEL
+                ANTHROPIC_DEFAULT_HAIKU_MODEL
+                ANTHROPIC_DEFAULT_OPUS_MODEL
+                ANTHROPIC_MODEL
+                ANTHROPIC_SMALL_FAST_MODEL
+                CLAUDE_CODE_SUBAGENT_MODEL
+                ANTHROPIC_API_KEY
+                ANTHROPIC_AUTH_TOKEN
+                ANTHROPIC_BASE_URL
+                API_TIMEOUT_MS
+            )
+            AGENT_ALIAS_ENV=(
+                CLAUDE_CODE_ATTRIBUTION_HEADER 0
+                CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
+                ENABLE_TOOL_SEARCH "false"
+                ANTHROPIC_DEFAULT_SONNET_MODEL stealth/ox-alpha
+                ANTHROPIC_DEFAULT_HAIKU_MODEL stealth/ox-alpha
+                ANTHROPIC_DEFAULT_OPUS_MODEL stealth/ox-alpha
+                ANTHROPIC_MODEL stealth/ox-alpha
+                ANTHROPIC_SMALL_FAST_MODEL stealth/ox-alpha
+                CLAUDE_CODE_SUBAGENT_MODEL ""
+                ANTHROPIC_API_KEY ""
+                ANTHROPIC_AUTH_TOKEN "${OPENROUTER_API_KEY:-}"
+                ANTHROPIC_BASE_URL https://openrouter.ai/api
+                API_TIMEOUT_MS 3000000
+            )
+            ;;
         ccfw-direct)
             # Direct Fireworks via their Anthropic-compat endpoint. Bypasses Portkey.
             local _ccfw_direct_opus_model="accounts/fireworks/models/kimi-k2p6"

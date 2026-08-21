@@ -94,6 +94,24 @@ alias ccz-direct='CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENT
 # Z.AI direct via happy yolo
 alias ccz-direct-happy='CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5-turbo CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions'
 
+# OpenRouter stealth ox-alpha direct via OpenRouter's Anthropic-compat
+# /api/v1/messages endpoint (verified 2026-08-21; prompt caching works).
+# Free while in stealth trial — prompts are logged upstream for training, so
+# never point this at personal/court/triage data. Single model fills every
+# tier (one-base-URL constraint); subagents inherit it and cost nothing.
+# TRIAL WINDOW: listed 2026-08-16; no end date published — stealth slugs are
+# retired without notice when the lab de-anonymizes (typically within weeks).
+# When `--model stealth/ox-alpha` starts 404ing, the trial is over: delete
+# these ccx aliases and the openrouter/stealth/ox-alpha entry in openclaw.json.
+# If a Portkey fleet-ccx route is added later, repoint plain `ccx` there.
+alias ccx-direct='CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" claude --model stealth/ox-alpha'
+
+# OpenRouter stealth ox-alpha via happy yolo
+alias ccx-direct-happy='CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions'
+
+# Short name: direct for now; repoint to Portkey if a fleet-ccx route lands.
+alias ccx='ccx-direct'
+
 # `happy yolo` against real Anthropic. Unsets every fleet override so a prior
 # ccfw/ccz/ccm/cc-fast shell doesn't silently route `yolo` somewhere else.
 # Mirrors the in-repo `yolo` alias (scripts/agent-aliases.zsh + scripts/run-agent-alias.sh).
@@ -108,6 +126,8 @@ _ccfw-direct()      { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONES
 _ccz-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5-turbo CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" claude --model glm-5.3 "$@" }
 _ccz-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5-turbo ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5-turbo CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
 _ccd-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" claude --model "deepseek-v4-pro[1m]" "$@" }
+_ccx-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" claude --model stealth/ox-alpha "$@" }
+_ccx-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
 _ccd-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
 _yolo()      { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC; CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions "$@" }
 
