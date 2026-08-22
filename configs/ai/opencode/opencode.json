@@ -1,5 +1,32 @@
 {
   "$schema": "https://opencode.ai/config.json",
+
+  "//": "Single-model setup: OpenRouter stealth/ox-alpha, same model ccx-direct pins (zsh/env.d/09_claude_code_aliases.zsh). Free while in stealth trial; listed 2026-08-16, expect the free window to END ~2026-08-28. Data policy (per OpenRouter, 2026-08-21): prompts+completions ARE retained by the anonymous provider, NOT used for training -- never point this at personal/court/triage data. When the model starts 404ing the trial is over: drop the provider block below and pick a real model.",
+
+  "model": "openrouter/stealth/ox-alpha",
+  "small_model": "openrouter/stealth/ox-alpha",
+  "enabled_providers": ["openrouter"],
+
+  "provider": {
+    "openrouter": {
+      "whitelist": ["stealth/ox-alpha"],
+      "options": {
+        "timeout": 3000000
+      },
+      "models": {
+        "stealth/ox-alpha": {
+          "name": "Ox Alpha (stealth)",
+          "attachment": true,
+          "reasoning": true,
+          "temperature": true,
+          "tool_call": true,
+          "cost": { "input": 0, "output": 0 },
+          "limit": { "context": 1048576, "output": 131072 }
+        }
+      }
+    }
+  },
+
   "mcp": {
     "repomapper": {
       "type": "local",
@@ -16,11 +43,12 @@
       "timeout": 120000
     }
   },
+
   "plugin": [
     "opencode-antigravity-auth@1.6.0",
-    "opencode-beads",
-    "oh-my-openagent@latest"
+    "opencode-beads"
   ],
+
   "tools": {
     "webfetch": false,
     "exa_*": false,
@@ -28,6 +56,7 @@
     "google_*": false,
     "websearch_*": false
   },
+
   "permission": {
     "webfetch": "deny",
     "exa_*": "deny",
