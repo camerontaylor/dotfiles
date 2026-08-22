@@ -6,7 +6,7 @@ set -euo pipefail
 # agents, on a fleet box. Idempotent; safe to re-run.
 #
 # Topology (deliberately NOT the t3/portless shape - see below):
-#   Paseo daemon binds 0.0.0.0:6767 and authenticates every HTTP/WebSocket
+#   Paseo daemon binds [::]:6767 (dual-stack) and authenticates every HTTP/WS
 #   client with a bcrypt password. The phone app reaches it over Tailscale by
 #   the box's 100.x address; a terminal on any fleet box reaches it through the
 #   `paseo-at <box>` helper in zsh/rc.d/12_paseo.zsh.
@@ -446,10 +446,22 @@ echo ""
 PASSWORD_HASH=$(resolve_password_hash)
 
 if [[ -n "$PASSWORD_HASH" ]]; then
-  LISTEN="0.0.0.0:$PASEO_PORT"
+  # [::] and NOT 0.0.0.0. The IPv4 wildcard does not cover IPv6 loopback, and
+  # `localhost` on macOS resolves to ::1 FIRST - so a 0.0.0.0 bind leaves any
+  # client that connects by name, and does not fall back fast, hanging on a
+  # dead ::1. That is exactly how Paseo.app failed on saturn: curl worked
+  # (it retries IPv4), the desktop app timed out.
+  # `::` gives a dual-stack socket - it accepts IPv4-mapped connections too, so
+  # 127.0.0.1 and the Tailscale 100.x IPv4 address still answer. Verified on
+  # saturn: 127.0.0.1, [::1], localhost and 100.104.76.127 all return 200.
+  LISTEN="[::]:$PASEO_PORT"
   echo "Auth:     bcrypt password hash -> daemon.auth.password"
 else
-  # Fail safe rather than fail open.
+  # Fail safe rather than fail open. Loopback-only has no dual-stack option -
+  # binding [::1] accepts no IPv4, and 127.0.0.1 accepts no IPv6 (v4-mapped
+  # works on the :: WILDCARD only). IPv4 is the better single choice here; this
+  # is a deliberately degraded state you are meant to leave by setting a
+  # password, so the localhost/::1 asymmetry above can bite until you do.
   LISTEN="127.0.0.1:$PASEO_PORT"
   echo "Auth:     NONE - binding loopback only."
   echo "          Set PASEO_PASSWORD in zsh/env.d/90_secrets.zsh (then"

@@ -14,9 +14,9 @@ Release channel**.
 
 | Box | OS | Install | Daemon lifecycle | Bind |
 |---|---|---|---|---|
-| saturn | macOS | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `0.0.0.0:6767` |
-| neptune | macOS (Intel) | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `0.0.0.0:6767` |
-| ceres | Arch, headless | `npm:@getpaseo/cli@latest` via mise | `paseo-daemon.service` (systemd) | `0.0.0.0:6767` |
+| saturn | macOS | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `[::]:6767` |
+| neptune | macOS (Intel) | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `[::]:6767` |
+| ceres | Arch, headless | `npm:@getpaseo/cli@latest` via mise | `paseo-daemon.service` (systemd) | `[::]:6767` |
 | phone | iOS / Android | App Store / Play Store | — | connects over Tailscale |
 
 Every daemon requires a bcrypt password. The phone reaches a box by its
@@ -39,6 +39,22 @@ pattern:
 If you later want `https://paseo.<host>.webfront.app` anyway, add a carve-out
 block to `setup-caddy.sh` mirroring the `t3.` one, and append the hostname to
 `daemon.hostnames`.
+
+### Bind `[::]`, never `0.0.0.0`
+
+`0.0.0.0` is the IPv4 wildcard and does **not** cover IPv6 loopback. On macOS
+`localhost` resolves to `::1` first, so a `0.0.0.0` bind leaves any client that
+connects by name — and doesn't fall back to IPv4 quickly — hanging on a dead
+address. That is precisely how Paseo.app failed to reach its own daemon on
+saturn: `curl http://localhost:6767` returned 200 (curl retries IPv4) while the
+desktop app timed out.
+
+`[::]` gives a dual-stack socket that also accepts IPv4-mapped connections, so
+`127.0.0.1` and the Tailscale `100.x` IPv4 address keep working. Verified on
+saturn — `127.0.0.1`, `[::1]`, `localhost` and `100.104.76.127` all return 200.
+
+Diagnose it with `lsof -nP -iTCP:6767 -sTCP:LISTEN`: the `TYPE` column reads
+`IPv4` for the broken bind and `IPv6` for the dual-stack one.
 
 ### macOS has no launch-at-login, so we add one
 
