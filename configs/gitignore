@@ -112,4 +112,7 @@ Session.vim
 # Sisyphus boulder state
 .sisyphus/boulder.json
 
+# Gajae Code (gjc) writes per-session state into every project it runs in
+.gjc/
+
 # vi: ft=gitignore
