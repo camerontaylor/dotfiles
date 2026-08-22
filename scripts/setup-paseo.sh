@@ -47,7 +47,7 @@ set -euo pipefail
 #   binaries; it does not carry its own model credentials.
 
 PASEO_PORT=${PASEO_PORT:-6767}
-PASEO_TOOL="npm:@getpaseo/cli@latest"
+PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@0.5.0-beta.4}"
 BCRYPT_COST=12   # matches DAEMON_PASSWORD_BCRYPT_COST in paseo's server package
 
 OS=$(uname -s)
