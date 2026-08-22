@@ -1,11 +1,23 @@
 ---
 name: domain-modeling
-description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a CONTEXT.md, or recording or editing an ADR.
+description: Build and sharpen a project's domain model. Use when discussing codebase terminology, writing or editing a project glossary or CONTEXT.md, or recording or editing an ADR.
 ---
 
 # Domain Modeling
 
-Actively build and sharpen the project's domain model as you design. This is the *active* discipline: challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* `CONTEXT.md` for vocabulary is not this skill: that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
+Actively build and sharpen the project's domain model as you design. This is the *active* discipline: challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* the glossary for vocabulary is not this skill: that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
+
+## Find the glossary before you write one
+
+`CONTEXT.md` is this skill's default name for the glossary, not a requirement. **A repo that already has a glossary owns the naming decision — adopt it, never compete with it.** Before writing any term, resolve where it goes, in this order:
+
+1. **The repo's agent instructions.** If `AGENTS.md` or `CLAUDE.md` names a canonical glossary, that file wins outright. Example: T3 Code's `AGENTS.md` requires new vocabulary to land in `docs/internals/glossary.md`, so that is the glossary there and no `CONTEXT.md` should ever be created.
+2. **An existing glossary file.** Check for `CONTEXT.md`, then `docs/**/glossary.md` or similar. If one exists, write into it and match its existing heading structure and entry style rather than imposing the format below.
+3. **Nothing exists.** Only then create a root `CONTEXT.md` using [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).
+
+Apply the same order to ADRs: if the repo's docs are already split by audience or topic, put the ADR where that split says contributor-facing architecture goes, and only fall back to `docs/adr/` when there's no convention to follow.
+
+Everything below describes the default layout. Read "`CONTEXT.md`" as "whichever file step 1–3 resolved to".
 
 ## File structure
 
