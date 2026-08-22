@@ -34,6 +34,20 @@ if [[ $OSTYPE == darwin* ]] && [[ -n $HOMEBREW_PREFIX ]] && [[ -x $HOMEBREW_PREF
     alias bash="$HOMEBREW_PREFIX/bin/bash"
 fi
 
+# Open a path in ForkLift (macOS only). ForkLift's plain `open -a` handler
+# dumps the path into its search UI; its AppleScript `reveal` verb opens a
+# dir directly and selects a file in its parent, so use that instead.
+if [[ $OSTYPE == darwin* ]]; then
+    fl() {
+        local t="${1:-.}"
+        osascript >/dev/null \
+            -e 'on run argv' \
+            -e 'tell application "ForkLift" to reveal path (item 1 of argv)' \
+            -e 'tell application "ForkLift" to activate' \
+            -e 'end run' "${t:A}"
+    }
+fi
+
 # Human file sizes
 gnu_alias df --human-readable --print-type
 gnu_alias du --human-readable --total

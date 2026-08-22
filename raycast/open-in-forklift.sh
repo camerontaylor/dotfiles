@@ -37,5 +37,11 @@ if [[ -z "$dir" ]]; then
   exit 1
 fi
 
-open -a "ForkLift" "$dir"
+# ForkLift's plain `open -a` handler dumps the path into its search UI;
+# its AppleScript `reveal` verb opens the folder directly.
+osascript >/dev/null \
+  -e 'on run argv' \
+  -e 'tell application "ForkLift" to reveal path (item 1 of argv)' \
+  -e 'tell application "ForkLift" to activate' \
+  -e 'end run' "$dir"
 echo "ForkLift → $dir"
