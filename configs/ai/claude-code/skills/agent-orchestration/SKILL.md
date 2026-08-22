@@ -57,6 +57,23 @@ done
 
 `--session <uuid>` gives a resumable multi-turn worker. `--append-prompt` adds role framing. `-- <flags>` passes anything else through to `claude`.
 
+## Worker lifecycle — orphans cannot outlive their TTL
+
+A detached worker **survives its parent session being killed** (SIGKILL and SIGTERM both verified). That is the feature, and it is also how orphans accumulate: nothing else bounds their life. So every `--bg` worker is launched as a **systemd transient service** with `RuntimeMaxSec`, and systemd kills the whole unit cgroup when the TTL expires — the worker and any command it was running.
+
+```bash
+zsh $W ccz-direct --bg /tmp/w.json --ttl 10m ...   # default TTL 30m
+zsh $W --list      # ID, STATE (running/finished/ORPHANED), age, TTL, alias
+zsh $W --reap      # stop anything past TTL, clear finished records
+zsh $W --reap --all  # stop every cc-worker right now
+```
+
+Verified: a worker given `--ttl 20s` while running `sleep 400` was dead at 25s, its child gone with it, no leftover unit, registry cleared. The log keeps the partial result (`is_error: true`, `stop_reason: "tool_use"`) so a truncated worker is distinguishable from a failed one.
+
+Registry lives at `~/.claude/cc-workers/` (override with `CC_WORKER_REGISTRY`). Where systemd user units aren't available the script falls back to `setsid timeout`, which bounds the lifetime as long as the timeout process survives — weaker, so prefer the systemd path.
+
+Set `--ttl` deliberately: a worker killed mid-edit leaves partial writes. For anything that edits files, prefer a generous TTL plus `--max-turns` to stop runaway loops.
+
 ## Cost model (measured 2026-08-21, trivial prompt)
 
 The flags matter more than the model. Overhead *before any work happens*:
@@ -74,6 +91,7 @@ Also: **worker `cwd` is not free.** The same call cost 20,597 tokens in `/tmp` v
 
 - **`--tools ""` fails open.** A shell guard like `[[ -n $tools ]]` drops the flag and the worker silently gets all 26 built-in tools (~15k tokens). `cc-worker.sh` takes `--tools none` for this reason.
 - **`--bg` conflicts with `-p`.** Claude Code rejects the combination. `cc-worker.sh --bg <log>` detaches the process itself instead.
+- **Never chain a `--bg` dispatch with slow work in the same Bash call.** Detached workers survive the parent session being killed (SIGKILL and SIGTERM both tested), but they do *not* survive the **tool call** that launched them being killed — on timeout or user abort the harness kills the whole spawned tree, and `nohup`, `setsid`, and even `systemd-run --user --scope` all failed to escape it (5/5 killed). A dispatch call must return immediately; `cc-worker.sh --bg` does. Writing `cc-worker.sh ... --bg log.json && sleep 300` in one call kills the worker you just launched, mid-turn, with `is_error` at `stop_reason: tool_use`.
 - **`--bare` refuses OAuth.** It reads only `ANTHROPIC_API_KEY`/`apiKeyHelper`, so it returns `Not logged in` on subscription auth. Don't reach for it as the "fast path".
 - **One base URL, all tiers.** The `-direct` aliases must pin every `ANTHROPIC_DEFAULT_*_MODEL` to one provider's model. `CLAUDE_CODE_SUBAGENT_MODEL=""` means a worker's own subagents inherit its route — a `ccz-direct` worker's subagents are also GLM, not Anthropic.
 - **`agent_alias_export_env` omits `ANTHROPIC_MODEL`** for `ccz-direct`/`ccm-direct`/`ccfw-direct`; the interactive alias compensates with an explicit `--model`. `cc-worker.sh` re-adds it per alias. If you bypass the wrapper, pass `--model` yourself.
@@ -102,6 +120,7 @@ See `reference/aliases.md` for the full route roster.
 
 ## Before reporting a delegated result
 
-- Did the worker actually exit? A `--bg` log that is empty means still running, not finished.
+- Did the worker actually exit? A `--bg` log that is empty means still running, not finished. `--list` tells you which.
+- Any workers left behind? Run `--reap` when a fan-out is done; don't rely on the TTL alone to tidy up.
 - Did it cite sources? Uncited claims from a cheap model are the main failure mode.
 - Did it write files you did not expect? `cc-worker.sh` runs with `bypassPermissions`; check `git status`.

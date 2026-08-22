@@ -8,10 +8,18 @@
 # (dotfiles/scripts/agent-aliases.zsh :: agent_alias_export_env) and then
 # invokes `claude -p` with a minimised flag set.
 #
+# Every backgrounded worker gets an ENFORCED LIFETIME. Detached workers survive
+# their parent session being killed (verified: SIGKILL and SIGTERM both), so
+# without a hard bound they accumulate as orphans forever.
+#
 # Usage:
 #   cc-worker.sh <alias> [--tools "Read,Grep"|none] [--schema '<json>']
-#                [--bg <logfile>] [--cwd <dir>] [--session <uuid>]
-#                [--append-prompt <text>] [-- <extra claude flags>] <prompt>
+#                [--bg <logfile>] [--ttl 30m] [--max-turns N] [--cwd <dir>]
+#                [--session <uuid>] [--append-prompt <text>]
+#                [-- <extra claude flags>] <prompt>
+#   cc-worker.sh --list            # every live/finished worker + age
+#   cc-worker.sh --reap            # stop workers past their TTL, clear finished
+#   cc-worker.sh --reap --all      # stop EVERY cc-worker now
 #
 # Aliases: cc (real Anthropic) | ccz-direct | ccx-direct | ccd-direct
 #          ccm-direct | ccfw-direct | ccz | ccd | ccfw | ccm | cc-fast
@@ -19,18 +27,79 @@ set -euo pipefail
 emulate -L zsh
 
 ALIASES_FILE="$HOME/.local/dotfiles/scripts/agent-aliases.zsh"
+REG="${CC_WORKER_REGISTRY:-$HOME/.claude/cc-workers}"
+mkdir -p "$REG"
+
+# ---------------------------------------------------------------- reaper ----
+# A worker is one of: running (unit active / pid alive), finished (exited on its
+# own), or orphaned (past TTL and still alive). --reap kills the last kind.
+
+worker_rows () {
+  local f id unit pid ttl started alias_name log state age
+  for f in "$REG"/*.json(N); do
+    id=${f:t:r}
+    unit=$(jq -r '.unit // ""' "$f"); pid=$(jq -r '.pid // 0' "$f")
+    ttl=$(jq -r '.ttl_sec // 0' "$f"); started=$(jq -r '.started // 0' "$f")
+    alias_name=$(jq -r '.alias // "?"' "$f"); log=$(jq -r '.log // ""' "$f")
+    age=$(( $(date +%s) - started ))
+    if [[ -n $unit ]] && systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+      state=running
+    elif [[ -z $unit ]] && (( pid > 0 )) && kill -0 "$pid" 2>/dev/null; then
+      state=running
+    else
+      state=finished
+    fi
+    [[ $state == running ]] && (( ttl > 0 && age > ttl )) && state=ORPHANED
+    print -r -- "$id|$state|$age|$ttl|$alias_name|$unit|$pid|$log"
+  done
+}
+
+if [[ ${1:-} == --list ]]; then
+  printf '%-22s %-9s %8s %8s %-12s %s\n' ID STATE AGE TTL ALIAS TARGET
+  worker_rows | while IFS='|' read -r id state age ttl al unit pid log; do
+    printf '%-22s %-9s %7ss %7ss %-12s %s\n' "$id" "$state" "$age" "$ttl" "$al" "${unit:-pid=$pid}"
+  done
+  exit 0
+fi
+
+if [[ ${1:-} == --reap ]]; then
+  local all=0; [[ ${2:-} == --all ]] && all=1
+  local n=0
+  worker_rows | while IFS='|' read -r id state age ttl al unit pid log; do
+    if [[ $state == ORPHANED ]] || { (( all )) && [[ $state == running ]] }; then
+      if [[ -n $unit ]]; then
+        systemctl --user stop "$unit" 2>/dev/null || true
+        systemctl --user reset-failed "$unit" 2>/dev/null || true
+      elif (( pid > 0 )); then
+        kill -TERM "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+        sleep 1; kill -KILL "$pid" 2>/dev/null || true
+      fi
+      print -r -- "stopped $id ($al, age ${age}s)"; n=$((n+1))
+    fi
+    if [[ $state == finished || $state == ORPHANED ]] || (( all )); then
+      rm -f "$REG/$id.json" "$REG/$id.env"
+    fi
+  done
+  print -r -- "reap complete"
+  exit 0
+fi
+
+# ---------------------------------------------------------------- launch ----
 [[ -r $ALIASES_FILE ]] || { print -u2 "cc-worker: missing $ALIASES_FILE"; exit 2 }
 
-alias_name="${1:?usage: cc-worker.sh <alias> [opts] <prompt>}"; shift
+alias_name="${1:?usage: cc-worker.sh <alias> [opts] <prompt> | --list | --reap}"; shift
 
 tools="Read,Grep,Glob,Bash"   # "none" = pass --tools "" (cheapest: no tool schemas)
 schema="" bglog="" workdir="$PWD" session="" append="" model_override=""
+ttl="30m" max_turns=""
 typeset -a extra
 while (( $# )); do
   case "$1" in
     --tools)         tools="$2"; shift 2 ;;
     --schema)        schema="$2"; shift 2 ;;
     --bg)            bglog="$2"; shift 2 ;;
+    --ttl)           ttl="$2"; shift 2 ;;
+    --max-turns)     max_turns="$2"; shift 2 ;;
     --cwd)           workdir="$2"; shift 2 ;;
     --session)       session="$2"; shift 2 ;;
     --append-prompt) append="$2"; shift 2 ;;
@@ -41,7 +110,9 @@ while (( $# )); do
 done
 prompt="${1:?cc-worker: no prompt given}"
 
-# Load the alias's routing env into this subshell only.
+# ttl "30m"/"90s"/"2h" -> seconds
+ttl_sec=$(( ${ttl%[smh]} * $(case ${ttl: -1} in s) echo 1;; m) echo 60;; h) echo 3600;; *) echo 60;; esac) ))
+
 source "$ALIASES_FILE"
 agent_alias_export_env "$alias_name"
 
@@ -68,6 +139,7 @@ else args+=(--tools "$tools"); fi
 [[ -n $schema ]] && args+=(--json-schema "$schema")
 [[ -n $session ]] && args+=(--session-id "$session")
 [[ -n $append ]] && args+=(--append-system-prompt "$append")
+[[ -n $max_turns ]] && args+=(--max-turns "$max_turns")
 # Workers get no MCP servers and no inherited settings: that is the bulk of
 # the token overhead (17.4k -> ~2k on a trivial call, measured 2026-08-21).
 args+=(--strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources "")
@@ -75,12 +147,45 @@ args+=(--strict-mcp-config --mcp-config '{"mcpServers":{}}' --setting-sources ""
 
 cd "$workdir"
 
-# NB: claude's own --bg is incompatible with -p ("--bg and --print conflict"),
-# so backgrounding is done here by detaching the process. Poll the log for the
-# JSON result; the file is complete once the process exits.
-if [[ -n $bglog ]]; then
-  nohup claude "${args[@]}" >"$bglog" 2>"${bglog%.json}.err" &
-  print -r -- "{\"pid\":$!,\"log\":\"$bglog\",\"alias\":\"$alias_name\"}"
-  exit 0
+if [[ -z $bglog ]]; then
+  exec claude "${args[@]}"
 fi
-exec claude "${args[@]}"
+
+# --------------------------------------------------------- background run ---
+# claude's own --bg is incompatible with -p ("--bg and --print conflict").
+#
+# Preferred path: a systemd transient SERVICE. It runs under the user manager
+# (ppid 1/623), not under this shell, so it survives a killed tool call; and
+# RuntimeMaxSec guarantees systemd terminates it even if this script dies.
+# Fallback (no systemd --user): timeout + setsid, which bounds the lifetime as
+# long as the timeout process itself lives.
+id="ccw-$(date +%Y%m%d-%H%M%S)-$$-${alias_name//[^a-z]/}"
+bglog=${bglog:A}
+
+if systemctl --user is-system-running >/dev/null 2>&1 || systemctl --user show-environment >/dev/null 2>&1; then
+  envfile="$REG/$id.env"
+  : >"$envfile"; chmod 600 "$envfile"
+  for n in "${AGENT_ALIAS_ENV_NAMES[@]}"; do
+    print -r -- "$n=${AGENT_ALIAS_ENV[$n]}" >>"$envfile"
+  done
+  print -r -- "PATH=$PATH" >>"$envfile"
+  systemd-run --user --quiet --unit="$id" --collect \
+    --property=RuntimeMaxSec="$ttl_sec" \
+    --property=EnvironmentFile="$envfile" \
+    --property=WorkingDirectory="$workdir" \
+    --property=StandardOutput="file:$bglog" \
+    --property=StandardError="file:${bglog%.json}.err" \
+    -- "${commands[claude]:-claude}" "${args[@]}"
+  jq -n --arg id "$id" --arg unit "$id.service" --arg a "$alias_name" \
+        --arg log "$bglog" --argjson ttl "$ttl_sec" --argjson st "$(date +%s)" \
+        '{id:$id,unit:$unit,pid:0,alias:$a,log:$log,ttl_sec:$ttl,started:$st}' >"$REG/$id.json"
+  print -r -- "{\"id\":\"$id\",\"unit\":\"$id.service\",\"log\":\"$bglog\",\"ttl_sec\":$ttl_sec}"
+else
+  setsid timeout --kill-after=30s "$ttl_sec" claude "${args[@]}" \
+    >"$bglog" 2>"${bglog%.json}.err" &
+  wpid=$!
+  jq -n --arg id "$id" --arg a "$alias_name" --arg log "$bglog" \
+        --argjson pid "$wpid" --argjson ttl "$ttl_sec" --argjson st "$(date +%s)" \
+        '{id:$id,unit:"",pid:$pid,alias:$a,log:$log,ttl_sec:$ttl,started:$st}' >"$REG/$id.json"
+  print -r -- "{\"id\":\"$id\",\"pid\":$wpid,\"log\":\"$bglog\",\"ttl_sec\":$ttl_sec}"
+fi
