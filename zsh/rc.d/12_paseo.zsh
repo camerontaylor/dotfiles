@@ -20,17 +20,27 @@ typeset -g _PASEO_PORT="${PASEO_PORT:-6767}"
 typeset -ga _PASEO_HOSTS=(ceres saturn neptune)
 
 # On Linux the CLI is a mise tool (npm:@getpaseo/cli@latest), not an npm global
-# and not a cask, so there is no `paseo` on PATH: the bare mise shim errors
-# "No version is set for shim" until the tool is activated in a mise config,
-# and ~/.config/mise/config.toml is a symlink into this repo — activating there
-# would dirty the working tree. Same reasoning as setup-t3.sh; resolve it with
-# `mise exec` instead. On macOS the Paseo.app cask already provides a real
-# `paseo` binary, so this never defines anything.
-if (( ! ${+commands[paseo]} )) && (( ${+commands[mise]} )); then
-    paseo() {
-        emulate -L zsh
-        mise exec npm:@getpaseo/cli@latest -- paseo "$@"
-    }
+# and not a cask. mise plants a SHIM for it at ~/.local/share/mise/shims/paseo,
+# and that shim errors "No version is set for shim: paseo" until the tool is
+# activated in a mise config — which we deliberately don't do, because
+# ~/.config/mise/config.toml is a symlink into this repo and `mise use -g`
+# would dirty the working tree. Same trap setup-t3.sh documents; `mise exec`
+# resolves the installed tool directly and sidesteps it.
+#
+# Detect the shim BY PATH, not by absence. A plain `(( ! ${+commands[paseo]} ))`
+# guard never fires on ceres: the broken shim is very much on PATH, so the
+# wrapper was never defined and bare `paseo` just errored.
+# The macOS cask binary lives in the brew prefix, so it never matches and the
+# real `paseo` is left alone.
+if (( ${+commands[mise]} )); then
+    typeset -g _paseo_shim_dir="${MISE_DATA_DIR:-$HOME/.local/share/mise}/shims"
+    if (( ! ${+commands[paseo]} )) || [[ ${commands[paseo]} == $_paseo_shim_dir/* ]]; then
+        paseo() {
+            emulate -L zsh
+            mise exec npm:@getpaseo/cli@latest -- paseo "$@"
+        }
+    fi
+    unset _paseo_shim_dir
 fi
 
 # paseo-at <host> [args...] — run a paseo command against another box's daemon.
