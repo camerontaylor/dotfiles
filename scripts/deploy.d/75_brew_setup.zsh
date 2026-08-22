@@ -20,7 +20,6 @@ fi
 # wtp (satococoa/tap) is trusted in scripts/install-wtp.zsh, which runs earlier.
 if (( ${+commands[brew]} )); then
     brew_trust --formula gentleman-programming/tap/engram
-    brew_trust --formula brunoborges/tap/ghx
     brew_trust --formula felixkratz/formulae/borders
     brew_trust --cask nikitabobko/tap/aerospace
     brew_trust --cask manaflow-ai/cmux/cmux
@@ -244,58 +243,22 @@ elif (( ${+commands[brew]} )) && $upgrade_mode; then
     fi
 fi
 
-# ghx — caching layer for the GitHub CLI, installed via brew wherever brew
-# exists (macOS, plus any Linuxbrew host). It wraps read-only gh commands
-# (pr/issue/run list+view, api GETs) behind a per-user local daemon (ghxd) over
-# a 0600 unix socket; per-host cache by design (no networked/shared-cache mode).
-#
-# We use ghx's `gh` shim DELIBERATELY: with no real gh on PATH (mise's gh is
-# dropped in 70_runtime_installs.zsh, brew's gh removed just below), brew links
-# the shim as `gh`, so `gh` -> ghx -> a gh binary ghx auto-downloads and manages
-# under ~/.ghx/bin. The brew formula ships all three of gh+ghx+ghxd and links
-# them atomically — a pre-existing brew `gh` would abort the whole link, which
-# is why we uninstall it FIRST. Hosts without brew use the curl installer in
-# 70_runtime_installs.zsh. Interactive gh->ghx shortcut lives in
-# zsh/rc.d/08_aliases.zsh.
-if (( ${+commands[brew]} )) && (( ! ${+commands[ghx]} )) && brew list --formula gh > /dev/null 2>&1; then
-    print "Removing brew gh (ghx's gh shim replaces it)..."
+# ghx (GitHub CLI caching layer) retired 2026-08: gh is mise-managed again
+# (configs/mise.toml). Drift-correct hosts that still carry the brew install:
+# the formula linked gh (shim) + ghx + ghxd, and the deploy kept a brew gh
+# installed-but-unlinked as ghx's real binary — remove all of it plus ~/.ghx
+# (cache + auto-managed gh) so mise's gh owns the command again. Brew-less
+# hosts get the equivalent cleanup in 70_runtime_installs.zsh.
+if (( ${+commands[brew]} )) && brew list --formula ghx > /dev/null 2>&1; then
+    print "Removing ghx (gh is mise-managed again)..."
+    # ghxd self-daemonizes (reparents to PID 1) and ignores SIGTERM; KILL it.
+    pkill -9 -u "$USER" -x ghxd 2>/dev/null || true
+    brew uninstall brunoborges/tap/ghx > /dev/null 2>&1 || true
     brew uninstall gh > /dev/null 2>&1 || true
-fi
-if (( ${+commands[brew]} )) && (( ! ${+commands[ghx]} )); then
-    print "Installing ghx via brew..."
-    if brew install brunoborges/tap/ghx > /dev/null 2>&1; then
-        rehash
-        print "  ...done"
-    else
-        print "  ...failed to install ghx"
-    fi
-elif (( ${+commands[brew]} )) && $upgrade_mode; then
-    print "Upgrading ghx via brew..."
-    if brew upgrade brunoborges/tap/ghx > /dev/null 2>&1; then
-        print "  ...done"
-    else
-        print "  ...ghx already at latest or upgrade failed"
-    fi
-fi
-
-# ghx's `gh` shim needs a real GitHub CLI binary under ~/.ghx/bin. Its built-in
-# auto-download can fail on unauthenticated GitHub API rate limits, which leaves
-# both `gh` and `ghx` unable to answer even `--version`. Keep Homebrew's gh
-# installed but unlinked, then point ghx at that real binary.
-if (( ${+commands[brew]} )) && (( ${+commands[ghx]} )); then
-    if ! brew list --formula gh > /dev/null 2>&1; then
-        brew install gh > /dev/null 2>&1 || true
-    fi
-
-    local brew_gh_prefix
-    brew_gh_prefix=$(brew --prefix gh 2>/dev/null || true)
-    if [[ -x $brew_gh_prefix/bin/gh ]]; then
-        mkdir -p "$HOME/.ghx/bin"
-        ln -sf "$brew_gh_prefix/bin/gh" "$HOME/.ghx/bin/gh"
-        print "  ...ghx real gh linked"
-    else
-        print "  ...ghx installed but no real gh binary found"
-    fi
+    brew untap brunoborges/tap > /dev/null 2>&1 || true
+    rm -rf "$HOME/.ghx"
+    rehash
+    print "  ...done"
 fi
 
 # iTerm2 cask.

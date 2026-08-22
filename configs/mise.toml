@@ -20,10 +20,7 @@ node = "24"
 neovim = "0"
 ripgrep = "14"
 ast-grep = "0"
-# gh is intentionally NOT managed here: ghx (installed via brew / its curl
-# installer in scripts/deploy.d) owns the `gh` command through its gh shim, and
-# ghx auto-manages the real gh binary under ~/.ghx/bin. A mise-managed gh would
-# shadow that shim on PATH. See scripts/deploy.d/75_brew_setup.zsh.
+gh = "2"
 glab = "1"
 # delta >=0.19 and fd >=10.4 dropped x86_64-apple-darwin release binaries
 # (aqua-registry supported_envs exclude darwin/amd64), which hard-fails

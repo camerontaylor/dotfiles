@@ -26,7 +26,6 @@ local -a tool_checks=(
     htop:htop
     mosh:mosh
     gh:gh
-    ghx:ghx
     git-restore-mtime:git-restore-mtime
     glab:glab
     ast-grep:sg

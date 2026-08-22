@@ -44,15 +44,6 @@ gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 (( ${+commands[tmux]} )) && alias stmux="tmux new-session 'sudo --login'"
 (( ${+commands[wget]} )) && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
 (( ${+commands[gh]} )) && alias gh-pr="$DOTFILES/scripts/gh-pr.sh"
-# Route interactive gh straight to ghx for transparent response caching
-# (read-only pr/issue/run/api GETs hit a per-host local daemon; mutations pass
-# through). The deploy already installs ghx's `gh` shim as the gh on PATH, so
-# this alias is mostly belt-and-suspenders: it skips the shim's extra exec hop
-# and still wins even if some host ever puts a real gh ahead of the shim. Only
-# interactive shells get it — scripts, git hooks and CI resolve gh via PATH (the
-# shim), so they cache too without depending on a zsh alias. Defined after gh-pr
-# so that alias (a distinct word) is unaffected.
-(( ${+commands[ghx]} )) && alias gh="ghx"
 # Prefer eza over ls when available
 if (( ${+commands[eza]} )); then
     alias ls="eza --group-directories-first --color=auto --hyperlink"

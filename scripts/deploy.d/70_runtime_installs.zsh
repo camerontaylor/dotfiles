@@ -1,5 +1,5 @@
 # curl/cargo installs for CLIs without a mise backend (Claude Code,
-# rustup/cargo, linear-cli, CodeWhale, ghx) plus npm globals through the
+# rustup/cargo, linear-cli, CodeWhale) plus npm globals through the
 # mise-managed node (pinned in configs/mise.toml, installed by 50_mise.zsh).
 
 if (( ! ${+commands[claude]} )); then
@@ -23,11 +23,6 @@ elif (( ${+commands[mise]} )); then
     # uninstalled node itself on every deploy, which severed every unit that
     # execs through mise and crash-looped them for a week (2026-07).
     local -a obsolete_mise_tools=(
-        # gh dropped from mise.toml: ghx's gh shim now owns the gh command,
-        # and a mise gh would shadow it on PATH. Uninstall any prior install
-        # BEFORE the ghx fallback below runs, so its installer sees no real
-        # gh and plants the shim.
-        gh
         # Old npm: backend installs replaced by the npm globals below.
         npm:happy
         npm:@biomejs/biome
@@ -177,20 +172,22 @@ if (( ${+commands[cargo]} )); then
     done
 fi
 
-# ghx — GitHub CLI caching daemon. Brew-equipped hosts install it in
-# 75_brew_setup.zsh; this is the fallback for hosts WITHOUT brew (most Linux),
-# pulling the release binary into ~/.local/bin (on PATH, no sudo). Runs LAST so
-# the mise-gh uninstall above has already happened: with no real gh on PATH,
-# install.sh plants its `gh` shim, so `gh` -> ghx -> ghx's auto-managed gh under
-# ~/.ghx/bin. install.sh auto-detects linux/darwin x amd64/arm64. --upgrade
-# re-fetches the latest release.
-if (( ! ${+commands[brew]} )) && { (( ! ${+commands[ghx]} )) || [[ $upgrade_mode == true ]]; }; then
-    print "Installing ghx..."
-    if curl -fsSL https://raw.githubusercontent.com/brunoborges/ghx/main/install.sh \
-        | INSTALL_DIR=$HOME/.local/bin bash > /dev/null 2>&1; then
-        rehash
-        print "  ...done"
-    else
-        print "  ...failed to install ghx"
+# ghx (GitHub CLI caching layer) retired 2026-08: gh is mise-managed again
+# (configs/mise.toml). Drift-correct hosts that still carry ghx's curl install:
+# its install.sh planted ghx/ghxd plus a `gh` shim in ~/.local/bin, which would
+# shadow mise's real gh on PATH. Only delete ~/.local/bin/gh when it is
+# actually the shim (mentions ghx), never a real binary someone put there.
+# ~/.ghx holds the cache and ghx's auto-managed gh binary. Brew hosts get the
+# equivalent cleanup in 75_brew_setup.zsh.
+if [[ -e $HOME/.local/bin/ghx || -d $HOME/.ghx ]]; then
+    print "Removing ghx (gh is mise-managed again)..."
+    # ghxd self-daemonizes (reparents to PID 1) and ignores SIGTERM; KILL it.
+    pkill -9 -u "$USER" -x ghxd 2>/dev/null || true
+    rm -f "$HOME/.local/bin/ghx" "$HOME/.local/bin/ghxd"
+    if [[ -f $HOME/.local/bin/gh ]] && grep -q ghx "$HOME/.local/bin/gh" 2>/dev/null; then
+        rm -f "$HOME/.local/bin/gh"
     fi
+    rm -rf "$HOME/.ghx"
+    rehash
+    print "  ...done"
 fi
