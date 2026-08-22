@@ -358,6 +358,25 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
     fi
 fi
 
+# Paseo cask — self-hosted orchestrator for Claude Code / Codex / Copilot /
+# OpenCode / Pi agents, reachable from the phone over Tailscale. The cask ships
+# BOTH the Electron app and its own `paseo` CLI (symlinked into the brew
+# prefix), version-locked to each other — which is why @getpaseo/cli is
+# deliberately NOT in .default-npm-packages: two `paseo` binaries drifting apart
+# on one PATH is the Vite+ split-brain all over again (see 70_runtime_installs).
+# ceres, headless and without a cask, gets the CLI as a mise tool instead.
+# Per-host daemon config (bind address, password, web UI) is applied by
+# scripts/setup-paseo.sh — one-shot, not part of deploy. See docs/paseo.md.
+if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+    if ! brew list --cask paseo > /dev/null 2>&1; then
+        print "Installing Paseo..."
+        brew_cask_install_or_upgrade paseo || true
+    elif $upgrade_mode; then
+        print "Upgrading Paseo..."
+        brew_cask_install_or_upgrade paseo || true
+    fi
+fi
+
 # AeroSpace cask — i3-like tiling window manager for macOS. Lives in the
 # maintainer's own tap (nikitabobko/tap), so the tap-qualified name is used for
 # both the `brew list` presence check and the install/upgrade.
