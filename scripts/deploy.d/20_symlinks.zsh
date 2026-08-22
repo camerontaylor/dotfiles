@@ -89,9 +89,8 @@ zf_ln -sfn $claude_code_config_dir/skills $HOME/.claude/skills
 zf_ln -sfn $claude_code_config_dir/commands $HOME/.claude/commands
 zf_ln -sfn $claude_code_config_dir/agents $HOME/.claude/agents
 zf_ln -sfn $claude_code_config_dir/mcp.json $HOME/.claude/.mcp.json
-# Codex CLI + OMX
+# Codex CLI
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
-zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/AGENTS.md $HOME/.codex/AGENTS.md
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/agents $HOME/.codex/agents
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/prompts $HOME/.codex/prompts
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codex/rules $HOME/.codex/rules
@@ -102,10 +101,6 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/setti
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
-zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/oh-my-openagent.json $XDG_CONFIG_HOME/opencode/oh-my-openagent.json
-# OMX standalone config + agents
-zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/config.toml $HOME/.omx/config.toml
-zf_ln -sfn $SCRIPT_DIR/configs/ai/omx/agents $HOME/.omx/agents
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service

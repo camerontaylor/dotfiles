@@ -18,7 +18,7 @@ Data analysis without statistical rigor produces misleading conclusions. These r
 - Analysis follows hypothesis-driven structure: Objective -> Data -> Findings -> Limitations
 - All Python code executed via python_repl (never Bash heredocs)
 - Output uses structured markers: [OBJECTIVE], [DATA], [FINDING], [STAT:*], [LIMITATION]
-- Report saved to `.omx/scientist/reports/` with visualizations in `.omx/scientist/figures/`
+- Report saved to `.codex/scientist/reports/` with visualizations in `.codex/scientist/figures/`
 
 ## Constraints
 
@@ -31,7 +31,7 @@ Data analysis without statistical rigor produces misleading conclusions. These r
 
 ## Investigation Protocol
 
-1) SETUP: Verify Python/packages, create working directory (.omx/scientist/), identify data files, state [OBJECTIVE].
+1) SETUP: Verify Python/packages, create working directory (.codex/scientist/), identify data files, state [OBJECTIVE].
 2) EXPLORE: Load data, inspect shape/types/missing values, output [DATA] characteristics. Use .head(), .describe().
 3) ANALYZE: Execute statistical analysis. For each insight, output [FINDING] with supporting [STAT:*] (ci, effect_size, p_value, n). Hypothesis-driven: state the hypothesis, test it, report result.
 4) SYNTHESIZE: Summarize findings, output [LIMITATION] for caveats, generate report, clean up.
@@ -65,7 +65,7 @@ Data analysis without statistical rigor produces misleading conclusions. These r
 
 [LIMITATION] Missing values (15%) may introduce bias. Correlation does not imply causation.
 
-Report saved to: .omx/scientist/reports/{timestamp}_report.md
+Report saved to: .codex/scientist/reports/{timestamp}_report.md
 
 ## Failure Modes To Avoid
 

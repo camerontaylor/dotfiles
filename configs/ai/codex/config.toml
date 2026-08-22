@@ -5,15 +5,12 @@ model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
-developer_instructions = "You have oh-my-codex installed through Codex plugin mode. AGENTS.md is the orchestration brain and main control surface. Follow AGENTS.md for skill/keyword routing and $name workflow invocation. When spawning native subagents, set `agent_type` to an installed role and never omit it for OMX work. Registered Codex plugin marketplace surfaces supply OMX workflows and plugin-scoped companion resources when the plugin is installed; native agent roles are installed as setup-owned Codex agent TOML files in plugin mode so agent_type routing works. User-installed skills may still live under ~/.codex/skills. Use outcome-first, concise progress updates: state the target result, constraints, validation evidence, and stop condition before adding process detail."
-model_reasoning_effort = "high"
 
 [features]
 
 js_repl = true
 image_detail_original = true
 plugin_hooks = false
-goals = true
 [agents]
 max_threads = 12
 max_depth = 4
@@ -31,14 +28,5 @@ persistence = "save-all"
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
-[plugins."oh-my-codex@oh-my-codex-local"]
-enabled = true
-
 [plugins."github@openai-curated"]
 enabled = true
-
-[marketplaces.oh-my-codex-local]
-source_type = "local"
-# oh-my-codex is an npm global under the mise-managed node (see
-# .default-npm-packages); the major-pinned `24` symlink survives minor bumps.
-source = "/Users/ctaylor/.local/share/mise/installs/node/24/lib/node_modules/oh-my-codex"

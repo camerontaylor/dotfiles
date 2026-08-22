@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Git clean filter for the Codex config.toml (configs/ai/codex/config.toml).
 //
-// Codex + `omx setup` write machine-specific RUNTIME TRUST STATE directly into
+// Codex writes machine-specific RUNTIME TRUST STATE directly into
 // config.toml — `[projects."…"]` trust acks and `[hooks.state."…"]` hook-trust
 // hashes. Because that file is the symlink target of ~/.codex/config.toml, every
 // session re-pollutes the tracked dotfile (this is what clobbered it historically).
@@ -20,14 +20,6 @@
 import { readFileSync } from 'node:fs';
 
 const DROP_HEADER = /^\[(projects\.|hooks\.state(\]|\.))/;
-// Sentinel comments that wrap the (now-stripped) OMX hook trust state. Without the
-// tables they describe, they are misleading orphans — drop them too.
-const DROP_COMMENT = new Set([
-  '# OMX-owned Codex hook trust state',
-  '# Trusts only setup-managed native hook wrappers.',
-  '# End OMX-owned Codex hook trust state',
-]);
-
 const input = readFileSync(0, 'utf8');
 const lines = input.split('\n');
 const out = [];
@@ -35,7 +27,6 @@ let seenHeader = false;
 let dropping = false;
 
 for (const line of lines) {
-  if (DROP_COMMENT.has(line.trim())) continue;
   const isHeader = /^\s*\[/.test(line);
   if (isHeader) {
     seenHeader = true;

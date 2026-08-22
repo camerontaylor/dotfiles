@@ -1,52 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs SessionStart",
-            "statusMessage": "OMX user-owned filtered SessionStart hook"
-          }
-        ],
-        "matcher": "startup|resume"
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs PreToolUse",
-            "statusMessage": "OMX user-owned filtered PreToolUse hook"
-          }
-        ],
-        "matcher": "Bash"
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs UserPromptSubmit",
-            "statusMessage": "OMX user-owned filtered UserPromptSubmit hook"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs Stop",
-            "statusMessage": "OMX user-owned filtered Stop hook",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "hooks": [
@@ -57,15 +10,6 @@
           }
         ],
         "matcher": "Bash"
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ~/.codex/hooks/omx-user-filtered-hook.mjs PostToolUse",
-            "statusMessage": "OMX user-owned filtered PostToolUse hook"
-          }
-        ]
       }
     ]
   }

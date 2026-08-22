@@ -98,17 +98,6 @@ Session.vim
 # Specific files inside allowlisted dirs that should still be ignored
 .omc/plans/open-questions.md
 
-# .omx mirrors the .omc allowlist pattern
-.omx/*
-!.omx/plans/
-!.omx/plans/**
-!.omx/research/
-!.omx/research/**
-!.omx/specs/
-!.omx/specs/**
-!.omx/context/
-!.omx/context/**
-
 # Sisyphus boulder state
 .sisyphus/boulder.json
 
