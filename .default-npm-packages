@@ -10,13 +10,13 @@ opencode-ai@latest
 @google/gemini-cli@latest
 t3@latest
 oh-my-claude-sisyphus@latest
-pnpm@11.5.1
+pnpm@latest
 corepack@latest
 tsx@latest
 portless@latest
 agent-browser@latest
 @ast-grep/cli@latest
-@ast-grep/napi@0.43.0
+@ast-grep/napi@latest
 oxlint@latest
 @oh-my-pi/pi-coding-agent@latest
 @aoagents/ao@latest

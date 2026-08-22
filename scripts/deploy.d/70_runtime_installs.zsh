@@ -82,6 +82,20 @@ elif (( ${+commands[mise]} )); then
                 print "  ...failed to install npm globals"
             fi
         fi
+
+        # corepack is in the npm globals list AFTER pnpm, so its bin shim wins
+        # the `pnpm` name (pnpm's own binary is demoted to `pn`). corepack then
+        # serves pnpm from its OWN cache under $XDG_CACHE_HOME/node/corepack,
+        # which npm never touches — so `pnpm@latest` in .default-npm-packages
+        # updates `pn` while `pnpm` silently stays pinned to whatever corepack
+        # last cached (it sat on 11.5.1 for months this way). Point corepack at
+        # the current pnpm too so both names agree.
+        print "Pointing corepack's pnpm shim at the current release..."
+        if mise exec node -- corepack install -g pnpm@latest > /dev/null 2>&1; then
+            print "  ...done"
+        else
+            print "  ...failed to refresh corepack pnpm (non-fatal)"
+        fi
     fi
 
     mise reshim --force -y > /dev/null 2>&1 || true
