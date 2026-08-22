@@ -53,8 +53,9 @@ bootstrap.
   See [AI tooling](#ai--llm-tooling).
 * **Other configs** — [Git](configs/gitconfig), [tig](configs/tigrc), [htop](configs/htoprc), [bat](configs/bat), [quilt](configs/quiltrc), [starship](configs/starship.toml) (available as a p10k alternative).
 * **Runtime/tool management** — [mise](https://mise.jdx.dev/) for polyglot
-  runtimes and CLIs ([`configs/mise.toml`](configs/mise.toml)) and **Vite+** for
-  Node/npm/pnpm + npm globals. See [Runtime management](#runtime-management).
+  runtimes and CLIs ([`configs/mise.toml`](configs/mise.toml)), including Node
+  and the npm globals in [`.default-npm-packages`](.default-npm-packages).
+  See [Runtime management](#runtime-management).
 * **Networking** — Tailscale mesh join ([`73_tailscale.zsh`](scripts/deploy.d/73_tailscale.zsh))
   and wake-peers screen-wake fanout for Universal Control across the Macs.
 * **Secrets** — SOPS + age, see [Secrets](#secrets).
