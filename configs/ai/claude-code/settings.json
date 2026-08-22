@@ -97,7 +97,7 @@
       "mcp__plugin_context7_context7__query-docs",
       "Skill(commit-commands:commit)"
     ],
-    "defaultMode": "bypassPermissions",
+    "defaultMode": "auto",
     "additionalDirectories": []
   },
   "model": "opus[1m]",
