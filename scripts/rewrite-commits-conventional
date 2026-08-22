@@ -3,20 +3,20 @@ set -euo pipefail
 
 # rewrite-commits-conventional
 #
-# Scans recent commits for non-conventional-commit messages, uses Claude CLI
-# to generate proper conventional commit messages from the diffs, then rewrites
-# history to apply them.
+# Scans recent commits for non-conventional-commit messages, uses
+# generate-commit-msg (Cerebras Gemma 4) to produce proper conventional commit
+# messages from the diffs, then rewrites history to apply them.
 #
 # Two-pass design:
-#   Pass 1 — Scan & generate: identify non-conventional commits, call Claude
-#            to produce new messages, store in a temp mapping directory.
+#   Pass 1 — Scan & generate: identify non-conventional commits, generate
+#            new messages, store in a temp mapping directory.
 #   Pass 2 — Rewrite: git filter-branch --msg-filter looks up each commit
 #            hash and swaps the message if a replacement exists.
 
 DAYS=14
 DRY_RUN=false
 FORCE=false
-MODEL="haiku"
+MODEL=""
 CONCURRENCY=4
 VERBOSE=false
 
@@ -24,20 +24,21 @@ usage() {
   cat <<'EOF'
 Usage: rewrite-commits-conventional [options]
 
-Rewrite non-conventional commit messages in the current branch using Claude CLI.
+Rewrite non-conventional commit messages in the current branch using
+generate-commit-msg (Cerebras Gemma 4).
 
 Options:
   --days <N>         Number of days to look back (default: 14)
   --dry-run          Preview changes without rewriting history
   --force            Allow running on main/master (dangerous)
-  --model <model>    Claude model for generation (default: haiku)
-  --concurrency <N>  Max parallel Claude calls (default: 4)
+  --model <model>    Model for generation (default: gemma-4-31b via Cerebras)
+  --concurrency <N>  Max parallel API calls (default: 4)
   --verbose          Show detailed progress
   -h, --help         Show this help message
 
 Examples:
   rewrite-commits-conventional --dry-run
-  rewrite-commits-conventional --days 7 --model sonnet
+  rewrite-commits-conventional --days 7 --model gemma-4-31b
   rewrite-commits-conventional --dry-run --verbose
 EOF
 }
@@ -71,10 +72,12 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-if ! command -v claude &>/dev/null; then
-  echo "ERROR: 'claude' CLI not found in PATH." >&2
-  exit 1
-fi
+for tool in curl jq; do
+  if ! command -v "$tool" &>/dev/null; then
+    echo "ERROR: '$tool' not found in PATH." >&2
+    exit 1
+  fi
+done
 
 # ── Shared generator ────────────────────────────────────────────────────────
 
@@ -157,7 +160,10 @@ generate_message() {
     git diff-tree --no-commit-id -p -U1 --no-color --minimal --diff-algorithm=histogram -M -C "$hash"
   )" || true
 
-  new_msg="$(echo "$new_msg" | "$GENERATOR" --model "$MODEL" --original-msg "$original_msg" --quiet)" || {
+  local -a gen_args=(--original-msg "$original_msg" --quiet)
+  [[ -n "$MODEL" ]] && gen_args+=(--model "$MODEL")
+
+  new_msg="$(echo "$new_msg" | "$GENERATOR" "${gen_args[@]}")" || {
     echo "WARN: generation failed for $short, skipping" >&2
     return 1
   }
@@ -173,7 +179,7 @@ generate_message() {
   echo "$new_msg" > "$MAPPING_DIR/$hash"
 }
 
-echo "Generating conventional commit messages (model: $MODEL, concurrency: $CONCURRENCY)..."
+echo "Generating conventional commit messages (model: ${MODEL:-gemma-4-31b}, concurrency: $CONCURRENCY)..."
 echo ""
 
 RUNNING=0

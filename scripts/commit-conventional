@@ -22,7 +22,6 @@ done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 GENERATOR="$SCRIPT_DIR/generate-commit-msg"
 
-MODEL="${COMMIT_MODEL:-haiku}"
 AUTO_ACCEPT=true
 OPEN_EDITOR=false
 DRY_RUN=false
@@ -48,7 +47,7 @@ Usage: commit-conventional [options] [-- extra context...]
 Generate a conventional commit message from staged changes and commit.
 
 Options:
-  --model <model>    Claude model for generation (default: haiku)
+  --model <model>    Model for generation (default: gemma-4-31b via Cerebras)
   --no-yes           Review the message before committing (disables auto-accept)
   --edit, -e         Open the message in $EDITOR before committing
   --dry-run          Print the generated message without committing
@@ -69,7 +68,7 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --model)       MODEL="$2"; GENERATOR_ARGS+=(--model "$2"); shift 2 ;;
+    --model)       GENERATOR_ARGS+=(--model "$2"); shift 2 ;;
     --yes|-y)      AUTO_ACCEPT=true; shift ;;
     --no-yes)      AUTO_ACCEPT=false; shift ;;
     --edit|-e)     OPEN_EDITOR=true; shift ;;

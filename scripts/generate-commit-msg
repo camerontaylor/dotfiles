@@ -6,6 +6,11 @@ set -euo pipefail
 # Shared core: takes a diff on stdin, generates a conventional commit message
 # on stdout. Used by commit-conventional and rewrite-commits-conventional.
 #
+# Calls the Cerebras chat-completions API (Gemma 4) directly with curl — no
+# Claude Code harness, no gateway. The API key comes from $CEREBRAS_API_KEY,
+# falling back to the repo secrets file for contexts (git hooks, cron) where
+# zsh/env.d hasn't been sourced.
+#
 # Usage:
 #   git diff --cached | generate-commit-msg
 #   git diff-tree -p $hash | generate-commit-msg --context "auth refactor"
@@ -19,12 +24,14 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd -P -- "$(dirname -- "$SOURCE")" && pwd)"
 
-DEFAULT_COMMIT_ALIAS="${COMMIT_ALIAS:-cc-fast}"
-MODEL="${COMMIT_MODEL:-}"
+MODEL="${COMMIT_MODEL:-gemma-4-31b}"
+BASE_URL="${COMMIT_BASE_URL:-https://api.cerebras.ai/v1}"
+API_KEY="${COMMIT_API_KEY:-${CEREBRAS_API_KEY:-}}"
 INCLUDE_BODY=false
 EXTRA_CONTEXT=""
 ORIGINAL_MSG=""
 QUIET=false
+MAX_RETRIES=2
 
 # ── Conventional commit helpers ────────────────────────────────────────────
 
@@ -77,8 +84,6 @@ diagnose_conventional_failure() {
   echo "${reasons[*]}"
 }
 
-MAX_RETRIES=2
-
 # ── Usage ──────────────────────────────────────────────────────────────────
 
 usage() {
@@ -89,7 +94,7 @@ Generate a conventional commit message from a diff piped to stdin.
 Outputs the commit message on stdout. Diagnostics go to stderr.
 
 Options:
-  --model <model>       Claude model (default: alias model, then fleet-haiku)
+  --model <model>       Model id (default: gemma-4-31b)
   --body                Include a detailed commit body
   --context, -c <text>  Extra context to help the AI
   --original-msg <msg>  Original commit message (for rewrites)
@@ -97,10 +102,16 @@ Options:
   -h, --help            Show this help message
 
 Environment:
-  COMMIT_CLI            Override the CLI command (bypasses alias env)
-  COMMIT_ALIAS          Override the default agent alias (default: cc-fast)
-  COMMIT_MODEL          Override the default model (default: alias model, then fleet-haiku)
-  COMMIT_BARE_API_KEY   Placeholder key for Claude --bare when proxy auth uses headers
+  COMMIT_MODEL      Override the default model (default: gemma-4-31b)
+  COMMIT_BASE_URL   OpenAI-compatible base URL (default: https://api.cerebras.ai/v1)
+  COMMIT_API_KEY    API key (default: $CEREBRAS_API_KEY, then repo secrets file)
+  COMMIT_TELEMETRY  Set to "false" to skip Langfuse trace logging
+
+Telemetry:
+  Each run is logged as a Langfuse trace (one generation per API call) to
+  $LANGFUSE_HOST (default: https://telemetry.webfront.app). Keys resolve from
+  LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY, then LANGFUSE_INIT_PROJECT_*, then
+  the repo telemetry secrets file. Best-effort: never blocks generation.
 
 Examples:
   git diff --cached | generate-commit-msg
@@ -123,148 +134,180 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# ── Resolve CLI ────────────────────────────────────────────────────────────
-
-CLI_MODE=""
-CLI_LABEL=""
-CLI_CMD=()
-
-resolve_alias_model() {
-  zsh -c '
-    emulate -L zsh
-    set -euo pipefail
-    source "$1"
-    agent_alias_define_env "$2"
-    print -r -- "${AGENT_ALIAS_ENV[ANTHROPIC_MODEL]:-}"
-  ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
+log() {
+  if [[ "$QUIET" == false ]]; then
+    echo "$@" >&2
+  fi
 }
 
-resolve_alias_base_url() {
-  zsh -c '
-    emulate -L zsh
-    set -euo pipefail
-    source "$1"
-    agent_alias_define_env "$2"
-    print -r -- "${AGENT_ALIAS_ENV[ANTHROPIC_BASE_URL]:-}"
-  ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$1"
-}
+# ── Resolve dependencies and API key ───────────────────────────────────────
 
-# Returns 0 if the alias's ANTHROPIC_BASE_URL accepts an HTTP request within
-# 2s; non-zero otherwise. Used to detect a down local gateway so the generator
-# can fall back to a direct Claude call.
-#
-# Uses curl rather than bash's /dev/tcp builtin because the latter is missing
-# from Apple's bundled bash 3.2 and behaves unreliably under `timeout` on macOS
-# (it was SIGKILLed on saturn, falsely flagging a reachable gateway as down).
-# curl returns 0 for ANY HTTP response (including 4xx/5xx auth/config errors),
-# non-zero only for DNS/TCP/TLS failures — exactly the signal we want.
-alias_gateway_reachable() {
-  local url
-  url="$(resolve_alias_base_url "$1" 2>/dev/null)" || return 1
-  [[ -n "$url" ]] || return 1
-  curl -s --connect-timeout 1 --max-time 2 -o /dev/null "$url" 2>/dev/null
-}
+for tool in curl jq; do
+  if ! command -v "$tool" &>/dev/null; then
+    echo "ERROR: '$tool' not found in PATH." >&2
+    exit 1
+  fi
+done
 
-if [[ -n "${COMMIT_CLI:-}" ]]; then
-  CLI_MODE="custom"
-  CLI_LABEL="$COMMIT_CLI"
-  CLI_CMD=("$COMMIT_CLI")
-elif [[ -r "$SCRIPT_DIR/agent-aliases.zsh" ]] && command -v zsh &>/dev/null && command -v claude &>/dev/null; then
-  CLI_MODE="alias"
-  CLI_LABEL="$DEFAULT_COMMIT_ALIAS"
-elif command -v claude &>/dev/null; then
-  CLI_MODE="claude"
-  CLI_LABEL="claude"
-  CLI_CMD=("claude")
-else
-  echo "ERROR: 'claude' CLI not found in PATH. Set COMMIT_CLI to override." >&2
+if [[ -z "$API_KEY" ]]; then
+  # Git hooks and cron run without the interactive env; pull the key straight
+  # out of the secrets fragment instead of sourcing a zsh file from bash.
+  SECRETS_FILE="$SCRIPT_DIR/../zsh/env.d/90_secrets.zsh"
+  if [[ -r "$SECRETS_FILE" ]]; then
+    API_KEY="$(sed -n 's/^export CEREBRAS_API_KEY="\([^"]*\)".*/\1/p' "$SECRETS_FILE" | head -n1)"
+  fi
+fi
+
+if [[ -z "$API_KEY" ]]; then
+  echo "ERROR: No API key. Set CEREBRAS_API_KEY (or COMMIT_API_KEY)." >&2
   exit 1
 fi
 
-# If the alias's local gateway is unreachable, drop to a direct claude call
-# with haiku. Skip when the user pinned COMMIT_CLI explicitly.
-if [[ "$CLI_MODE" == "alias" ]] && ! alias_gateway_reachable "$DEFAULT_COMMIT_ALIAS"; then
-  echo "WARNING: Gateway for alias '$DEFAULT_COMMIT_ALIAS' is unreachable; falling back to direct claude --model haiku." >&2
-  CLI_MODE="claude"
-  CLI_LABEL="claude (fallback: gateway down)"
-  CLI_CMD=("claude")
-  MODEL="${MODEL:-haiku}"
+# ── Telemetry config (Langfuse) ────────────────────────────────────────────
+# Direct API calls bypass the Claude Code harness, so nothing lands in the
+# session transcripts the langfuse hook mines. Report each run ourselves via
+# the Langfuse ingestion API instead. Best-effort only: missing keys or a
+# down telemetry stack silently disable it — never block a commit.
+
+TELEMETRY_HOST="${LANGFUSE_HOST:-https://telemetry.webfront.app}"
+TELEMETRY_ENABLED=true
+case "${COMMIT_TELEMETRY:-}" in
+  0|false|off) TELEMETRY_ENABLED=false ;;
+esac
+
+LF_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY:-${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}}"
+LF_SECRET_KEY="${LANGFUSE_SECRET_KEY:-${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}}"
+if [[ "$TELEMETRY_ENABLED" == true && ( -z "$LF_PUBLIC_KEY" || -z "$LF_SECRET_KEY" ) ]]; then
+  TELEMETRY_SECRETS="$SCRIPT_DIR/../zsh/env.d/92_telemetry_secrets.zsh"
+  if [[ -r "$TELEMETRY_SECRETS" ]]; then
+    [[ -n "$LF_PUBLIC_KEY" ]] || LF_PUBLIC_KEY="$(sed -n 's/^export LANGFUSE_INIT_PROJECT_PUBLIC_KEY=//p' "$TELEMETRY_SECRETS" | head -n1 | tr -d '"')"
+    [[ -n "$LF_SECRET_KEY" ]] || LF_SECRET_KEY="$(sed -n 's/^export LANGFUSE_INIT_PROJECT_SECRET_KEY=//p' "$TELEMETRY_SECRETS" | head -n1 | tr -d '"')"
+  fi
+fi
+if [[ -z "$LF_PUBLIC_KEY" || -z "$LF_SECRET_KEY" ]]; then
+  TELEMETRY_ENABLED=false
 fi
 
-if [[ -z "$MODEL" ]]; then
-  if [[ "$CLI_MODE" == "alias" ]]; then
-    MODEL="$(resolve_alias_model "$DEFAULT_COMMIT_ALIAS")"
-  fi
-  MODEL="${MODEL:-fleet-haiku}"
-fi
+# ── API call ───────────────────────────────────────────────────────────────
 
-has_bare_arg() {
-  local arg
-  for arg in "$@"; do
-    [[ "$arg" == "--bare" ]] && return 0
-  done
-  return 1
-}
-
-bare_api_key() {
-  printf '%s\n' "${COMMIT_BARE_API_KEY:-dummy-api-key}"
-}
-
-run_commit_cli() {
-  if [[ "$CLI_MODE" == "alias" ]]; then
-    zsh -c '
-      emulate -L zsh
-      set -euo pipefail
-      local aliases_file="$1"
-      local alias_name="$2"
-      shift 2
-      source "$aliases_file"
-      agent_alias_export_env "$alias_name"
-      if [[ -z "${ANTHROPIC_API_KEY:-}" && -n "${ANTHROPIC_CUSTOM_HEADERS:-}" ]]; then
-        export ANTHROPIC_API_KEY=portkey-local
-      fi
-      if (( ${argv[(Ie)--bare]} )) && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-        export ANTHROPIC_API_KEY="${COMMIT_BARE_API_KEY:-dummy-api-key}"
-      fi
-      exec claude "$@"
-    ' zsh "$SCRIPT_DIR/agent-aliases.zsh" "$DEFAULT_COMMIT_ALIAS" "$@"
-  elif has_bare_arg "$@" && [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-    ANTHROPIC_API_KEY="$(bare_api_key)" "${CLI_CMD[@]}" "$@"
-  else
-    "${CLI_CMD[@]}" "$@"
-  fi
-}
-
-CLI_STDERR_FILE="$(mktemp -t generate-commit-msg.stderr.XXXXXX)"
-CLI_STDOUT_FILE="$(mktemp -t generate-commit-msg.stdout.XXXXXX)"
+RESPONSE_FILE="$(mktemp -t generate-commit-msg.response.XXXXXX)"
+HEADER_FILE="$(mktemp -t generate-commit-msg.headers.XXXXXX)"
 cleanup() {
-  rm -f "$CLI_STDERR_FILE" "$CLI_STDOUT_FILE"
+  rm -f "$RESPONSE_FILE" "$HEADER_FILE"
 }
 trap cleanup EXIT
 
-run_commit_cli_capture() {
-  : > "$CLI_STDERR_FILE"
-  : > "$CLI_STDOUT_FILE"
-  run_commit_cli "$@" >"$CLI_STDOUT_FILE" 2>"$CLI_STDERR_FILE"
+chmod 600 "$HEADER_FILE"
+# Key goes via a header file, not argv, so it never shows in the process list.
+printf 'Authorization: Bearer %s\n' "$API_KEY" > "$HEADER_FILE"
+
+# Sends one user message, prints the completion text on stdout.
+# One retry on transport failure / 429 / 5xx; hard fail on other statuses.
+call_api() {
+  local prompt="$1" body http_code attempt
+  body="$(jq -n --arg model "$MODEL" --arg prompt "$prompt" \
+    '{model: $model, messages: [{role: "user", content: $prompt}], max_tokens: 2000, temperature: 0.2}')"
+
+  for attempt in 1 2; do
+    http_code="$(curl -sS -o "$RESPONSE_FILE" -w '%{http_code}' \
+      --connect-timeout 5 --max-time 90 \
+      -H @"$HEADER_FILE" \
+      -H 'Content-Type: application/json' \
+      -d "$body" \
+      "$BASE_URL/chat/completions")" || http_code=000
+
+    if [[ "$http_code" =~ ^2 ]]; then
+      break
+    fi
+    if [[ "$attempt" -lt 2 && ( "$http_code" == "000" || "$http_code" == "429" || "$http_code" =~ ^5 ) ]]; then
+      log "API request failed (HTTP $http_code), retrying..."
+      sleep 2
+      continue
+    fi
+    echo "ERROR: API request failed (HTTP $http_code): $(jq -r '.error.message // .error // empty' "$RESPONSE_FILE" 2>/dev/null | head -c 300)" >&2
+    return 1
+  done
+
+  jq -r '.choices[0].message.content // empty' "$RESPONSE_FILE"
 }
 
-read_cli_stdout() {
-  cat "$CLI_STDOUT_FILE"
+# ── Telemetry helpers ──────────────────────────────────────────────────────
+
+iso_now() {
+  date -u '+%Y-%m-%dT%H:%M:%SZ'
 }
 
-print_cli_output() {
-  if [[ "$QUIET" == false && -s "$CLI_STDERR_FILE" ]]; then
-    cat "$CLI_STDERR_FILE" >&2
+gen_uuid() {
+  if command -v uuidgen &>/dev/null; then
+    uuidgen | tr '[:upper:]' '[:lower:]'
+  else
+    od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
   fi
-  if [[ "$QUIET" == false && -s "$CLI_STDOUT_FILE" ]]; then
-    cat "$CLI_STDOUT_FILE" >&2
-  fi
+}
+
+TRACE_ID="$(gen_uuid)"
+TELEMETRY_BATCH='[]'
+
+# Append one generation-create event to the batch. call_api runs in a command
+# substitution (subshell), so this must be called from the parent shell; token
+# usage is read back from RESPONSE_FILE, which the subshell shares.
+record_generation() {
+  local name="$1" prompt="$2" output="$3" start="$4" end="$5"
+  [[ "$TELEMETRY_ENABLED" == true ]] || return 0
+
+  local usage gen_id
+  usage="$(jq -c '{input: (.usage.prompt_tokens // null), output: (.usage.completion_tokens // null), total: (.usage.total_tokens // null), unit: "TOKENS"}' "$RESPONSE_FILE" 2>/dev/null)" || usage='null'
+  gen_id="$(gen_uuid)"
+
+  TELEMETRY_BATCH="$(jq -c \
+    --arg id "$gen_id" --arg trace "$TRACE_ID" --arg name "$name" \
+    --arg model "$MODEL" --arg prompt "$prompt" --arg output "$output" \
+    --arg start "$start" --arg end "$end" --argjson usage "$usage" \
+    '. + [{id: $id, type: "generation-create", timestamp: $end, body: {
+       id: $id, traceId: $trace, name: $name, model: $model,
+       input: $prompt, output: $output,
+       startTime: $start, endTime: $end, usage: $usage}}]' \
+    <<<"$TELEMETRY_BATCH")" || return 0
+}
+
+# POST the trace + accumulated generations to the Langfuse ingestion API.
+# Fire-and-forget: the curl is backgrounded so a slow or unreachable
+# telemetry stack never delays the interactive flow. Auth goes to the child
+# via a pipe (curl -K -), keeping the secret out of argv and temp files.
+send_telemetry() {
+  [[ "$TELEMETRY_ENABLED" == true && "$TELEMETRY_BATCH" != '[]' ]] || return 0
+
+  local now repo payload
+  now="$(iso_now)"
+  repo="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  repo="${repo##*/}"
+
+  payload="$(jq -c -n \
+    --arg id "$(gen_uuid)" --arg trace "$TRACE_ID" --arg now "$now" \
+    --arg repo "$repo" --arg model "$MODEL" \
+    --arg host "$(hostname -s 2>/dev/null || echo unknown)" \
+    --arg output "$GENERATED_MSG" --argjson events "$TELEMETRY_BATCH" \
+    '{batch: ([{id: $id, type: "trace-create", timestamp: $now, body: {
+       id: $trace, timestamp: $now, name: "generate-commit-msg",
+       output: $output, tags: ["generate-commit-msg", $repo],
+       metadata: {source: "generate-commit-msg", model: $model,
+                  repo: $repo, host: $host}}}] + $events)}')" || return 0
+
+  printf 'user = "%s:%s"\n' "$LF_PUBLIC_KEY" "$LF_SECRET_KEY" | curl -s -o /dev/null \
+    --connect-timeout 2 --max-time 5 -K - \
+    -H 'Content-Type: application/json' \
+    -d "$payload" \
+    "$TELEMETRY_HOST/api/public/ingestion" &>/dev/null &
+
+  log "Telemetry: trace $TRACE_ID posting to $TELEMETRY_HOST (background)"
+  return 0
 }
 
 # ── Read diff from stdin ───────────────────────────────────────────────────
 
 # Cap by characters — a single minified/lock file line can be 100K+.
-# ~32K chars ≈ ~8K tokens, safe for haiku while keeping cost/latency low.
+# ~32K chars ≈ ~8K tokens, well inside Gemma 4's context while keeping
+# cost/latency low.
 MAX_DIFF_CHARS=32000
 
 RAW_DIFF="$(cat)"
@@ -360,31 +403,15 @@ PROMPT
 
 # ── Generate message ───────────────────────────────────────────────────────
 
-log() {
-  if [[ "$QUIET" == false ]]; then
-    echo "$@" >&2
-  fi
-}
+log "Generating commit message (cerebras, model: $MODEL)..."
 
-CLI_ARGS=(-p "$PROMPT" --model "$MODEL")
-if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
-  CLI_ARGS+=(--bare --tools "")
-fi
-
-if [[ "$CLI_MODE" == "alias" ]]; then
-  log "Generating commit message (alias: $CLI_LABEL, model: $MODEL)..."
-else
-  log "Generating commit message (cli: $CLI_LABEL, model: $MODEL)..."
-fi
-
-if ! run_commit_cli_capture "${CLI_ARGS[@]}"; then
-  echo "ERROR: Claude CLI failed to generate a message." >&2
-  print_cli_output
+GEN_START="$(iso_now)"
+GENERATED_MSG="$(call_api "$PROMPT")" || {
+  echo "ERROR: Failed to generate a message." >&2
   exit 1
-fi
-GENERATED_MSG="$(read_cli_stdout)"
-
+}
 GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
+record_generation "generate" "$PROMPT" "$GENERATED_MSG" "$GEN_START" "$(iso_now)"
 
 # Retry loop: if non-conventional, feed it back with a correction prompt
 ATTEMPT=0
@@ -410,19 +437,16 @@ The first line MUST match: type(scope): subject
 Valid types: feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert
 No markdown fences, no explanation — just the commit message."
 
-  RETRY_ARGS=(-p "$CORRECTION" --model "$MODEL")
-  if [[ "$CLI_MODE" == "alias" ]] || { [[ "$CLI_MODE" != "alias" ]] && { [[ -n "${COMMIT_CLI:-}" ]] || [[ -n "${ANTHROPIC_API_KEY:-}" ]]; }; }; then
-    RETRY_ARGS+=(--bare --tools "")
-  fi
-
-  if ! run_commit_cli_capture "${RETRY_ARGS[@]}"; then
+  GEN_START="$(iso_now)"
+  GENERATED_MSG="$(call_api "$CORRECTION")" || {
     echo "ERROR: Retry $ATTEMPT failed." >&2
-    print_cli_output
     break
-  fi
-  GENERATED_MSG="$(read_cli_stdout)"
+  }
   GENERATED_MSG="$(strip_fences "$GENERATED_MSG")"
+  record_generation "correction-$ATTEMPT" "$CORRECTION" "$GENERATED_MSG" "$GEN_START" "$(iso_now)"
 done
+
+send_telemetry || true
 
 # Output the message
 echo "$GENERATED_MSG"
