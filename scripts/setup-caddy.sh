@@ -3,6 +3,16 @@ set -euo pipefail
 
 # setup-caddy.sh - HTTPS dev proxy with wildcard certs
 #
+# SOURCE OF TRUTH for the Caddy config is configs/caddy/Caddyfile in this repo,
+# not this script. The script INSTALLS the tracked file; it no longer generates
+# one. Until 2026-08-22 it generated a three-site config inline that had
+# silently diverged from the five-site config live on ceres, so re-running it
+# would have deleted the telemetry.webfront.app and mcp.ceres.webfront.app
+# routes without a word. Read docs/caddy-ingress.md before running this on a
+# machine that is already serving, and use --dry-run first.
+#
+# Usage: setup-caddy.sh [--dry-run] [-y|--yes]
+#
 # Linux path:
 #   - Installs Caddy with apt (Debian/Ubuntu) or pacman (Arch/CachyOS)
 #   - Configures Caddy and Portless with systemd
@@ -19,6 +29,28 @@ set -euo pipefail
 
 OS=$(uname -s)
 HOSTNAME=$(hostname -s 2>/dev/null || hostname)
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
+
+DRY_RUN=0
+ASSUME_YES=0
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=1 ;;
+    -y|--yes)  ASSUME_YES=1 ;;
+    -h|--help)
+      echo "Usage: setup-caddy.sh [--dry-run] [-y|--yes]"
+      echo "  --dry-run  show what would change; touch nothing"
+      echo "  -y         skip the 'this restarts your only ingress' prompt"
+      exit 0
+      ;;
+    *)
+      echo "ERROR: unknown argument: $arg (try --help)"
+      exit 1
+      ;;
+  esac
+done
 DOMAIN="${HOSTNAME}.webfront.app"
 RUN_USER=${SUDO_USER:-$(id -un)}
 if [[ ! "$RUN_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
@@ -51,7 +83,22 @@ CADDY_BIN=
 CADDY_CONFIG_DIR=/etc/caddy
 CADDYFILE_PATH=$CADDY_CONFIG_DIR/Caddyfile
 CADDY_ENV_PATH=$CADDY_CONFIG_DIR/env
-LINUX_CADDY_BIN=/usr/bin/caddy
+
+# Per-host override wins if present, so a second machine can carry its own
+# routes without forking this script.
+if [[ -f "$REPO_ROOT/configs/caddy/Caddyfile.$HOSTNAME" ]]; then
+  TRACKED_CADDYFILE="$REPO_ROOT/configs/caddy/Caddyfile.$HOSTNAME"
+else
+  TRACKED_CADDYFILE="$REPO_ROOT/configs/caddy/Caddyfile"
+fi
+TRACKED_CADDY_UNIT="$REPO_ROOT/configs/caddy/caddy.service"
+UNIT_CHANGED=0
+
+# /usr/local/bin, not /usr/bin: the distro package ships no DNS-provider
+# modules, so every machine here runs a custom build from the Caddy download
+# API (see install_caddy_linux). /etc/systemd/system/caddy.service points at
+# this path — keep the two in step.
+LINUX_CADDY_BIN=/usr/local/bin/caddy
 MACOS_CADDY_BIN=/usr/local/sbin/caddy-dotfiles
 
 if [[ "$OS" == "Darwin" ]]; then
@@ -81,16 +128,6 @@ require_command() {
   if ! command -v "$cmd" &>/dev/null; then
     echo "ERROR: $cmd not found. $hint"
     exit 1
-  fi
-}
-
-detect_linux_pm() {
-  if command -v pacman &>/dev/null; then
-    echo "pacman"
-  elif command -v apt &>/dev/null && command -v dpkg &>/dev/null; then
-    echo "apt"
-  else
-    echo ""
   fi
 }
 
@@ -253,43 +290,61 @@ preflight() {
   echo ""
 }
 
-install_caddy_linux_apt() {
-  sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-    | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-    | sudo tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
-
-  sudo apt update
-  sudo apt install -y caddy
-}
-
-install_caddy_linux_pacman() {
-  sudo pacman -S --needed --noconfirm caddy
-}
-
+# Reality on ceres (verified 2026-08-22): /usr/local/bin/caddy is a 51 MB
+# root-owned custom build, not a packaged one — `pacman -Qo` knows nothing
+# about it. That is deliberate: the wildcard certs need the DNS-01 challenge,
+# which needs the caddy-dns/cloudflare module, which the distro packages do not
+# carry. `caddy add-package` on a package-manager binary tries to replace a
+# file the package manager owns; the download API is the supported path.
 install_caddy_linux() {
   if [[ -x "$LINUX_CADDY_BIN" ]]; then
     echo "Caddy already installed: $("$LINUX_CADDY_BIN" version)"
-  else
-    local pm
-    pm=$(detect_linux_pm)
-    case "$pm" in
-      apt)
-        echo "Installing Caddy via apt..."
-        install_caddy_linux_apt
-        ;;
-      pacman)
-        echo "Installing Caddy via pacman..."
-        install_caddy_linux_pacman
-        ;;
-      *)
-        echo "ERROR: no supported package manager found (need apt or pacman)."
-        exit 1
-        ;;
-    esac
+    CADDY_BIN=$LINUX_CADDY_BIN
+    require_trusted_caddy_bin
+    return 0
+  fi
+
+  local arch
+  case "$(uname -m)" in
+    x86_64)  arch=amd64 ;;
+    aarch64) arch=arm64 ;;
+    *)
+      echo "ERROR: unsupported architecture: $(uname -m)"
+      exit 1
+      ;;
+  esac
+
+  local url="https://caddyserver.com/api/download?os=linux&arch=${arch}&p=github.com/caddy-dns/cloudflare"
+
+  if (( DRY_RUN )); then
+    echo "  [dry-run] would download a custom Caddy build to $LINUX_CADDY_BIN"
+    echo "  [dry-run]   $url"
+    CADDY_BIN=$LINUX_CADDY_BIN
+    return 0
+  fi
+
+  echo "Downloading Caddy with the caddy-dns/cloudflare module..."
+  local tmp
+  tmp=$(mktemp)
+  if ! curl -fsSL --max-time 300 -o "$tmp" "$url"; then
+    rm -f "$tmp"
+    echo "ERROR: download failed: $url"
+    exit 1
+  fi
+  chmod 755 "$tmp"
+  if ! "$tmp" list-modules 2>/dev/null | grep -q 'dns.providers.cloudflare'; then
+    rm -f "$tmp"
+    echo "ERROR: downloaded binary lacks dns.providers.cloudflare; refusing to install."
+    exit 1
+  fi
+  sudo install -o root -g root -m 755 "$tmp" "$LINUX_CADDY_BIN"
+  rm -f "$tmp"
+
+  # The unit runs as User=caddy; the account must exist before first start.
+  if ! id caddy &>/dev/null; then
+    echo "Creating the caddy system user..."
+    sudo useradd --system --home-dir /var/lib/caddy --create-home \
+      --shell /usr/sbin/nologin caddy
   fi
 
   CADDY_BIN=$LINUX_CADDY_BIN
@@ -332,14 +387,21 @@ install_caddy() {
     Darwin) install_caddy_macos ;;
   esac
 
+  if (( DRY_RUN )) && [[ ! -x "$CADDY_BIN" ]]; then
+    return 0
+  fi
+
   require_trusted_caddy_bin
 
+  # Hard requirement, not a nice-to-have: without this module every `tls { dns
+  # cloudflare ... }` block fails to load and the whole config is rejected.
   if "$CADDY_BIN" list-modules 2>/dev/null | grep -q 'dns.providers.cloudflare'; then
-    echo "Cloudflare DNS plugin already installed."
+    echo "Cloudflare DNS plugin present."
   else
-    echo "Adding Cloudflare DNS plugin..."
-    sudo "$CADDY_BIN" add-package github.com/caddy-dns/cloudflare
-    require_trusted_caddy_bin
+    echo "ERROR: $CADDY_BIN has no dns.providers.cloudflare module."
+    echo "       Replace it with a custom build:"
+    echo "       https://caddyserver.com/api/download?os=linux&arch=amd64&p=github.com/caddy-dns/cloudflare"
+    exit 1
   fi
 }
 

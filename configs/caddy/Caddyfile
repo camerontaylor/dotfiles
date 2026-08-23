@@ -1,0 +1,68 @@
+# Auto-generated for ceres (mirror of pluto setup)
+# TLS termination for *.ceres.webfront.app via Cloudflare DNS-01 challenge
+# Proxies to portless on localhost:8080, rewriting Host to match portless TLD
+# t3.ceres.webfront.app is carved out to reach the T3 Code server on localhost:3773
+
+t3.ceres.webfront.app {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	# T3 Code web GUI — WebSocket server bound to localhost:3773 (`t3 serve`).
+	# This specific site address wins over the *.ceres.webfront.app wildcard
+	# below, so T3 traffic reaches 3773 instead of portless on 8080.
+	# reverse_proxy upgrades WebSocket automatically; TLS here satisfies the
+	# browser mixed-content rule for an HTTPS page talking to a backend.
+	reverse_proxy localhost:3773
+}
+
+*.ceres.webfront.app {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	# Rewrite Host: foo.ceres.webfront.app → foo.ceres (portless TLD = hostname)
+	reverse_proxy localhost:8080 {
+		header_up Host {http.request.host.labels.3}.ceres
+	}
+}
+
+ceres.webfront.app {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	respond "ceres dev server" 200
+}
+
+# Langfuse web — telemetry.webfront.app → langfuse-web container on localhost:3000
+# CNAME on Cloudflare: telemetry.webfront.app → ceres.webfront.app
+# DNS-01 cert via Cloudflare token (same as other blocks above)
+telemetry.webfront.app {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	reverse_proxy localhost:3000
+}
+
+# OpenClaw MCP bridge — claude.ai custom connector endpoint (added 2026-07-14)
+# Specific site address wins over the *.ceres.webfront.app wildcard above,
+# so this reaches the bridge on 3111 instead of portless on 8080.
+# Connector URL used in claude.ai MUST be https://mcp.ceres.webfront.app/mcp
+mcp.ceres.webfront.app {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+
+	# hart wiki MCP (port 3112) — /wiki/* plus its RFC 8414/9728 metadata
+	# paths. Everything else stays with the openclaw-mcp bridge on 3111,
+	# including the bridge's own /.well-known/* at the root.
+	@wiki path /wiki /wiki/* /.well-known/oauth-authorization-server/wiki* /.well-known/oauth-protected-resource/wiki*
+	handle @wiki {
+		reverse_proxy localhost:3112
+	}
+	handle {
+		reverse_proxy localhost:3111
+	}
+}
