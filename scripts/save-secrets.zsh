@@ -162,3 +162,20 @@ for (( i = 1; i <= ${#restic_plaintexts}; i++ )); do
 
     encrypt_if_changed "$plaintext" "$enc_file"
 done
+
+# openclaw-mcp bridge environment (gateway URL + token, model routing).
+# The .enc has been tracked since it was first encrypted by hand; wiring it
+# through here means it now refreshes on save like every other secret instead of
+# silently drifting from the plaintext.
+local -a openclaw_plaintexts openclaw_enc_files
+openclaw_plaintexts=($XDG_CONFIG_HOME/openclaw-mcp/env)
+openclaw_enc_files=(configs/openclaw-mcp/env.enc)
+for (( i = 1; i <= ${#openclaw_plaintexts}; i++ )); do
+    plaintext=${openclaw_plaintexts[i]}
+    enc_file=${openclaw_enc_files[i]}
+    [[ -f $plaintext ]] || continue
+
+    mkdir -p configs/openclaw-mcp
+
+    encrypt_if_changed "$plaintext" "$enc_file"
+done

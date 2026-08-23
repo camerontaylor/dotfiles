@@ -143,3 +143,29 @@ for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
         print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
+
+# openclaw-mcp bridge environment. Target lives outside this repo at
+# ~/.config/openclaw-mcp/env, which the bridge reads directly.
+local -a openclaw_enc_files openclaw_targets
+openclaw_enc_files=(configs/openclaw-mcp/env.enc)
+openclaw_targets=($HOME/.config/openclaw-mcp/env)
+for (( i = 1; i <= ${#openclaw_enc_files}; i++ )); do
+    enc_file=${openclaw_enc_files[i]}
+    target=${openclaw_targets[i]}
+    [[ -f $enc_file ]] || continue
+    [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
+    if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
+        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        continue
+    fi
+    print "Decrypting ${enc_file} -> ${target}..."
+    temp_file=$(mktemp)
+    if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+        chmod 600 $temp_file
+        mv $temp_file $target
+        print "  ...done"
+    else
+        rm -f $temp_file
+        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+    fi
+done
