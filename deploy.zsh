@@ -24,7 +24,13 @@
 # History: this file was a 1129-line monolith. It now dispatches into
 # fragments so each install concern can be reviewed/edited in isolation.
 
-setopt extended_glob err_exit
+# typeset_silent: fragments are SOURCED into one shared shell, so a fragment's
+# top-level `local` is really just `typeset` and leaves the name set globally.
+# Without this option zsh *prints* any name that typeset re-declares while it
+# already holds a value, so 82_zsh_completions leaking `entry`/`tool` made
+# 85_verify_tools spray "entry='...'" into a real deploy's output. Only ever
+# visible on a real run: --dry-run skips the loop that assigns them.
+setopt extended_glob err_exit typeset_silent
 
 # Argument parsing — fail-closed on unknown flags or missing --only value.
 local upgrade_mode=false
