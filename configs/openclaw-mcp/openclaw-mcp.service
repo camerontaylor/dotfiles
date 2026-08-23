@@ -1,0 +1,20 @@
+[Unit]
+Description=OpenClaw MCP bridge for claude.ai (freema/openclaw-mcp, OAuth 2.1, port 3111)
+Documentation=file:%h/.local/dotfiles/docs/caddy-ingress.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Gateway URL + token, MCP OAuth client id/secret. Tracked here only as the
+# sops-encrypted configs/openclaw-mcp/env.enc; restore-secrets.zsh decrypts it
+# to this path as a plain copy (never a symlink into the repo — plaintext must
+# not land in the working tree).
+EnvironmentFile=%h/.config/openclaw-mcp/env
+Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/apps/openclaw-mcp/node_modules/.bin/openclaw-mcp --transport http --port 3111
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
