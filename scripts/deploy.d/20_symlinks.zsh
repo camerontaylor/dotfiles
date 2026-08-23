@@ -104,10 +104,16 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/openco
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
-# OpenClaw MCP bridge (mcp.ceres.webfront.app -> :3111). The unit is tracked and
-# symlinked; its EnvironmentFile is a decrypted copy at ~/.config/openclaw-mcp/env
-# placed by scripts/restore-secrets.zsh, not a symlink into this repo.
-zf_ln -sfn $SCRIPT_DIR/configs/openclaw-mcp/openclaw-mcp.service $XDG_CONFIG_HOME/systemd/user/openclaw-mcp.service
+# OpenClaw MCP bridge (mcp.ceres.webfront.app -> :3111). ceres ONLY: it is the
+# box the DNS name points at, and the ExecStart path (~/apps/openclaw-mcp) does
+# not exist anywhere else. Linking the unit on another host would put a
+# startable service on a machine that cannot run it.
+# The unit is tracked and symlinked; its EnvironmentFile is a decrypted copy at
+# ~/.config/openclaw-mcp/env placed by scripts/restore-secrets.zsh, not a
+# symlink into this repo.
+if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
+    zf_ln -sfn $SCRIPT_DIR/configs/openclaw-mcp/openclaw-mcp.service $XDG_CONFIG_HOME/systemd/user/openclaw-mcp.service
+fi
 # npm globals list: mise's node backend reads ~/.default-npm-packages and
 # reinstalls the listed globals automatically whenever it installs a node
 # version, so a node bump can't silently drop the globals.

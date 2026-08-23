@@ -146,9 +146,19 @@ done
 
 # openclaw-mcp bridge environment. Target lives outside this repo at
 # ~/.config/openclaw-mcp/env, which the bridge reads directly.
+#
+# ceres ONLY. This is server-side config for a bridge that runs on exactly one
+# box (see the matching gate in scripts/deploy.d/20_symlinks.zsh): a gateway
+# token and an MCP OAuth client secret. Restoring it on saturn/neptune/quaoar
+# would spread live credentials to machines that have no use for them.
 local -a openclaw_enc_files openclaw_targets
-openclaw_enc_files=(configs/openclaw-mcp/env.enc)
-openclaw_targets=($HOME/.config/openclaw-mcp/env)
+if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
+    openclaw_enc_files=(configs/openclaw-mcp/env.enc)
+    openclaw_targets=($HOME/.config/openclaw-mcp/env)
+else
+    openclaw_enc_files=()
+    openclaw_targets=()
+fi
 for (( i = 1; i <= ${#openclaw_enc_files}; i++ )); do
     enc_file=${openclaw_enc_files[i]}
     target=${openclaw_targets[i]}
