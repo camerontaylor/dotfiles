@@ -115,3 +115,31 @@ for (( i = 1; i <= ${#portkey_enc_files}; i++ )); do
         print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
+
+# restic repository password for the Immich backup. Target lives outside this
+# repo at ~/repos/deploy/immich/ because the backup systemd unit references it
+# by absolute path via RESTIC_PASSWORD_FILE.
+local restic_dir=$HOME/repos/deploy/immich
+local -a restic_enc_files restic_targets
+restic_enc_files=(configs/immich/restic-password.enc)
+restic_targets=($restic_dir/.restic-password)
+for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
+    enc_file=${restic_enc_files[i]}
+    target=${restic_targets[i]}
+    [[ -f $enc_file ]] || continue
+    [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
+    if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
+        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        continue
+    fi
+    print "Decrypting ${enc_file} -> ${target}..."
+    temp_file=$(mktemp)
+    if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
+        chmod 600 $temp_file
+        mv $temp_file $target
+        print "  ...done"
+    else
+        rm -f $temp_file
+        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+    fi
+done

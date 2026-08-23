@@ -144,3 +144,21 @@ for (( i = 1; i <= ${#portkey_plaintexts}; i++ )); do
 
     encrypt_if_changed "$plaintext" "$enc_file"
 done
+
+# restic repository password for the Immich photo library backup.
+# This one is load-bearing in an unusual way: the repository is client-side
+# encrypted, so losing this password makes the backup unrecoverable — there is
+# no reset path. It must survive the loss of the machine it protects, hence
+# shipping it here alongside the password manager copy.
+local -a restic_plaintexts restic_enc_files
+restic_plaintexts=($HOME/repos/deploy/immich/.restic-password)
+restic_enc_files=(configs/immich/restic-password.enc)
+for (( i = 1; i <= ${#restic_plaintexts}; i++ )); do
+    plaintext=${restic_plaintexts[i]}
+    enc_file=${restic_enc_files[i]}
+    [[ -f $plaintext ]] || continue
+
+    mkdir -p configs/immich
+
+    encrypt_if_changed "$plaintext" "$enc_file"
+done
