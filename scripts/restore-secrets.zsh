@@ -121,8 +121,8 @@ done
 # by absolute path via RESTIC_PASSWORD_FILE.
 local restic_dir=$HOME/repos/deploy/immich
 local -a restic_enc_files restic_targets
-restic_enc_files=(configs/immich/restic-password.enc)
-restic_targets=($restic_dir/.restic-password)
+restic_enc_files=(configs/immich/restic-password.enc configs/immich/b2-env.enc)
+restic_targets=($restic_dir/.restic-password $restic_dir/.b2-env)
 for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
     enc_file=${restic_enc_files[i]}
     target=${restic_targets[i]}

@@ -151,8 +151,8 @@ done
 # no reset path. It must survive the loss of the machine it protects, hence
 # shipping it here alongside the password manager copy.
 local -a restic_plaintexts restic_enc_files
-restic_plaintexts=($HOME/repos/deploy/immich/.restic-password)
-restic_enc_files=(configs/immich/restic-password.enc)
+restic_plaintexts=($HOME/repos/deploy/immich/.restic-password $HOME/repos/deploy/immich/.b2-env)
+restic_enc_files=(configs/immich/restic-password.enc configs/immich/b2-env.enc)
 for (( i = 1; i <= ${#restic_plaintexts}; i++ )); do
     plaintext=${restic_plaintexts[i]}
     enc_file=${restic_enc_files[i]}
