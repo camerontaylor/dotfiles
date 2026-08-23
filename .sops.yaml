@@ -2,7 +2,7 @@ creation_rules:
   # Matches both source plaintext (e.g. zsh/env.d/90_secrets.zsh)
   # and their encrypted counterparts (.enc), so the same
   # rule applies for `sops -e` and `sops updatekeys`.
-  - path_regex: ^(zsh/env\.d|zsh/rc\.d|nvim/init)/9[0-9]_|(^|/)\.?ssh/(config|webfront_claw(\.pub)?|id_ed25519(\.pub)?)(\.enc)?$|(^|/)\.local/state/portkey/(env|local-api-key)$|(^|/)configs/ai/portkey/state/(env|local-api-key)\.enc$
+  - path_regex: ^(zsh/env\.d|zsh/rc\.d|nvim/init)/9[0-9]_|(^|/)\.?ssh/(config|webfront_claw(\.pub)?|id_ed25519(\.pub)?)(\.enc)?$|(^|/)\.local/state/portkey/(env|local-api-key)$|(^|/)configs/ai/portkey/state/(env|local-api-key)\.enc$|(^|/)\.config/openclaw-mcp/env$|(^|/)configs/openclaw-mcp/env\.enc$
     age: >-
       age10tfkkn5vt2a0r8n9qy4ycejx8rgxukrz9l96awdha2tm84g8dshsppn7em,
       age1484njws7ghzq3tednfaj6ye8fc733dcl39wdxk08mle4jt7ahfcsn4dl7t,
