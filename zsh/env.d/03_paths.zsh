@@ -50,3 +50,37 @@ MANPATH=$XDG_DATA_HOME/man:$MANPATH
 path=($GOPATH/bin $path)
 
 export PNPM_STORE_DIR="$XDG_DATA_HOME/pnpm/store"
+
+# Android SDK. Android Studio's SDK Manager owns the install (do NOT hand it to
+# mise — dual management fights the IDE); we only wire PATH and the env vars
+# Gradle/NDK read. Location is OS-divergent: macOS ~/Library/Android/sdk, Linux
+# ~/Android/Sdk (capital S). A pre-set $ANDROID_HOME wins, for odd installs.
+if [[ -z $ANDROID_HOME ]]; then
+    local _android_sdk
+    for _android_sdk in $HOME/Library/Android/sdk $HOME/Android/Sdk; do
+        [[ -d $_android_sdk ]] && break
+        _android_sdk=
+    done
+    [[ -n $_android_sdk ]] && ANDROID_HOME=$_android_sdk
+    unset _android_sdk
+fi
+
+if [[ -n $ANDROID_HOME && -d $ANDROID_HOME ]]; then
+    export ANDROID_HOME
+    # ANDROID_SDK_ROOT is deprecated in favour of ANDROID_HOME but is still what
+    # older Gradle plugins and the NDK build scripts read. Export both.
+    export ANDROID_SDK_ROOT=$ANDROID_HOME
+
+    # APPEND, never prepend: platform-tools ships its own sqlite3 (also mke2fs,
+    # make_f2fs) which would shadow /usr/bin/sqlite3. On macOS /etc/zprofile's
+    # path_helper happens to demote env.d prepends behind /usr/bin anyway, but
+    # Linux has no such backstop — appending makes that guarantee explicit on
+    # both. Nothing here needs to win a name collision.
+    [[ -d $ANDROID_HOME/platform-tools ]] && path=($path $ANDROID_HOME/platform-tools)
+
+    # build-tools is version-stamped; take the highest so apksigner/zipalign/
+    # aapt2 resolve. (/Nn) = dirs only, nullglob, numeric sort → 36.0.0 last.
+    local -a _android_bt=($ANDROID_HOME/build-tools/*(/Nn))
+    (( $#_android_bt )) && path=($path $_android_bt[-1])
+    unset _android_bt
+fi
