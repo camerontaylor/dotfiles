@@ -16,7 +16,7 @@
 # stray drift bundled into unrelated commits, so both the working tree and
 # staged blob are reverted to HEAD's value before commit. Real bumps land via:
 #
-#   SKIP_CODEX_ENFORCE=1 git commit -m "feat(codex): bump model to gpt-5.5"
+#   SKIP_CODEX_ENFORCE=1 git commit -m "feat(codex): bump model to gpt-5.6-sol"
 
 setopt err_exit pipefail
 
