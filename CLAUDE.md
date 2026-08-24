@@ -40,6 +40,29 @@ sanitised env entirely), so the bootstrap layer (`scripts/`, `scripts/deploy.d/`
 | `tar --xform` / `--wildcards` | bsdtar uses different flags | use `gtar` explicitly, or refactor |
 | `gensub(…)` / `asort(…)` in awk | gawk-only | use `sub`/`gsub`, hand-roll sorting |
 
+### zsh-vs-bash foot-guns to avoid
+
+The bootstrap layer is **zsh**, but it gets edited by anyone carrying bash
+habits — and the two shells disagree about **word splitting**. zsh does not
+split unquoted parameter expansions; bash does:
+
+| with `v="a b c"`, `arr=(a b c)` | zsh | bash |
+|---|---|---|
+| `cmd $v` | **1 arg** (`a b c`) | 3 args |
+| `cmd $arr` | 3 args | **1 arg** (`a`) |
+| `cmd $(echo a b c)` | 3 args | 3 args |
+| `cmd "$arr[@]"` / `"${arr[@]}"` | 3 args, empties kept | 3 args |
+
+So, in this repo's zsh:
+
+- **Build word lists as arrays, never space-joined strings.** `cmd $pkgs` with
+  `pkgs="a b c"` passes ONE argument. Canonical pattern —
+  `scripts/deploy.d/70_runtime_installs.zsh:70-79`: accumulate into
+  `local -a npm_packages=()`, then pass `$npm_packages`.
+- **Command substitution is the exception**: unquoted `$(cmd)` *does* split.
+  That asymmetry is what makes the broken string case look like it works.
+- Unquoted `$arr` drops empty elements; `"$arr[@]"` keeps them.
+
 ### Preferred replacements
 
 When the bootstrap is past the point where mise tools are guaranteed
@@ -70,6 +93,9 @@ Before claiming a script change is done:
 
 - `bash -n scripts/the-script` (or `zsh -n` for `.zsh` files) — catches
   parse-time issues without executing.
+- Word-splitting bugs survive `-n` (they are runtime, not parse-time). For a
+  script that builds an argument list, echo the command before running it and
+  count the arguments.
 - For sed/awk heavy scripts, eyeball-test with `cat -e` to verify newline
   handling (use `cat -e`, not GNU `cat -A`).
 
