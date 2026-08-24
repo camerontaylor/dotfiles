@@ -25,6 +25,7 @@ local -a tool_checks=(
     delta:delta
     htop:htop
     mosh:mosh
+    wget:wget
     gh:gh
     git-restore-mtime:git-restore-mtime
     glab:glab
