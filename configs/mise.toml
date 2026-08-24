@@ -40,6 +40,12 @@ yq = "4"
 "npm:portless" = "latest"
 zoxide = "0"
 tree-sitter = "0"
+# Cross-platform performance monitors with upstream release binaries. Keep
+# kernel-integrated monitors (htop/atop/iotop-c/bpftrace/nvtop/macmon) on the
+# native package manager; their capabilities and dependencies are OS-specific.
+btop = "1"
+"github:imsnif/bandwhich" = "latest"
+"github:mstange/samply" = "latest"
 # Migrated from tools/ submodules (saved ~166M of submodule history). fzf has a
 # curated aqua backend; pnpm-shell-completion (Rust) has no mise registry entry
 # but ships GitHub release binaries, so use the github backend. (b4b4r07/httpstat

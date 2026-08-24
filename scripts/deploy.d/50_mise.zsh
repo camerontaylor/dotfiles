@@ -107,7 +107,7 @@ fi
 # itself isn't installed). Acts as a hedge, not a default path.
 if [[ $DOTFILES_OS == Darwin ]] && ensure_homebrew_path 2>/dev/null; then
     local fallback_tool
-    for fallback_tool in gh ripgrep neovim delta bat eza fd sd zoxide tree-sitter awscli ast-grep glab; do
+    for fallback_tool in gh ripgrep neovim delta bat eza fd sd zoxide tree-sitter awscli ast-grep glab btop bandwhich samply; do
         local fallback_bin=$fallback_tool
         case $fallback_tool in
             ripgrep) fallback_bin=rg ;;

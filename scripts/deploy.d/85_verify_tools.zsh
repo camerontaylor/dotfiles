@@ -30,6 +30,9 @@ local -a tool_checks=(
     glab:glab
     ast-grep:sg
     tree-sitter:tree-sitter
+    btop:btop
+    bandwhich:bandwhich
+    samply:samply
     sops:sops
     age:age
     neovim:nvim
@@ -40,6 +43,12 @@ local -a tool_checks=(
     corepack:corepack
     psql:psql
 )
+
+if [[ $DOTFILES_OS == Linux ]]; then
+    tool_checks+=(atop:atop iotop-c:iotop bpftrace:bpftrace nvtop:nvtop)
+elif [[ $DOTFILES_OS == Darwin && $DOTFILES_ARCH == arm64 ]]; then
+    tool_checks+=(macmon:macmon)
+fi
 
 typeset -a failed=()
 local entry tool bin_name
