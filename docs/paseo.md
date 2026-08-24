@@ -6,9 +6,9 @@ exposes them to a desktop app, a phone app, a browser, and a CLI. It carries no
 model credentials of its own — it drives the agent CLIs already installed and
 logged in on the box.
 
-AGPL-3.0. Stable CLI and desktop app track the same version (0.4.0 at time of
-writing); a beta channel exists in the desktop app under **Settings → About →
-Release channel**.
+AGPL-3.0. CLI and desktop app versions should stay in lockstep. The Macs use
+the beta channel in the desktop app under **Settings → About → Release
+channel**; the headless Linux install tracks npm's `@beta` dist-tag.
 
 ## Topology
 
@@ -16,7 +16,7 @@ Release channel**.
 |---|---|---|---|---|
 | saturn | macOS | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `[::]:6767` |
 | neptune | macOS (Intel) | `paseo` brew cask (app + CLI) | Paseo.app, plus a login LaunchAgent | `[::]:6767` |
-| ceres | Arch, headless | `npm:@getpaseo/cli@latest` via mise | `paseo-daemon.service` (systemd) | `[::]:6767` |
+| ceres | Arch, headless | `npm:@getpaseo/cli@beta` via mise | `paseo-daemon.service` (systemd) | `[::]:6767` |
 | phone | iOS / Android | App Store / Play Store | — | connects over Tailscale |
 
 Every daemon requires a bcrypt password. The phone reaches a box by its
@@ -66,7 +66,11 @@ over and opens the app.
 `setup-paseo.sh` therefore installs a **user** LaunchAgent,
 `~/Library/LaunchAgents/local.paseo-daemon.plist` — user, not a system
 LaunchDaemon like `t3-serve`, because the daemon spawns claude/codex/opencode
-and those need this user's login session and keychain.
+and those need this user's login session and keychain. It also disables
+Desktop's built-in daemon management in `desktop-settings.json`; the
+LaunchAgent must be the sole daemon owner. With both enabled, Desktop can
+misread the password-protected local daemon as unavailable and a duplicate
+start fails with exit code 1.
 
 Two deliberate choices in that plist:
 

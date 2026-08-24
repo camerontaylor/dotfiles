@@ -5,6 +5,7 @@ model_context_window = 1000000
 model_auto_compact_token_limit = 100000
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
+model_reasoning_effort = "low"
 
 [features]
 

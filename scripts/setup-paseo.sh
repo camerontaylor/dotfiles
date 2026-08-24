@@ -47,7 +47,7 @@ set -euo pipefail
 #   binaries; it does not carry its own model credentials.
 
 PASEO_PORT=${PASEO_PORT:-6767}
-PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@0.5.0-beta.4}"
+PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@beta}"
 BCRYPT_COST=12   # matches DAEMON_PASSWORD_BCRYPT_COST in paseo's server package
 
 OS=$(uname -s)
@@ -344,6 +344,7 @@ setup_launchagent() {
   # returns; without it launchd reaps the whole process group when the job
   # exits and kills the daemon it just started.
   local plist="$RUN_HOME/Library/LaunchAgents/local.paseo-daemon.plist"
+  local desktop_settings="$RUN_HOME/Library/Application Support/Paseo/desktop-settings.json"
   local paseo_bin
   paseo_bin=$(command -v paseo 2>/dev/null || true)
   if [[ -z "$paseo_bin" ]]; then
@@ -354,6 +355,22 @@ setup_launchagent() {
   if [[ -z "$paseo_bin" ]]; then
     echo "NOTE: no \`paseo\` binary found; skipping the login job."
     return 0
+  fi
+
+  # This LaunchAgent, rather than Paseo Desktop, owns the daemon lifecycle.
+  # Leaving both enabled makes Desktop race the already-running daemon. With
+  # password auth enabled its unauthenticated localhost status probe reports
+  # the healthy daemon as unavailable, then the duplicate start exits 1.
+  if [[ -f "$desktop_settings" ]]; then
+    if plutil -replace settings.daemon.manageBuiltInDaemon -bool false "$desktop_settings"; then
+      echo "Disabled Paseo Desktop's built-in daemon management."
+    else
+      echo "WARNING: could not disable Paseo Desktop daemon management in:"
+      echo "         $desktop_settings"
+    fi
+  else
+    echo "NOTE: open Paseo Desktop once, disable built-in daemon management,"
+    echo "      then re-run this script so the LaunchAgent is the sole owner."
   fi
 
   echo "Installing the login job (~/Library/LaunchAgents/local.paseo-daemon.plist)..."
