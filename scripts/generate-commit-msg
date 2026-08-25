@@ -8,8 +8,9 @@ set -euo pipefail
 #
 # Calls the Cerebras chat-completions API (Gemma 4) directly with curl — no
 # Claude Code harness, no gateway. The API key comes from $CEREBRAS_API_KEY,
-# falling back to the repo secrets file for contexts (git hooks, cron) where
-# zsh/env.d hasn't been sourced.
+# falling back to the rendered secrets file at
+# ${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/90_secrets.zsh for contexts
+# (git hooks, cron) where zsh/env.d hasn't been sourced.
 #
 # Usage:
 #   git diff --cached | generate-commit-msg
@@ -104,14 +105,16 @@ Options:
 Environment:
   COMMIT_MODEL      Override the default model (default: gemma-4-31b)
   COMMIT_BASE_URL   OpenAI-compatible base URL (default: https://api.cerebras.ai/v1)
-  COMMIT_API_KEY    API key (default: $CEREBRAS_API_KEY, then repo secrets file)
+  COMMIT_API_KEY    API key (default: $CEREBRAS_API_KEY, then the rendered
+                    $XDG_STATE_HOME/secrets/zsh/90_secrets.zsh)
   COMMIT_TELEMETRY  Set to "false" to skip Langfuse trace logging
 
 Telemetry:
   Each run is logged as a Langfuse trace (one generation per API call) to
   $LANGFUSE_HOST (default: https://telemetry.webfront.app). Keys resolve from
   LANGFUSE_PUBLIC_KEY/LANGFUSE_SECRET_KEY, then LANGFUSE_INIT_PROJECT_*, then
-  the repo telemetry secrets file. Best-effort: never blocks generation.
+  the rendered $XDG_STATE_HOME/secrets/zsh/92_telemetry_secrets.zsh.
+  Best-effort: never blocks generation.
 
 Examples:
   git diff --cached | generate-commit-msg
@@ -140,6 +143,24 @@ log() {
   fi
 }
 
+# extract_secret <file> <KEY>
+# Reads `export KEY=value` from a rendered secrets file and prints the
+# value with exactly one symmetric quote pair stripped. Quote-agnostic:
+# handles KEY=v, KEY="v" and KEY='v' (the renderer emits ${(qq)} single
+# quotes). Pure POSIX parameter expansion — no GNU sed, no bashisms
+# beyond what this script already uses.
+extract_secret() {
+  local file="$1" key="$2" val
+  [[ -r "$file" ]] || return 1
+  val="$(sed -n "s/^export ${key}=//p" "$file" | head -n1)"
+  [[ -n "$val" ]] || return 1
+  case "$val" in
+    \'*\')  val="${val#?}"; val="${val%?}"; val="${val//\'\\\'\'/\'}" ;;
+    \"*\")  val="${val#?}"; val="${val%?}" ;;
+  esac
+  printf '%s\n' "$val"
+}
+
 # ── Resolve dependencies and API key ───────────────────────────────────────
 
 for tool in curl jq; do
@@ -152,10 +173,8 @@ done
 if [[ -z "$API_KEY" ]]; then
   # Git hooks and cron run without the interactive env; pull the key straight
   # out of the secrets fragment instead of sourcing a zsh file from bash.
-  SECRETS_FILE="$SCRIPT_DIR/../zsh/env.d/90_secrets.zsh"
-  if [[ -r "$SECRETS_FILE" ]]; then
-    API_KEY="$(sed -n 's/^export CEREBRAS_API_KEY="\([^"]*\)".*/\1/p' "$SECRETS_FILE" | head -n1)"
-  fi
+  SECRETS_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/90_secrets.zsh"
+  API_KEY="$(extract_secret "$SECRETS_FILE" CEREBRAS_API_KEY || true)"
 fi
 
 if [[ -z "$API_KEY" ]]; then
@@ -178,11 +197,9 @@ esac
 LF_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY:-${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}}"
 LF_SECRET_KEY="${LANGFUSE_SECRET_KEY:-${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}}"
 if [[ "$TELEMETRY_ENABLED" == true && ( -z "$LF_PUBLIC_KEY" || -z "$LF_SECRET_KEY" ) ]]; then
-  TELEMETRY_SECRETS="$SCRIPT_DIR/../zsh/env.d/92_telemetry_secrets.zsh"
-  if [[ -r "$TELEMETRY_SECRETS" ]]; then
-    [[ -n "$LF_PUBLIC_KEY" ]] || LF_PUBLIC_KEY="$(sed -n 's/^export LANGFUSE_INIT_PROJECT_PUBLIC_KEY=//p' "$TELEMETRY_SECRETS" | head -n1 | tr -d '"')"
-    [[ -n "$LF_SECRET_KEY" ]] || LF_SECRET_KEY="$(sed -n 's/^export LANGFUSE_INIT_PROJECT_SECRET_KEY=//p' "$TELEMETRY_SECRETS" | head -n1 | tr -d '"')"
-  fi
+  TELEMETRY_SECRETS="${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/92_telemetry_secrets.zsh"
+  [[ -n "$LF_PUBLIC_KEY" ]] || LF_PUBLIC_KEY="$(extract_secret "$TELEMETRY_SECRETS" LANGFUSE_INIT_PROJECT_PUBLIC_KEY || true)"
+  [[ -n "$LF_SECRET_KEY" ]] || LF_SECRET_KEY="$(extract_secret "$TELEMETRY_SECRETS" LANGFUSE_INIT_PROJECT_SECRET_KEY || true)"
 fi
 if [[ -z "$LF_PUBLIC_KEY" || -z "$LF_SECRET_KEY" ]]; then
   TELEMETRY_ENABLED=false

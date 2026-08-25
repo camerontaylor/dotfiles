@@ -2,14 +2,20 @@
 # previous mesh, was decommissioned 2026-06-07; see
 # docs/tailscale-migration-runbook.md for the historical cutover.)
 #
-# Joins using a reusable, tagged pre-auth key from $TAILSCALE_AUTHKEY, sourced
-# from an encrypted secret file zsh/env.d/9[0-9]_tailscale_secrets.zsh (the same
-# sops/age flow as other encrypted secrets). Optional knobs from that file:
+# Joins using a reusable, tagged pre-auth key from $TAILSCALE_AUTHKEY, rendered
+# from the private secrets repo to
+# $XDG_STATE_HOME/secrets/zsh/95_tailscale_secrets.zsh by
+# scripts/secrets-render.zsh. Optional PER-BOX knobs:
 #   $TAILSCALE_ADVERTISE_ROUTES  space/comma-separated CIDRs for a subnet router
 #                                (e.g. "10.132.32.0/24" on the LAN-router host)
 #   $TAILSCALE_EXTRA_ARGS        extra flags appended verbatim to `tailscale up`
 #                                (e.g. "--advertise-tags=tag:fleet" if the key
 #                                 is not already pre-tagged)
+# These two are genuinely per-machine, so they do NOT belong in the
+# fleet-shared secrets repo. Put them in a local, gitignored
+# zsh/env.d/96_local_tailscale.zsh on the box that needs them; the loop below
+# sources the rendered file first and the local override second, so the
+# override wins.
 # Always enables Tailscale SSH (--ssh) and --accept-routes so this host can
 # reach subnet-router-advertised LAN ranges.
 
@@ -17,9 +23,14 @@ if [[ $DOTFILES_OS != Linux && $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
-# Source secret env files since deploy.zsh runs in a fresh shell.
+# Source secret env files since deploy.zsh runs in a fresh shell. Rendered
+# values first, then any in-tree 9x tailscale file — that second glob matches
+# both a deliberate per-box 96_local_tailscale.zsh (which therefore wins) and,
+# on a box that has not completed the secrets bootstrap, the legacy
+# 95_tailscale_secrets.zsh plaintext, so degraded boxes keep today's behaviour.
 local secret_file
-for secret_file in $SCRIPT_DIR/zsh/env.d/9[0-9]_tailscale_secrets.zsh(N); do
+for secret_file in ${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/9[0-9]_tailscale_secrets.zsh(N) \
+                   $SCRIPT_DIR/zsh/env.d/9[0-9]_*tailscale*.zsh(N); do
     source $secret_file
 done
 
@@ -175,8 +186,9 @@ if "$ts_cli" status 2>/dev/null | grep -q '^100\.'; then
 fi
 
 if [[ -z ${TAILSCALE_AUTHKEY:-} ]]; then
-    print "Tailscale: \$TAILSCALE_AUTHKEY not set (need encrypted 9X_tailscale_secrets.zsh); skipping join."
-    print "  ...see docs/tailscale-migration-runbook.md"
+    print "Tailscale: \$TAILSCALE_AUTHKEY not set; skipping join."
+    print "  Expected at \$XDG_STATE_HOME/secrets/zsh/95_tailscale_secrets.zsh —"
+    print "  run ./deploy.zsh --only 65_secrets to render it (see ~/.local/secrets/README.md)."
     return 0
 fi
 
