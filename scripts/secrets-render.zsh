@@ -245,11 +245,25 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
         continue
     fi
 
+    # The target's directory has to exist before mktemp, because the temp file
+    # is created THERE and not in $TMPDIR: a rename is only atomic within one
+    # filesystem, and $TMPDIR is routinely a different one (tmpfs). A
+    # cross-device `mv` degrades to copy-then-unlink, which can leave a
+    # half-written private key if the box dies mid-render.
+    local dstdir=${dst:h}
+    if [[ ! -d $dstdir ]]; then
+        if [[ $mode == 600 ]]; then
+            install -m 700 -d $dstdir
+        else
+            mkdir -p $dstdir
+        fi
+    fi
+
     # Every write is mktemp -> chmod -> mv, so a mid-render failure leaves the
     # existing target byte-for-byte untouched.
     local tmp
-    tmp=$(mktemp "${TMPDIR:-/tmp}/secrets-render.XXXXXX") || {
-        print "  FAILED ${MAP_SRC[i]}: mktemp" >&2
+    tmp=$(mktemp "${dst}.render.XXXXXX") || {
+        print "  FAILED ${MAP_SRC[i]}: mktemp in $dstdir" >&2
         FAILED_NAMES+=("${MAP_SRC[i]}"); (( N_FAILED++ )); continue
     }
     chmod 600 $tmp
@@ -285,15 +299,6 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
         FAILED_NAMES+=("${MAP_SRC[i]}")
         (( N_FAILED++ ))
         continue
-    fi
-
-    local dstdir=${dst:h}
-    if [[ ! -d $dstdir ]]; then
-        if [[ $mode == 600 ]]; then
-            install -m 700 -d $dstdir
-        else
-            mkdir -p $dstdir
-        fi
     fi
 
     # First-render cutover backup: on a box that has never completed a render,
