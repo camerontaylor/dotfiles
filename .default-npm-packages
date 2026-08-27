@@ -21,9 +21,29 @@ oxlint@latest
 @aoagents/ao@latest
 grab@latest
 continues@latest
-# openclaw-gateway.service (user unit) runs the openclaw global through mise
-# shims — keep it here or the gateway loses its binary on a node bump.
-openclaw@latest
+# openclaw is DELIBERATELY NOT in this list (removed 2026-08-27).
+#
+# ceres runs the beta channel (~/.openclaw/openclaw.json `update.channel:
+# "beta"`). `openclaw@latest` here was the root cause of four silent
+# beta->stable downgrades (2026-08-17 x2, 2026-08-22 16:26, 2026-08-26 02:02
+# +1000): the stable binary refuses a beta-written config, exits 78 with
+# `InvalidConfigError: ... meta: Invalid input`, bricking every CLI call and
+# the gateway on its next restart. Each downgrade landed 2-3 min after a
+# fast-forward `git pull` here -- the pull fires scripts/post-merge, which runs
+# deploy.zsh, whose scripts/deploy.d/70_runtime_installs.zsh:74 does
+# `mise exec node -- npm install -g $npm_packages` over this list.
+#
+# Pinning to @beta fixed the version skew but not the deeper hazard: any deploy
+# reinstalls openclaw *under the live gateway*, rewriting dist/ beneath a
+# running process and breaking its lazy module loading until restart (see the
+# 2026-08-24T14:54 SIGTERM-mid-postinstall entry in
+# ~/.cache/openclaw-ensure-beta.log). So the package is out of the sweep
+# entirely and ownership moved to two places that cannot fire mid-run:
+#   - upgrades: openclaw's own in-gateway beta auto-updater
+#   - repair/install: ~/repos/hart/scripts/openclaw-ensure-beta.sh, the
+#     ExecStartPre guard on openclaw-gateway.service (handles a missing package
+#     too, so a node bump self-heals on the next gateway start)
+# Full evidence chain: ~/repos/hart/docs/openclaw-beta-drift-check.md
 # tsc/tsserver + the LSP server nvim's ts_ls uses.
 typescript@latest
 typescript-language-server@latest

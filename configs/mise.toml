@@ -12,6 +12,12 @@ uv = "0.11.16"
 # npm globals live in ~/.local/dotfiles/.default-npm-packages, installed
 # through mise node's npm by scripts/deploy.d/70_runtime_installs.zsh (and by
 # mise itself on node install, via the ~/.default-npm-packages symlink).
+# EXCEPTION: openclaw is deliberately excluded from that list (2026-08-27) — it
+# was silently downgraded beta->stable four times by this very path. It is
+# installed/repaired only by the ExecStartPre guard on openclaw-gateway.service
+# (~/repos/hart/scripts/openclaw-ensure-beta.sh). On a node bump, also update
+# NODE_PREFIX in that guard and ExecStart in the unit — both pin an absolute
+# node path so the gateway does not silently keep running the old prefix.
 node = "24"
 # CLI tools migrated from deploy.zsh's per-tool installers / rust_tools array.
 # Aqua backends (prebuilt binaries) are preferred where available, falling back
