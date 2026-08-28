@@ -162,6 +162,15 @@ done
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
+# gjc (gajae-code) is ceres-only. config.yml carries the Discord bot token
+# (gjc has no env indirection for it); .env carries provider API keys. The
+# secret-free gjc files (models.yml, AGENTS.md) live in the public repo under
+# configs/ai/gjc/ and are symlinked by deploy.d/20_symlinks.zsh.
+# NOTE: `gjc config set` writes ~/.gjc/agent/config.yml directly; a render
+# clobbers that. Mirror persistent config edits into services/gjc/config.enc
+# (`sops -e -i --input-type binary --output-type binary`) or they are transient.
+_row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 ceres  ''
+_row services/gjc/config.enc              blob   "$HOME/.gjc/agent/config.yml"             600 ceres  ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
 

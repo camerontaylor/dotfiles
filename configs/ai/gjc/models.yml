@@ -1,0 +1,60 @@
+# Ox — OpenRouter stealth model trial (stealth/ox-alpha), free until ~2026-08-28.
+#
+# DATA POLICY: prompts + completions are RETAINED by the anonymous upstream
+# provider. Use for build/code work ONLY — never personal, court, or triage data.
+#
+# TRIAL EXPIRY: when stealth/ox-alpha starts returning 404, the trial is over —
+# delete this file (and the OPENROUTER_API_KEY line in .env if unused elsewhere).
+#
+# Declared explicitly because OpenRouter runtime discovery may not list stealth
+# slugs; provider entries with `models:` need baseUrl+api spelled out
+# (model-registry.ts #parseModels uses providerConfig.baseUrl!, no inheritance
+# from the first-class openrouter descriptor).
+
+providers:
+  # GLM-5.3-Flash on the Z.AI coding plan — not yet in gjc's builtin zai catalog
+  # (which stops at glm-5.3 / glm-5-turbo), so declared as a custom overlay.
+  # Verified live on the anthropic-compat endpoint 2026-08-28. contextWindow is
+  # conservatively 1M (OpenRouter lists 1.3M); cost 0 matches the coding-plan
+  # convention used by the builtin zai entries.
+  zai:
+    baseUrl: https://api.z.ai/api/anthropic
+    apiKeyEnv: ZAI_API_KEY
+    api: anthropic-messages
+    models:
+      - id: glm-5.3-flash
+        name: GLM-5.3 Flash
+        reasoning: true
+        contextWindow: 1000000
+        maxTokens: 131072
+        cost:
+          input: 0
+          output: 0
+          cacheRead: 0
+          cacheWrite: 0
+  openrouter:
+    baseUrl: https://openrouter.ai/api/v1
+    apiKeyEnv: OPENROUTER_API_KEY
+    api: openai-completions
+    models:
+      - id: stealth/ox-alpha
+        name: Ox (stealth trial)
+        reasoning: false
+        contextWindow: 1000000
+        maxTokens: 32768
+        cost:
+          input: 0
+          output: 0
+          cacheRead: 0
+          cacheWrite: 0
+
+profiles:
+  ox:
+    display_name: Ox (OpenRouter stealth trial)
+    required_providers: [openrouter]
+    model_mapping:
+      default: openrouter/stealth/ox-alpha
+      executor: openrouter/stealth/ox-alpha
+      planner: openrouter/stealth/ox-alpha
+      critic: openrouter/stealth/ox-alpha
+      architect: openrouter/stealth/ox-alpha

@@ -101,6 +101,11 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/setti
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
+# gjc (gajae-code). Only the secret-free files live here; config.yml (Discord
+# bot token) and .env (provider keys) are rendered from the private secrets
+# repo by 65_secrets — see scripts/secrets-render.zsh services/gjc rows.
+zf_ln -sfn $SCRIPT_DIR/configs/ai/gjc/models.yml $HOME/.gjc/agent/models.yml
+zf_ln -sfn $SCRIPT_DIR/configs/ai/gjc/AGENTS.md $HOME/.gjc/agent/AGENTS.md
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
