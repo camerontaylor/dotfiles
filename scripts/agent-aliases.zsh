@@ -353,11 +353,11 @@ agent_alias_define_env() {
             AGENT_ALIAS_ENV=(
                 CLAUDE_CODE_ATTRIBUTION_HEADER 0
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 1
-                ANTHROPIC_DEFAULT_SONNET_MODEL glm-5-turbo
-                ANTHROPIC_DEFAULT_HAIKU_MODEL glm-5-turbo
+                ANTHROPIC_DEFAULT_SONNET_MODEL glm-5.3-flash
+                ANTHROPIC_DEFAULT_HAIKU_MODEL glm-5.3-flash
                 ANTHROPIC_DEFAULT_OPUS_MODEL glm-5.3
-                ANTHROPIC_SMALL_FAST_MODEL glm-5-turbo
-                CLAUDE_CODE_SUBAGENT_MODEL ""
+                ANTHROPIC_SMALL_FAST_MODEL glm-5.3-flash
+                CLAUDE_CODE_SUBAGENT_MODEL glm-5.3-flash
                 ANTHROPIC_API_KEY ""
                 ANTHROPIC_AUTH_TOKEN "${Z_AI_API_KEY:-}"
                 ANTHROPIC_BASE_URL https://api.z.ai/api/anthropic

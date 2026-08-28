@@ -13,7 +13,7 @@ Both alias files are interactive-only (`[[ -o interactive ]] || return 0`). Only
 | Alias | Provider / base URL | Model tiers | Notes |
 |---|---|---|---|
 | `cc` / `ccc` | Anthropic (default) | plan default | Unsets every override. Only first-party route. Don't pass `--model` — that's what preserves the 1M-context variant. |
-| `ccz-direct` | Z.AI `api.z.ai/api/anthropic` | opus→`glm-5.3`, sonnet/haiku/small-fast→`glm-5-turbo` | The workhorse for bulk survey/draft. `ANTHROPIC_MODEL` unset → pass `--model glm-5.3`. |
+| `ccz-direct` | Z.AI `api.z.ai/api/anthropic` | opus→`glm-5.3`, sonnet/haiku/small-fast/subagent→`glm-5.3-flash` | The workhorse for bulk survey/draft. `ANTHROPIC_MODEL` unset → pass `--model glm-5.3`. |
 | `ccx-direct` / `ccx` | OpenRouter `openrouter.ai/api` | all tiers → `stealth/ox-alpha` | **Free trial, ends ~2026-08-28. Prompts retained by an anonymous provider — build work only, never personal/court/triage data.** |
 | `ccd-direct` | DeepSeek `api.deepseek.com/anthropic` | opus/sonnet→`deepseek-v4-pro[1m]`, haiku/subagent→`deepseek-v4-flash` | Only direct route that splits tiers across two models (same base URL serves both). |
 | `ccm-direct` | MiniMax `api.minimax.io/anthropic` | all tiers → `MiniMax-M2.7` | `cc-minimax` is the M2.5 backward-compat alias. **Returned `API Error: 402 insufficient balance` on 2026-08-21** — account needs topping up before this route is usable. |
@@ -44,6 +44,8 @@ plain `claude` binary.
   models handle deferred tool schemas poorly. Default elsewhere is `auto:5`.
 - `CLAUDE_CODE_SUBAGENT_MODEL=""` on direct routes: subagents inherit the parent's
   route rather than falling back to an Anthropic model name the provider can't serve.
+  Exception: `ccz-direct` pins subagents to `glm-5.3-flash` (2026-08-28) — workers
+  run the flash tier even when the parent is on `glm-5.3`.
 - One base URL per process. Every tier must be a model the pinned provider serves;
   a leftover `opus`/`sonnet` alias name from a previous shell will 404.
 
