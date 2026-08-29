@@ -173,6 +173,9 @@ _row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"        
 _row services/gjc/config.enc              blob   "$HOME/.gjc/agent/config.yml"             600 ceres  ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
+# libris (book/serial archiver on ceres) backs up to its own restic repo on
+# saturn; same deploy-dir gate so the password lands only where libris lives.
+_row services/libris/restic-password.enc   blob   "$HOME/repos/deploy/libris/.restic-password" 600 libris ''
 
 # ssh. Rendered into $DOTFILES/ssh/ with the historical 600/644 modes, then
 # symlinked into ~/.ssh/ (matching scripts/deploy.d/20_symlinks.zsh).
@@ -214,6 +217,7 @@ _gate_open() {
         all)    return 0 ;;
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
+        libris) [[ -d $HOME/repos/deploy/libris ]] ;;
         *)      return 1 ;;
     esac
 }
