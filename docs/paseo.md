@@ -141,8 +141,14 @@ installs the supervision (systemd unit on Linux, login LaunchAgent on macOS),
 starts the daemon, verifies `/api/health`, and prints the Tailscale address to
 type into the phone.
 
-On the Macs the cask also arrives through the normal deploy
-(`scripts/deploy.d/75_brew_setup.zsh`), so `./deploy.zsh` keeps it upgraded.
+On the Macs the cask arrives through the normal deploy
+(`scripts/deploy.d/75_brew_setup.zsh`), but **install-only** — deploy will never
+upgrade it. The cask tracks Paseo's *stable* channel while both Macs run *beta*,
+and brew judges freshness from its Caskroom receipt rather than the app bundle,
+so every deploy upgrade was really a downgrade applied under a live daemon. Two
+guards enforce that (they cover different callers, so both are needed): `paseo`
+is listed in `$brew_upgrade_skip`, which holds it out of the bare `brew upgrade`
+sweep, and its own block has no upgrade branch. See *Upgrades* below.
 
 ### 3. Connect the phone
 
@@ -226,9 +232,45 @@ password.
   call, so hashing unconditionally would churn the config), and only restarts a
   daemon when the unit or config actually changed — re-running will not
   interrupt agents mid-task.
-- **Upgrades**: macOS via `./deploy.zsh` (brew cask, or the app's own updater);
-  ceres by re-running `./scripts/setup-paseo.sh`, which re-resolves
-  `npm:@getpaseo/cli@latest` through mise.
+- **Upgrades**: **not** `./deploy.zsh` and **not** `brew upgrade --cask paseo`
+  on macOS — both downgrade a beta box to stable (see above). Let the app update
+  itself (**Settings -> About -> Release channel** = `beta`), or install the
+  release by hand, which is the only way to force a specific beta:
+
+  ```zsh
+  # neptune is Intel -> -x64.dmg; saturn is Apple Silicon -> -arm64.dmg
+  v=0.7.0-beta.2
+  curl -fsSL -o /tmp/paseo.dmg \
+    https://github.com/getpaseo/paseo/releases/download/v$v/Paseo-$v-x64.dmg
+  hdiutil attach -nobrowse -quiet /tmp/paseo.dmg -mountpoint /tmp/paseo-mnt
+  spctl -a -vv -t install /tmp/paseo-mnt/Paseo.app   # expect: accepted / Notarized Developer ID
+  osascript -e 'quit app "Paseo"'                    # the daemon dies with the app
+  mv /Applications/Paseo.app /tmp/Paseo.app.bak && ditto /tmp/paseo-mnt/Paseo.app /Applications/Paseo.app
+  xattr -dr com.apple.quarantine /Applications/Paseo.app
+  hdiutil detach /tmp/paseo-mnt -quiet
+  launchctl kickstart -k gui/$(id -u)/local.paseo-daemon && open -a Paseo
+  ```
+
+  `/Applications` is admin-group writable, so none of this needs `sudo`. The
+  `paseo` CLI is a symlink into the app bundle, so it follows automatically.
+
+  ceres: re-run `./scripts/setup-paseo.sh`, which re-resolves `PASEO_TOOL`
+  (default `npm:@getpaseo/cli@beta`) through mise and rewrites the unit. It
+  needs root, and **`sudo -E` is load-bearing** — the script reads
+  `PASEO_PASSWORD` from the environment and never sources `90_secrets.zsh`
+  itself; without it the script refuses to widen the bind past `127.0.0.1`,
+  cutting off the phone and the rest of the fleet:
+
+  ```zsh
+  cd ~/.local/dotfiles && echo "pw set: ${PASEO_PASSWORD:+yes}"   # must print yes
+  sudo -E PASEO_TOOL=npm:@getpaseo/cli@0.7.0-beta.2 ./scripts/setup-paseo.sh
+  ```
+
+  A Paseo *agent* on ceres cannot do this to itself: agents run inside
+  `paseo-daemon.service`'s own cgroup, which is `User=ctaylor` +
+  `NoNewPrivileges=true`, so `sudo` fails outright. An agent can safely stage
+  the version (`mise install npm:@getpaseo/cli@<ver>`) and leave the restart to
+  a human at a real terminal.
 - **`node-pty`**: Paseo pins `node-pty 1.2.0-beta.15`, which ships a
   `prebuilds/linux-x64` binary — so ceres avoids the build-from-source dance
   `setup-t3.sh` needs. The setup script verifies it anyway; that failure is

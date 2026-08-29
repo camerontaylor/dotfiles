@@ -147,7 +147,10 @@ install_macos() {
     exit 1
   fi
   if brew list --cask paseo &>/dev/null; then
-    echo "Paseo.app already installed (brew upgrade --cask paseo to update)."
+    # NOT "brew upgrade --cask paseo": the cask tracks STABLE and these Macs
+    # run the beta channel, so that command is a downgrade. See docs/paseo.md.
+    echo "Paseo.app already installed (upgrades: app Settings -> About ->"
+    echo "  Release channel, or the DMG procedure in docs/paseo.md)."
   else
     echo "Installing Paseo.app (brew cask)..."
     brew install --cask paseo

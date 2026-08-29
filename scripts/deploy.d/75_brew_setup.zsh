@@ -32,9 +32,36 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
     else
         print "  ...brew update failed"
     fi
+    # A bare `brew upgrade` sweeps outdated CASKS as well as formulae, and brew
+    # judges a cask's freshness from its Caskroom receipt — NOT from the app
+    # bundle actually on disk. Both Macs run Paseo's beta channel (0.7.0-beta.2,
+    # installed 2026-08-29 over the top of the cask), so the receipt still reads
+    # 0.5.1 on neptune / 0.4.0 on saturn and `brew upgrade --dry-run` offers
+    # "paseo 0.5.1 -> 0.6.1" — a silent DOWNGRADE to stable, written underneath
+    # a live daemon. Same hazard that took openclaw off the npm sweep (87dd9efe).
+    #
+    # Casks cannot be pinned (`brew pin` is formulae-only), so the exclusion has
+    # to happen here: upgrade everything outdated EXCEPT $brew_upgrade_skip.
+    # Ownership of Paseo upgrades belongs to the app's own beta updater
+    # (Settings -> About -> Release channel) and to docs/paseo.md's DMG
+    # procedure — neither of which deploy can second-guess from a Caskroom
+    # receipt. Anything added here needs the same justification: a channel brew
+    # cannot express.
+    local -a brew_upgrade_skip=( paseo )
+    local -a brew_outdated brew_upgradable
+    # `brew outdated --quiet` prints one name per line, formulae and casks
+    # alike; ${(f)...} splits on newlines and ${a:#p} drops matching elements.
+    brew_outdated=( ${(f)"$(brew outdated --quiet 2>/dev/null)"} )
+    brew_upgradable=( ${brew_outdated:|brew_upgrade_skip} )
     print "Upgrading Homebrew packages..."
-    if brew upgrade > /dev/null 2>&1; then
-        print "  ...done"
+    if (( ${#brew_outdated} == 0 )); then
+        print "  ...nothing outdated"
+    elif (( ${#brew_upgradable} == 0 )); then
+        print "  ...nothing to upgrade (held back: ${(j:, :)brew_upgrade_skip})"
+    elif brew upgrade $brew_upgradable > /dev/null 2>&1; then
+        print "  ...done (${#brew_upgradable} upgraded)"
+        (( ${#brew_outdated} != ${#brew_upgradable} )) \
+            && print "  ...held back: ${(j:, :)brew_upgrade_skip}"
     else
         print "  ...brew upgrade had issues (may be normal if no updates)"
     fi
@@ -330,13 +357,27 @@ fi
 # ceres, headless and without a cask, gets the CLI as a mise tool instead.
 # Per-host daemon config (bind address, password, web UI) is applied by
 # scripts/setup-paseo.sh — one-shot, not part of deploy. See docs/paseo.md.
+#
+# DELIBERATELY INSTALL-ONLY — there is no upgrade branch (removed 2026-08-29).
+# The cask tracks Paseo's STABLE channel and the Macs run BETA, so every deploy
+# upgrade was a downgrade: brew compares its Caskroom receipt against the cask,
+# never against /Applications/Paseo.app, so a hand-installed beta looks like an
+# old stable to it. Worse, the swap lands under a running daemon and takes the
+# version-locked `paseo` CLI (a symlink into the app bundle) with it. Paseo is
+# also named in $brew_upgrade_skip above, which is what keeps the bare
+# `brew upgrade` off it; both guards are needed, they cover different callers.
+# Upgrades are the app's own job (Settings -> About -> Release channel = beta),
+# or the DMG procedure in docs/paseo.md. This branch only bootstraps a Mac that
+# has no Paseo at all — and lands stable, which the app then updates itself.
+# The app-bundle test is not redundant with the receipt test: a box that got
+# its beta straight from the DMG has /Applications/Paseo.app but NO Caskroom
+# receipt, and `brew install --cask` would happily write stable over it.
 if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
-    if ! brew list --cask paseo > /dev/null 2>&1; then
+    if [[ ! -d /Applications/Paseo.app ]] && ! brew list --cask paseo > /dev/null 2>&1; then
         print "Installing Paseo..."
         brew_cask_install_or_upgrade paseo || true
     elif $upgrade_mode; then
-        print "Upgrading Paseo..."
-        brew_cask_install_or_upgrade paseo || true
+        print "Paseo: install-only, upgrades owned by the app's beta channel"
     fi
 fi
 
