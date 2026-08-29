@@ -1,6 +1,7 @@
 # curl/cargo installs for CLIs without a mise backend (Claude Code,
-# rustup/cargo, linear-cli, CodeWhale) plus npm globals through the
-# mise-managed node (pinned in configs/mise.toml, installed by 50_mise.zsh).
+# rustup/cargo, linear-cli, CodeWhale), npm globals through the mise-managed
+# node (pinned in configs/mise.toml, installed by 50_mise.zsh), and gjc as a
+# bun global (bun-only package; see its block below).
 
 if (( ! ${+commands[claude]} )); then
     print "Installing Claude Code..."
@@ -106,6 +107,65 @@ elif (( ${+commands[mise]} )); then
         print "Removing Vite+ (node/npm are mise-managed; see configs/mise.toml)..."
         rm -rf -- $HOME/.vite-plus
         print "  ...done"
+    fi
+fi
+
+# gjc (gajae-code): a bun-ONLY package — its package.json declares
+# `engines: { bun: ">=1.4.0" }` and bin/gjc.js runs under `#!/usr/bin/env bun`
+# — so it CANNOT ride the npm globals sweep above; installing it with npm
+# yields a binary that won't start. Tracked at @latest: the CLI moves fast and
+# the config we ship for it (configs/ai/gjc/, linked in 20_symlinks.zsh)
+# follows the current schema.
+#
+# bun's global bin dir ($XDG_CACHE_HOME/.bun/bin when BUN_INSTALL is unset) is
+# NOT on any PATH here — only ~/.local/bin is (zsh/env.d/03_paths.zsh:46) — so
+# link the binary there. A symlink beats adding a PATH entry to env.d because
+# ~/.local/bin also reaches non-zsh callers (systemd units, paseo dispatch).
+if (( ${+commands[bun]} )); then
+    autoload -Uz is-at-least
+
+    local gjc_bun_version gjc_bun_bin
+    gjc_bun_version=$(bun --version 2>/dev/null)
+
+    if (( DEPLOY_DRY_RUN )); then
+        print "  [dry-run] would install/upgrade gajae-code (gjc) as a bun global"
+    elif ! is-at-least 1.4.0 ${gjc_bun_version:-0}; then
+        # 50_mise.zsh runs `mise upgrade` on every deploy, so bun should already
+        # be current (configs/mise.toml pins the major, `bun = "1"`). If a box is
+        # still behind, say so rather than planting a gjc its runtime can't run.
+        print "gjc needs bun >= 1.4.0; this box has ${gjc_bun_version:-none}, skipping"
+        print "  ...run 'mise upgrade bun', then ./deploy.zsh"
+    else
+        print "Installing/upgrading gjc (gajae-code) as a bun global..."
+        if bun install -g gajae-code@latest > /dev/null 2>&1; then
+            print "  ...done"
+            # `bun install -g` rewrites node_modules/@gajae-code/coding-agent in
+            # place, under anything already running out of it. Deliberately NOT a
+            # reason to skip the upgrade: gjc's broker and daemon are long-lived
+            # on ceres, so a "skip while running" guard would pin that box
+            # forever. Unlike the openclaw beta->stable downgrades documented in
+            # .default-npm-packages, this only ever moves forward — but a live
+            # process keeps the old build, so name it and let the human restart.
+            # Two cmdline shapes to catch: `bun ~/.local/bin/gjc <cmd>` and the
+            # broker/daemon forms that exec straight out of node_modules.
+            if pgrep -u "$USER" -f 'gajae-code|bin/gjc' > /dev/null 2>&1; then
+                print "  ...note: gjc processes are running on the old build;"
+                print "     restart them ('gjc daemon' / open sessions) to pick this up"
+            fi
+        else
+            print "  ...failed to install gjc"
+        fi
+    fi
+
+    # Drift-correct the ~/.local/bin bridge even when the install was skipped:
+    # the link is what puts gjc on PATH at all, and it was hand-made (untracked)
+    # on the boxes that had gjc before this fragment existed.
+    if (( ! DEPLOY_DRY_RUN )); then
+        gjc_bun_bin=$(bun pm bin -g 2>/dev/null)
+        if [[ -n $gjc_bun_bin && -x $gjc_bun_bin/gjc ]]; then
+            zf_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
+            rehash
+        fi
     fi
 fi
 

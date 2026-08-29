@@ -162,15 +162,14 @@ done
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
-# gjc (gajae-code) is ceres-only. config.yml carries the Discord bot token
-# (gjc has no env indirection for it); .env carries provider API keys. The
-# secret-free gjc files (models.yml, AGENTS.md) live in the public repo under
-# configs/ai/gjc/ and are symlinked by deploy.d/20_symlinks.zsh.
-# NOTE: `gjc config set` writes ~/.gjc/agent/config.yml directly; a render
-# clobbers that. Mirror persistent config edits into services/gjc/config.enc
-# (`sops -e -i --input-type binary --output-type binary`) or they are transient.
-_row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 ceres  ''
-_row services/gjc/config.enc              blob   "$HOME/.gjc/agent/config.yml"             600 ceres  ''
+# gjc (gajae-code): only .env is a secret (ZAI_API_KEY, OPENROUTER_API_KEY).
+# Gated `all`, not ceres: config.yml's modelRoles.default is zai/glm-5.3, so a
+# box without these keys starts gjc with a default model it cannot authenticate.
+# The secret-free gjc files (models.yml, AGENTS.md, config.yml) live in the
+# public repo under configs/ai/gjc/ and are symlinked onto every box by
+# deploy.d/20_symlinks.zsh. config.yml was rendered here until the Discord
+# notifications block (bot token, no env indirection) was dropped.
+_row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
 # libris (book/serial archiver on ceres) backs up to its own restic repo on

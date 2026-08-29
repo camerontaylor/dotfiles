@@ -1,0 +1,17 @@
+configSchemaVersion: 1
+modelProfile:
+  {}
+compaction:
+  enabled: true
+  strategy: context-full
+skills:
+  customDirectories:
+    - ~/.agents/skills
+modelRoles:
+  default: zai/glm-5.3
+task:
+  agentModelOverrides:
+    executor: zai/glm-5.3-flash
+    architect: zai/glm-5.3:max
+    planner: zai/glm-5.3:high
+    critic: openai-codex/gpt-5.6-sol:xhigh

@@ -101,11 +101,26 @@ zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/setti
 zf_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
 # OpenCode
 zf_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
-# gjc (gajae-code). Only the secret-free files live here; config.yml (Discord
-# bot token) and .env (provider keys) are rendered from the private secrets
-# repo by 65_secrets — see scripts/secrets-render.zsh services/gjc rows.
+# gjc (gajae-code). Only the secret-free files live here; .env (provider keys)
+# is rendered from the private secrets repo by 65_secrets — see
+# scripts/secrets-render.zsh services/gjc row. config.yml used to be rendered
+# too (it carried a Discord bot token); notifications are gone, so it is now a
+# plain symlink and lands on every box. `gjc config set` resolves the symlink
+# and writes through it, so in-app config edits show up as a repo diff — commit
+# them rather than letting the next deploy look like drift.
 zf_ln -sfn $SCRIPT_DIR/configs/ai/gjc/models.yml $HOME/.gjc/agent/models.yml
 zf_ln -sfn $SCRIPT_DIR/configs/ai/gjc/AGENTS.md $HOME/.gjc/agent/AGENTS.md
+# config.yml points skills.customDirectories at ~/.agents/skills (line 39, the
+# shared agent-agnostic skills dir) rather than gjc's own ~/.gjc/agent/paseo-skills
+# bridge: the bridge is built by an explicit `gjc setup` run, is not tracked here,
+# and so would be MISSING on a fresh box. gjc tilde-expands the entry itself.
+zf_ln -sfn $SCRIPT_DIR/configs/ai/gjc/config.yml $HOME/.gjc/agent/config.yml
+# gjc workflow companion skills (ultragoal-prep, gjc-orchestration) need no
+# per-skill link: they live in configs/ai/agents/skills/, which reaches gjc
+# through the ~/.agents symlink above plus config.yml's
+# skills.customDirectories entry. Do NOT plant same-named skills under
+# ~/.gjc/skills — user scope outranks the custom dir and would shadow the
+# tracked copies (gjc logs a "higher-precedence location" diagnostic).
 # Portless
 zf_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 zf_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
