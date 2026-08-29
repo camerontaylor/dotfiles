@@ -48,6 +48,13 @@ set -euo pipefail
 
 PASEO_PORT=${PASEO_PORT:-6767}
 PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@beta}"
+# Bundled browser client on the daemon's own port. OFF by default (2026-08-29):
+# it widens the attack surface of an already-RCE-shaped service for a UI the
+# desktop and phone apps already cover. Set PASEO_WEB_UI=true to turn it back
+# on. Linux only — on macOS the desktop app is the GUI and the upstream default
+# is left alone. Startup-only: `paseo reload` reports this path under
+# "requires a daemon restart".
+PASEO_WEB_UI="${PASEO_WEB_UI:-false}"
 BCRYPT_COST=12   # matches DAEMON_PASSWORD_BCRYPT_COST in paseo's server package
 
 OS=$(uname -s)
@@ -497,10 +504,10 @@ CONFIG_ARGS=(--home "$PASEO_HOME_DIR" --listen "$LISTEN" --relay false)
 # 100.x address - are allowed by Paseo's hostname check unconditionally, so the
 # phone connecting by `tailscale ip -4` needs nothing here.
 CONFIG_ARGS+=(--hostname ".webfront.app" --hostname ".local" --hostname "$HOSTNAME_SHORT")
-# The bundled web UI turns the daemon's own port into a browser client. Worth it
-# on a headless box; on macOS the desktop app is the GUI, so leave the upstream
-# default alone.
-[[ "$OS" == "Linux" ]] && CONFIG_ARGS+=(--web-ui true)
+# The bundled web UI turns the daemon's own port into a browser client. On macOS
+# the desktop app is the GUI, so leave the upstream default alone; on Linux it
+# follows $PASEO_WEB_UI, which now defaults to false.
+[[ "$OS" == "Linux" ]] && CONFIG_ARGS+=(--web-ui "$PASEO_WEB_UI")
 [[ -n "$PASSWORD_HASH" ]] && CONFIG_ARGS+=(--password-hash "$PASSWORD_HASH")
 
 if [[ "$(id -u)" -eq 0 ]]; then

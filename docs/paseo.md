@@ -197,14 +197,25 @@ stable CLI `--host` is a per-subcommand option, not a root one, so that form
 fails with `unknown option '--host'`. (The README on `main` shows the root form
 because it documents the 0.5 beta.) `$PASEO_HOST` works for every subcommand.
 
-Headless web UI on ceres — the daemon serves the browser client on its own port:
+Headless web UI on ceres — **disabled since 2026-08-29**. The daemon can serve
+a browser client on its own port, and did on ceres, but it served static files
+*without auth* on a service whose whole purpose is running code as you. The
+desktop and phone apps already cover that job, so it is off by default:
 
-```
-http://ceres.webfront.app:6767/
+```zsh
+# it is a knob, not a deletion — Linux only, macOS keeps the upstream default
+PASEO_WEB_UI=true sudo -E ./scripts/setup-paseo.sh
 ```
 
-Static files load without auth; the API and WebSocket still require the
-password.
+`features.webUi.enabled` is a **startup** setting: `paseo reload` accepts the
+new config but reports the path under "these changes require a daemon restart",
+so the UI keeps serving until the daemon actually bounces.
+
+Do not reach for `paseo daemon restart` on ceres to force it. The unit is
+`Restart=on-failure`, so a *clean* stop is not restarted by systemd — and since
+the daemon is `User=ctaylor` + `NoNewPrivileges=true`, nothing running inside it
+can sudo the unit back up. Let the next `sudo -E ./scripts/setup-paseo.sh` apply
+it, which is also how the CLI gets upgraded.
 
 ## Operational notes
 
