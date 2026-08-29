@@ -159,13 +159,13 @@ if (( ${+commands[bun]} )); then
 
     # Drift-correct the ~/.local/bin bridge even when the install was skipped:
     # the link is what puts gjc on PATH at all, and it was hand-made (untracked)
-    # on the boxes that had gjc before this fragment existed.
-    if (( ! DEPLOY_DRY_RUN )); then
-        gjc_bun_bin=$(bun pm bin -g 2>/dev/null)
-        if [[ -n $gjc_bun_bin && -x $gjc_bun_bin/gjc ]]; then
-            zf_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
-            rehash
-        fi
+    # on the boxes that had gjc before this fragment existed. deploy_ln (not
+    # zf_ln) so --dry-run reports the link instead of refreshing it; `bun pm
+    # bin -g` is read-only, so it is safe to probe in either mode.
+    gjc_bun_bin=$(bun pm bin -g 2>/dev/null)
+    if [[ -n $gjc_bun_bin && -x $gjc_bun_bin/gjc ]]; then
+        deploy_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
+        (( DEPLOY_DRY_RUN )) || rehash
     fi
 fi
 
