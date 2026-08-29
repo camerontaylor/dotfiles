@@ -23,7 +23,7 @@ Save only:
 
 ## Output target
 
-Prefer project-level skills in `.omc/skills/`.
+Prefer project-level skills in `.agent/skills/`.
 
 Only create files when the session produced a skill-worthy insight. If not, explicitly say:
 

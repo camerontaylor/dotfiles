@@ -98,6 +98,14 @@ Session.vim
 # Specific files inside allowlisted dirs that should still be ignored
 .omc/plans/open-questions.md
 
+### distilled skill library (.agent/ — successor to .omc/, renamed 2026-08-29) ###
+# The distiller (hart-agent-homes/tools/distiller) writes $cwd/.agent/skills +
+# skills-pending/ + .distiller/ into every repo an agent works in. Ignore the
+# CONTENTS, never the `.agent` directory itself: hart's own .gitignore re-includes
+# `.agent/skills/` as tracked, and excluding the directory here would silently stop
+# git from descending into it.
+**/.agent/*
+
 # Sisyphus boulder state
 .sisyphus/boulder.json
 

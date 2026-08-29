@@ -7,7 +7,7 @@ argument-hint: "<what you are trying to do>"
 # Skill recall — active search of the distilled library
 
 The distiller (`~/repos/hart-agent-homes/tools/distiller/`) curates skills out of past
-successful sessions into two tiers: the current project's `.omc/skills/` and the global
+successful sessions into two tiers: the current project's `.agent/skills/` and the global
 `~/repos/hart-agent-homes/wesley/skills/`. A reactive hook already injects close matches
 at prompt time; **this skill is the liberal path** — use it deliberately, with a query you
 compose, when you want know-how the hook didn't volunteer.
@@ -16,14 +16,14 @@ compose, when you want know-how the hook didn't volunteer.
 
 ```bash
 ~/repos/hart-agent-homes/tools/distiller/distill retrieve "<what you are trying to do>" \
-    --mode active --lib "$PWD/.omc/skills"
+    --mode active --lib "$PWD/.agent/skills"
 ```
 
 - Phrase the query as the *task*, not keywords — retrieval is hybrid FTS + embedding
   cosine, so "roll back a bad deploy without losing the migration" beats "deploy rollback".
 - Each hit prints name, description, and score components. Then **Read the skill file**
   for the full steps/pitfalls/verification before acting on it:
-  `.omc/skills/<name>.md` (or `skills-pending/` for staged, lower-evidence hits).
+  `.agent/skills/<name>.md` (or `skills-pending/` for staged, lower-evidence hits).
 - `--scope <slug>` narrows to one project's skills when working across repos.
 - Try one rephrasing if the first query misses; then stop.
 
