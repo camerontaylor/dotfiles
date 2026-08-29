@@ -1,6 +1,26 @@
 # Sourced by deploy.zsh before any fragment runs. Provides shared helpers used
 # across multiple fragments. Not designed for standalone invocation.
 
+# Dry-run-aware wrappers over the zf_ln / zf_mkdir builtins loaded by
+# deploy.zsh. A real run passes straight through to the builtin (preserving
+# its exit status, and so err_exit behavior); under --dry-run
+# (DEPLOY_DRY_RUN=1) they print the intended command instead of mutating.
+deploy_ln() {
+    if (( DEPLOY_DRY_RUN )); then
+        print "  [dry-run] would ln $*"
+    else
+        zf_ln "$@"
+    fi
+}
+
+deploy_mkdir() {
+    if (( DEPLOY_DRY_RUN )); then
+        print "  [dry-run] would mkdir $*"
+    else
+        zf_mkdir "$@"
+    fi
+}
+
 ensure_homebrew_path() {
     if (( ${+commands[brew]} )); then
         return 0
