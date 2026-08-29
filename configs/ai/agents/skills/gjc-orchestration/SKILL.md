@@ -2,16 +2,21 @@
 name: gjc-orchestration
 description: Dispatch and drive gjc coding agents — planning-lane policy (writer-mandatory ralplan, decomposition triggers), the execution-contract levers (context, routing, accounting), the built-in workflow skills, paseo dispatch mechanics, and the plan→implement handoff. Consult whenever handing coding/planning work to a gjc agent from any other agent (claude, codex, harmony, gjc) or from the desktop.
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # GJC orchestration
 
+Canonical copy: `~/.local/dotfiles/configs/ai/agents/skills/gjc-orchestration/`.
+The `~/repos/hart/skills/` and `~/.claude/skills/` entries are symlinks into
+it — edit here, not through a symlink.
+
 gjc (`~/.local/bin/gjc`, config `~/.gjc/agent/config.yml`) is registered as a
 paseo ACP provider. Contract facts below are **verified against gjc 0.15.5 on
 ceres, 2026-08-29** (0.15.3 → 0.15.5 upgraded mid-day; claims re-verified) (citations in `skills/ultragoal-prep/SKILL.md`'s
-pinned-claims table); paseo dispatch mechanics (§4, §5, §7) were verified
-2026-08-28 on paseo 0.5.0-beta.4 and carry that dating.
+pinned-claims table); paseo dispatch mechanics (§4, §5, §7) were re-verified
+2026-08-29 against paseo 0.7.0-beta.2 at the tool-schema level — the
+0.5.0-beta.4 → 0.7.0-beta.2 jump renamed one settings key (see §4).
 
 ## 1. Verify the built-ins cheaply (no agent, no tokens)
 
@@ -106,7 +111,7 @@ session*; when the executor is a gjc agent, use the gjc built-in.)
   the write-mechanics grounds (CAS goals, unguarded-and-first brief write,
   uncoordinated ledger appends).
 
-## 4. Creating a gjc agent (paseo `create_agent` — verified 2026-08-28)
+## 4. Creating a gjc agent (paseo `create_agent` — verified 2026-08-29, paseo 0.7.0-beta.2)
 
 ```json
 {
@@ -126,13 +131,18 @@ session*; when the executor is a gjc agent, use the gjc built-in.)
 On 2026-08-28 this format error was misread as "gjc rejects settings
 payloads" and cost three throwaway probe agents.
 
-**Settings that work on gjc creates** (verified live 2026-08-28):
+**Settings that work on gjc creates** (key names re-checked against the
+0.7.0-beta.2 `create_agent` schema 2026-08-29; runtime behaviour verified
+live 2026-08-28):
 
 - `modeId`: `default` for anything that writes files/artifacts. `plan`
   **blocks writes** — read-only review lanes only, never a ralplan owner.
 - `thinkingOptionId`: `minimal | low | medium | high | xhigh | max`. Omitted
   → gjc's per-model default (glm-5.3 → `max`).
-- `featureValues`: e.g. `{ "auto_accept": true }` for unattended runs.
+- `features`: e.g. `{ "auto_accept": true }` for unattended runs.
+  **Renamed from `featureValues` in paseo 0.7.** `settings` is
+  `additionalProperties: false`, so the old key is now a hard schema
+  rejection, not a silently-ignored no-op (2026-08-29).
 
 **Thinking vs role routing.** `modelRoles`/`agentModelOverrides` apply
 automatically **only to gjc-native `task` role spawns inside a gjc session**.
@@ -143,7 +153,7 @@ and thinking per spawn, or accept defaults.
 `get_agent_status`. Do not poll — `notifyOnFinish` arrives on its own.
 Children spawned by a gjc agent carry `labels["paseo.parent-agent-id"]`.
 
-## 5. Headless one-shots (no paseo — verified 2026-08-28)
+## 5. Headless one-shots (no paseo — flags re-verified 2026-08-29, gjc 0.15.5)
 
 ```bash
 gjc -p --no-session "<prompt>"              # process and exit
@@ -250,3 +260,8 @@ Run the gjc built-in **deep-interview** skill (/skill:deep-interview) on:
    late-alphabet names silently drop off the list. Never use it as an
    existence check; runtime by-name loading is unaffected
    (`findRuntimeSkillByName` does an unlimited targeted scan) (2026-08-29).
+10. paseo renamed `settings.featureValues` → `settings.features` in 0.7, and
+    `settings` is `additionalProperties: false` — so a payload written
+    against 0.5 fails the schema outright. Re-check the `create_agent`
+    schema on every paseo minor bump; the §4 provider-format error message
+    is unchanged, so the two failures look alike (2026-08-29).
