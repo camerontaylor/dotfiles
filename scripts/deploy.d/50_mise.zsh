@@ -95,11 +95,52 @@ if (( ${+commands[mise]} )); then
         print "     (export GITHUB_TOKEN, or run 'gh auth login')"
     fi
 
+    # `mise upgrade` bumps tools within their pinned major and PRUNES the old
+    # install dir. Anything resolving through a mise shim follows along;
+    # anything holding an absolute path into the old prefix does not. openclaw
+    # is the one npm global deliberately excluded from .default-npm-packages
+    # (it was the beta->stable downgrade vector — see that file), so
+    # 70_runtime_installs.zsh does not reinstall it into the new prefix either.
+    # Its install/repair is owned solely by the ExecStartPre guard on
+    # openclaw-gateway.service (~/repos/hart/scripts/openclaw-ensure-beta.sh).
+    #
+    # 2026-08-29 21:57: node 24.19.0 -> 24.20.0 landed exactly this way. The npm
+    # global went with the pruned prefix, the `openclaw` shim died, every Claude
+    # session's stdio MCP failed with CONNECTION_CLOSED, and the live gateway
+    # was left executing a DELETED inode — one restart from a permanent
+    # crashloop. Nothing restarted the service, so the guard that would have
+    # repaired it never got the chance to run.
+    #
+    # So: if the node prefix actually moved, poke the gateway. try-restart is a
+    # no-op when the unit is not running, the guard then reinstalls
+    # openclaw@beta into the new prefix, and the service comes back on a live
+    # inode. Gated on the unit file existing, so this is ceres-only in practice
+    # and silent everywhere else.
+    local node_prefix_before node_prefix_after
+    node_prefix_before=$(mise where node 2>/dev/null)
+
     print "Installing mise tools (node, bun, python, etc.)..."
     run_mise_step "mise install" 30 mise install
 
     print "Upgrading mise tools..."
     run_mise_step "mise upgrade" 20 mise upgrade --yes
+
+    node_prefix_after=$(mise where node 2>/dev/null)
+    if [[ -n $node_prefix_after && $node_prefix_after != $node_prefix_before ]]; then
+        print "  ...node prefix moved (${node_prefix_before:-none} -> $node_prefix_after)"
+        if (( DEPLOY_DRY_RUN )); then
+            print "  [dry-run] would try-restart openclaw-gateway.service onto the new prefix"
+        elif [[ -f $XDG_CONFIG_HOME/systemd/user/openclaw-gateway.service ]] && (( ${+commands[systemctl]} )); then
+            # A post-merge hook shell may have no D-Bus session env, so reaching
+            # the user bus can legitimately fail. Never fail the deploy for it —
+            # report and move on; the 5-min drift detector is the backstop.
+            if systemctl --user try-restart openclaw-gateway.service 2>/dev/null; then
+                print "  ...restarted openclaw-gateway onto the new node prefix"
+            else
+                print "  ...could not restart openclaw-gateway (no user bus?); do it manually"
+            fi
+        fi
+    fi
 fi
 
 # Brew fallback for tools listed in mise.toml. Runs only on macOS, only when a
