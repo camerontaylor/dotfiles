@@ -6,9 +6,11 @@ exposes them to a desktop app, a phone app, a browser, and a CLI. It carries no
 model credentials of its own — it drives the agent CLIs already installed and
 logged in on the box.
 
-AGPL-3.0. CLI and desktop app versions should stay in lockstep. The Macs use
-the beta channel in the desktop app under **Settings → About → Release
-channel**; the headless Linux install tracks npm's `@beta` dist-tag.
+Apache-2.0. CLI and desktop app versions should stay in lockstep; on a fork
+host the daemon instead reports the app's version with a `.fork.N` suffix —
+see *Fork release channel*. The Macs use the beta channel in the desktop app
+under **Settings → About → Release channel**; the headless Linux install
+tracks npm's `@beta` dist-tag.
 
 ## Topology
 
@@ -298,6 +300,192 @@ CLI as a mise tool, and `zsh/rc.d/12_paseo.zsh` defines a `paseo` function there
 that runs it through `mise exec` — the bare shim would error `No version is set
 for shim` until activated, and activating would dirty this repo's symlinked
 `mise.toml`.
+
+The fork channel amends this from an existence rule to a **PATH-level** rule:
+interactive `paseo` stays stock on every host — the brew symlink on the Macs,
+lockstepped with the app; the `zsh/rc.d/12_paseo.zsh` wrapper running stock
+`@latest` on ceres — and fork binaries appear only as versioned absolute
+references in launchers, never on PATH. In particular, the fork CLI is never
+an mise tool on a Mac: an mise npm install drops a `paseo` shim into the
+shims dir, and both the generated plist PATH and interactive shells search
+the shims dir ahead of the brew prefix, so the shim would shadow stock
+`paseo` — the exact split-brain this section bans. That is why the Macs
+install the fork CLI with `npm install --prefix` (see *Fork release
+channel*).
+
+## Fork release channel
+
+The fork channel ships daemon fixes from the `custom` branch of the paseo
+fork to all three fleet hosts ahead of upstream, without touching the stock
+installs above. What ships is the **CLI and the daemon it runs, only** — the
+stock Paseo.app stays the GUI client of the forked daemons, and the stock
+upgrade paths in *Upgrades* keep working as documented. Releases are cut by
+`fork/scripts/release-fork.mjs` in a paseo checkout (publish under dist-tag
+`fork`, plus a `fork/v<version>` tag and GitHub Release for provenance); this
+section is what an operator at a terminal needs.
+
+- **Artifact home** is public npm under a personal scope. The commands here
+  use `@paseo-fork` — the release tooling's working default (`FORK_SCOPE`
+  overrides it); the concrete scope is pending approval, and if it changes,
+  every command in this section changes with it.
+- **Dist-tag `fork`, only `fork`.** Hosts pin exact versions; a daemon is
+  never installed floating. The first publish leaves the fresh scope with
+  **no `latest` dist-tag**, so a bare `npm install @paseo-fork/paseo-cli`
+  errors — correct for a pinned fleet. Do not fix it by moving `latest`.
+- **Versions are `<upstream base>.fork.N`** — today `0.7.0-beta.2.fork.1`.
+  Semver orders a fork strictly between its base and the next upstream beta
+  (`0.7.0-beta.2 < 0.7.0-beta.2.fork.1 < 0.7.0-beta.3`), so a fork host is
+  never older than the stock it replaced. When upstream promotes the base to
+  stable, the scheme becomes `0.7.0-fork.1` — which sorts *below* stock
+  `0.7.0`, as a prerelease of the same version. No npm-hostable scheme avoids
+  that, so at promotion the never-older property moves to the two rules that
+  carry it day to day: the **base floor** and the protocol-compatibility
+  contract (both below).
+- **No third-party plugins.** The pack-time rename rewrites the current
+  `@getpaseo/plugin*` SDK spellings, and the SDK exists under the fork only
+  as `@paseo-fork/paseo-plugin`, so a stock plugin cannot resolve what it
+  imports. The fleet runs none; plugin support stays out of scope.
+- **The daemon's built-in self-update fails safely** on a fork install: its
+  install-origin check (`npm -g @getpaseo/cli`) never matches a mise or
+  `--prefix` install. Upgrades are runbook-owned (below); treat the error as
+  expected and leave it broken.
+
+### Upgrading a fork host
+
+Smoke the exact artifact first — scratch home, scratch port 6998, always
+before any repoint. This is the gate that catches a missed rewrite or a
+missing native binary while production is still untouched:
+
+```zsh
+# ceres; on the Macs swap the mise exec for the prefix binary
+mise install npm:@paseo-fork/paseo-cli@0.7.0-beta.2.fork.1
+PASEO_LISTEN=127.0.0.1:6998 PASEO_LOCAL_SPEECH_AUTO_DOWNLOAD=0 \
+  PASEO_DICTATION_ENABLED=0 PASEO_VOICE_MODE_ENABLED=0 \
+  mise exec npm:@paseo-fork/paseo-cli@0.7.0-beta.2.fork.1 -- \
+  paseo daemon start --foreground --home /tmp/paseo-fork-smoke
+```
+
+`paseo --version` must print the fork string and `/api/health` must return
+200 on 6998; stop the scratch daemon afterwards. The three `PASEO_*` speech
+knobs are the same ones paseo's own test suite uses to keep test daemons
+quiet — without them, a fresh home eagerly downloads a few hundred MB of
+speech models (see *Operational notes*).
+
+ceres — one `sudo -E` run re-installs the pinned tool, rewrites the unit,
+restarts the daemon, and verifies `/api/health`. The restart is the human
+moment: an agent inside `paseo-daemon.service` cannot sudo
+(`NoNewPrivileges`), so agents stage and a human types. **`sudo -E` is
+load-bearing** — the script reads `PASEO_PASSWORD` from the environment (see
+*Upgrades*):
+
+```zsh
+cd ~/.local/dotfiles && echo "pw set: ${PASEO_PASSWORD:+yes}"   # must print yes
+sudo -E PASEO_TOOL=npm:@paseo-fork/paseo-cli@0.7.0-beta.2.fork.1 ./scripts/setup-paseo.sh
+```
+
+saturn/neptune — install into a **versioned prefix** (never mise on a Mac,
+see *Two `paseo` binaries*), then regenerate the plist through the pin:
+
+```zsh
+npm install --prefix ~/.local/share/paseo-fork/0.7.0-beta.2.fork.1 \
+  @paseo-fork/paseo-cli@0.7.0-beta.2.fork.1
+cd ~/.local/dotfiles
+PASEO_FORK_BIN=$HOME/.local/share/paseo-fork/0.7.0-beta.2.fork.1/node_modules/.bin/paseo \
+  ./scripts/setup-paseo.sh
+launchctl kickstart -k gui/$(id -u)/local.paseo-daemon   # only if the script didn't start it
+```
+
+The script validates `PASEO_FORK_BIN` up front (absolute and executable —
+launchd consults no PATH), writes it into `ProgramArguments[0]`, and starts
+and restarts through it. If the old daemon was still holding the port, the
+`kickstart -k` bounces it into the new version. Each version gets its own
+prefix; delete the stale one after upgrading. A fresh interactive shell must
+still resolve `command -v paseo` to the brew prefix.
+
+### Rolling back to stock
+
+Deliberate by design (next section). The Macs:
+
+```zsh
+paseo daemon stop                                                # stops the fork daemon
+cd ~/.local/dotfiles && PASEO_ALLOW_STOCK_REVERT=1 ./scripts/setup-paseo.sh
+launchctl kickstart -k gui/$(id -u)/local.paseo-daemon           # if needed
+```
+
+The override regenerates the plist at the brew symlink and restarts the
+daemon stock. Verify the stock version and a single listener (below), then
+optionally remove `~/.local/share/paseo-fork/<version>`. ceres is the mirror
+with an explicit stock pin — set, so the guard does not trip:
+
+```zsh
+cd ~/.local/dotfiles && echo "pw set: ${PASEO_PASSWORD:+yes}"   # must print yes
+sudo -E PASEO_TOOL=npm:@getpaseo/cli@0.7.0-beta.2 ./scripts/setup-paseo.sh
+```
+
+It rewrites the unit back to the stock default and restarts through systemd.
+
+### Verifying a fork host
+
+Invoke the fork binary explicitly. Bare `paseo status` is **expected** to
+report the stock CLI — interactive `paseo` stays stock on every host (see
+*Two `paseo` binaries*) — and is not a failure signal:
+
+```zsh
+# ceres
+mise exec npm:@paseo-fork/paseo-cli@0.7.0-beta.2.fork.1 -- paseo status
+# saturn / neptune
+~/.local/share/paseo-fork/0.7.0-beta.2.fork.1/node_modules/.bin/paseo status
+```
+
+Three surfaces must agree on the fork string: the fork binary's `--version`,
+the daemon version it reports via `status`, and the daemon version shown in
+the stock app (**Settings → your host → Overview**). Exactly one listener on
+6767, owned by the fork daemon:
+
+```zsh
+lsof -nP -iTCP:6767 -sTCP:LISTEN
+```
+
+Reboot survival is by design (one-shot `RunAtLoad` plist;
+`Restart=on-failure` unit) but is checked, not assumed: at the next natural
+reboot, re-check the single listener and that the daemon still reports the
+fork version.
+
+### The pin is an invariant, not an event
+
+`setup-paseo.sh` regenerates launchers from defaults on every routine re-run
+(password rotation, hostname change, `PASEO_WEB_UI` toggle). **Every run on a
+fork host carries the pin** — `PASEO_TOOL` on ceres, `PASEO_FORK_BIN` on the
+Macs. When a run carries no pin and the on-disk launcher points at a fork
+build (a `.fork.` version or a non-`@getpaseo` npm scope in the unit's
+`ExecStart` or the plist's `ProgramArguments[0]`), the script prints a loud
+warning naming the detected pin and both ways out — the exact
+re-run-with-pin command, or the deliberate `PASEO_ALLOW_STOCK_REVERT=1`
+revert — and skips only the launcher rewrite. Config and password changes
+still apply; on ceres a config-driven restart still goes through the
+existing pinned unit, and on the Macs the script also keeps the stock CLI
+away from the daemon entirely, leaving it running until the next pinned
+run. Rollback is therefore never an accident: stock means the override or
+the explicit pin, as spelled above.
+
+The Mac guard has a second half for the same reason: `paseo daemon restart`
+respawns the daemon from the *calling* CLI's `require.resolve`, so a stock
+`paseo` on PATH would silently revert a fork daemon while the plist still
+names the fork binary. The script honors `PASEO_FORK_BIN` on both the start
+and the restart branches and never lets the PATH binary near the daemon.
+
+### The base floor
+
+Repoint a host to a fork build only when the fork's upstream base is at
+least the version of the stock client that talks to it — today, base
+`0.7.0-beta.2` under the `0.7.0-beta.2` app. After any stock app
+auto-update, check the floor: once the app moves past the fork base, rebase
+the fork, cut the next fork release, and repoint. In between, the
+protocol-compatibility contract is the safety net: old daemon and new app
+parse each other in both directions, and features gate on `server_info`
+capability flags, never on version comparison. This rule — not semver —
+carries the never-older property once the base is a stable
+(`0.7.0-fork.1` sorts below stock `0.7.0`; see the version scheme above).
 
 ## Files
 
