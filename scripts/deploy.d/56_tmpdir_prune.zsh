@@ -1,0 +1,131 @@
+# Install a daily reaper for $TMPDIR, and sweep once now.
+#
+# zsh/env.d/05_tmp_dir.zsh points TMPDIR at ~/.tmp so temp paths are stable
+# across login sessions and, on Linux, stay off tmpfs. The trade-off is that
+# the OS no longer reaps it: macOS only sweeps /var/folders/..., and
+# systemd-tmpfiles only sweeps /tmp. Nothing had ever cleaned ~/.tmp, so it
+# grew unbounded — on neptune it reached 11 GB of abandoned ruby-build scratch
+# dirs (ruby-build only cleans up after a *successful* build) and filled the
+# disk to 186 MB free.
+#
+# Scheduling mirrors 99_periodic.zsh: systemd timer (user or system), macOS
+# launchd LaunchAgent, then crontab. Each branch is idempotent.
+
+local pruner=$SCRIPT_DIR/scripts/prune-tmpdir
+
+if [[ ! -x $pruner ]]; then
+    print "Skipping TMPDIR prune: $pruner not executable"
+    return 0
+fi
+
+print "Pruning stale TMPDIR entries..."
+if (( DEPLOY_DRY_RUN )); then
+    $pruner --dry-run | tail -1
+else
+    $pruner
+fi
+
+print "Installing daily TMPDIR prune task..."
+
+# The job must run through a login shell so env.d sets TMPDIR before the
+# pruner reads it; launchd and cron otherwise hand it a bare environment.
+local zsh_bin=${commands[zsh]:-/bin/zsh}
+local prune_command="${(q)pruner}"
+
+if (( DEPLOY_DRY_RUN )); then
+    print "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"
+    return 0
+fi
+
+if (( ${+commands[systemctl]} )); then
+    print "  ...systemd detected, installing timer..."
+
+    local systemd_unit_dir systemctl_cmd
+    if (( EUID == 0 )); then
+        systemd_unit_dir=/etc/systemd/system
+        systemctl_cmd=(systemctl)
+    else
+        systemd_unit_dir=$XDG_CONFIG_HOME/systemd/user
+        systemctl_cmd=(systemctl --user)
+    fi
+    zf_mkdir -p $systemd_unit_dir
+
+    local service_content="[Unit]
+Description=Prune stale TMPDIR entries
+
+[Service]
+Type=oneshot
+ExecStart=$zsh_bin -lc $prune_command"
+    print -r -- $service_content > $systemd_unit_dir/prune-tmpdir.service
+
+    local timer_content="[Unit]
+Description=Prune stale TMPDIR entries daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=600s
+Persistent=true
+
+[Install]
+WantedBy=timers.target"
+    print -r -- $timer_content > $systemd_unit_dir/prune-tmpdir.timer
+
+    if ${systemctl_cmd[@]} daemon-reload > /dev/null && ${systemctl_cmd[@]} enable --now prune-tmpdir.timer > /dev/null; then
+        print "  ...done"
+    else
+        print "Failed to install prune-tmpdir timer. Check permissions and systemd setup"
+    fi
+elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID != 0 )); then
+    print "  ...launchd detected, installing user LaunchAgent..."
+
+    local launchd_dir=$HOME/Library/LaunchAgents
+    local launchd_label=com.ctaylor.dotfiles.prune-tmpdir
+    local launchd_plist=$launchd_dir/$launchd_label.plist
+    zf_mkdir -p $launchd_dir
+
+    local launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\">
+<dict>
+    <key>Label</key>
+    <string>$launchd_label</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$zsh_bin</string>
+        <string>-lc</string>
+        <string>$prune_command</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>$XDG_STATE_HOME/prune-tmpdir.log</string>
+    <key>StandardErrorPath</key>
+    <string>$XDG_STATE_HOME/prune-tmpdir.err</string>
+</dict>
+</plist>"
+    print -r -- $launchd_content > $launchd_plist
+
+    launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
+    if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
+        && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
+        print "  ...done"
+    else
+        print "Failed to install launchd task. Check $launchd_plist"
+    fi
+elif (( ${+commands[crontab]} )); then
+    print "  ...cron detected, installing job..."
+    local cron_task="$zsh_bin -lc $prune_command"
+    local cron_schedule="30 3 * * * $cron_task"
+    if cat <(grep --invert-match --fixed-strings $cron_task <(crontab -l 2>/dev/null)) <(echo $cron_schedule) | crontab -; then
+        print "  ...done"
+    else
+        print "Failed to install cron job; run $pruner manually or add it to crontab"
+    fi
+else
+    print "  ...no scheduler detected, skipping"
+fi

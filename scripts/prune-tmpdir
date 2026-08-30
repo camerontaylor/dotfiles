@@ -1,0 +1,111 @@
+#!/usr/bin/env zsh
+#
+# Reap stale entries from $TMPDIR.
+#
+# The shell sets TMPDIR=~/.tmp (zsh/env.d/05_tmp_dir.zsh) so that temp paths
+# are stable across login sessions and, on Linux, do not land on a tmpfs and
+# eat RAM. The cost of moving off the OS-provided temp dir is that nothing
+# reaps it any more: macOS sweeps /var/folders/... and systemd-tmpfiles sweeps
+# /tmp, but ~/.tmp just grows. On neptune that reached 11 GB of abandoned
+# ruby-build scratch dirs (ruby-build only cleans up after a *successful*
+# build, so every failure leaks ~700 MB) and filled the disk.
+#
+# This is the missing reaper. It mirrors tmpwatch/systemd-tmpfiles semantics:
+# delete top-level entries whose mtime is older than N days. Depth 1 only, so
+# an entry is judged as a unit and we never half-gut a directory a tool is
+# still using.
+#
+# NOTE ON --path: a `TMPDIR=/somewhere prune-tmpdir` env prefix does NOT work.
+# This is a zsh script, so it sources ~/.zshenv, which sources
+# zsh/env.d/05_tmp_dir.zsh, which re-exports TMPDIR=~/.tmp and clobbers
+# whatever the caller passed. Use --path to aim it somewhere else; that is
+# also the only safe way to exercise it in tests.
+#
+# Usage: prune-tmpdir [-n|--dry-run] [-d|--days N] [-p|--path DIR]
+#        TMPDIR_PRUNE_DAYS=14 prune-tmpdir
+
+emulate -L zsh
+setopt no_unset pipe_fail
+
+typeset dry_run=0
+typeset days=${TMPDIR_PRUNE_DAYS:-7}
+typeset explicit_path=
+
+# Hand-rolled parser: BSD getopt has no long-option support (see CLAUDE.md).
+while (( $# )); do
+    case $1 in
+        -n|--dry-run) dry_run=1 ;;
+        -d|--days)
+            shift
+            (( $# )) || { print -u2 "prune-tmpdir: --days needs a value"; exit 2 }
+            days=$1
+            ;;
+        -p|--path)
+            shift
+            (( $# )) || { print -u2 "prune-tmpdir: --path needs a value"; exit 2 }
+            explicit_path=$1
+            ;;
+        -h|--help)
+            print "usage: prune-tmpdir [-n|--dry-run] [-d|--days N] [-p|--path DIR]"
+            exit 0
+            ;;
+        *) print -u2 "prune-tmpdir: unknown option: $1"; exit 2 ;;
+    esac
+    shift
+done
+
+if [[ $days != <-> ]]; then
+    print -u2 "prune-tmpdir: --days must be a non-negative integer, got: $days"
+    exit 2
+fi
+
+typeset target=${explicit_path:-${TMPDIR:-}}
+[[ $target == / ]] || target=${target%/}
+
+if [[ -z $target || ! -d $target ]]; then
+    print "prune-tmpdir: ${target:-TMPDIR} is unset or not a directory, nothing to do"
+    exit 0
+fi
+
+# Guard against reaping a shared or structural directory. This script deletes
+# recursively, so a target of "/" or "$HOME" would be catastrophic; /tmp and
+# /var/tmp are shared between users and already OS-reaped.
+case $target in
+    (/|/tmp|/var/tmp|${HOME%/})
+        print -u2 "prune-tmpdir: refusing to prune shared/structural dir: $target"
+        exit 1
+        ;;
+esac
+
+# -print0 + (0) split so entries containing spaces or newlines survive intact.
+# BSD find (macOS) and GNU find both support -mindepth/-maxdepth/-print0.
+typeset -a stale
+stale=( ${(0)"$(find $target -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)"} )
+
+if (( ${#stale} == 0 )); then
+    print "prune-tmpdir: $target has no entries older than ${days}d"
+    exit 0
+fi
+
+# du -sk over just the doomed entries: cheap, and makes the log useful.
+typeset freed_kb
+freed_kb=$(du -sck ${stale} 2>/dev/null | tail -1 | awk '{print $1}') || freed_kb=0
+[[ $freed_kb == <-> ]] || freed_kb=0
+
+typeset noun
+if (( ${#stale} == 1 )); then noun=entry; else noun=entries; fi
+
+if (( dry_run )); then
+    typeset e
+    for e in $stale; do
+        print "  [dry-run] would remove $e"
+    done
+    printf 'prune-tmpdir: [dry-run] would remove %d %s older than %dd (%d MB) from %s\n' \
+        ${#stale} $noun $days $(( freed_kb / 1024 )) $target
+    exit 0
+fi
+
+rm -rf -- ${stale}
+
+printf 'prune-tmpdir: removed %d %s older than %dd (%d MB) from %s\n' \
+    ${#stale} $noun $days $(( freed_kb / 1024 )) $target
