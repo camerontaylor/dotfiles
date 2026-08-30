@@ -1,0 +1,64 @@
+{
+  "_comment": [
+    "Desired paseo agent providers, merged into ~/.paseo/config.json by",
+    "scripts/paseo-providers.py (run from scripts/deploy.d/81_paseo_providers.zsh).",
+    "",
+    "SECRET-FREE ON PURPOSE. This repo is public. __ZAI_API_KEY__ is substituted at",
+    "deploy time from the box's own ~/.gjc/agent/.env, which secrets-render.zsh",
+    "renders from ~/.local/secrets (services/gjc/env.yaml, gated `all`). paseo passes",
+    "provider env to the child verbatim and expands nothing, so the token has to be",
+    "literal in config.json -- which is exactly why the template cannot carry it.",
+    "__GJC_BIN__ is substituted with this box's gjc path (/home vs /Users)."
+  ],
+  "agents": {
+    "providers": {
+      "gjc": {
+        "extends": "acp",
+        "label": "Gajae Code",
+        "command": ["__GJC_BIN__", "acp"],
+        "env": {
+          "GJC_ACP_PERMISSION_MODE": "auto",
+          "GJC_ACP_ABORT_SCOPE": "owned"
+        },
+        "enabled": true
+      },
+      "claude-zai": {
+        "extends": "claude",
+        "label": "Claude (Z.AI GLM)",
+        "description": "Alternate Claude Code on Z.AI GLM: opus tier glm-5.3, sonnet/haiku/small-fast/subagent glm-5.3-flash",
+        "env": {
+          "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+          "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+          "ENABLE_TOOL_SEARCH": "false",
+          "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3",
+          "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3-flash",
+          "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3-flash",
+          "ANTHROPIC_SMALL_FAST_MODEL": "glm-5.3-flash",
+          "CLAUDE_CODE_SUBAGENT_MODEL": "glm-5.3-flash",
+          "ANTHROPIC_API_KEY": "",
+          "ANTHROPIC_AUTH_TOKEN": "__ZAI_API_KEY__",
+          "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+          "API_TIMEOUT_MS": "3000000"
+        },
+        "models": [
+          { "id": "glm-5.3", "label": "GLM-5.3", "isDefault": true },
+          { "id": "glm-5.3-flash", "label": "GLM-5.3 Flash" }
+        ],
+        "enabled": true
+      }
+    }
+  },
+  "daemon": {
+    "agentProfiles": [
+      {
+        "id": "agent_profile_mtdp8cod_qldjhemgpf",
+        "name": "GLM-5.3 Flash",
+        "provider": "gjc",
+        "model": "zai/glm-5.3-flash",
+        "modeId": "default",
+        "thinkingOptionId": "high",
+        "featureValues": { "auto_accept": true }
+      }
+    ]
+  }
+}
