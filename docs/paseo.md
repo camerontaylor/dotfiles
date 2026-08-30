@@ -383,24 +383,31 @@ cd ~/.local/dotfiles && echo "pw set: ${PASEO_PASSWORD:+yes}"   # must print yes
 sudo -E PASEO_TOOL=npm:@paseo-fork/paseo-cli@0.7.0-beta.2.fork.1 ./scripts/setup-paseo.sh
 ```
 
-saturn/neptune — install into a **versioned prefix** (never mise on a Mac,
-see *Two `paseo` binaries*), then regenerate the plist through the pin:
+saturn/neptune — **stop the daemon first** (either binary can stop it; same
+home, protocol-compatible), install into a **versioned prefix** (never mise
+on a Mac, see *Two `paseo` binaries*), then regenerate the plist through the
+pin:
 
 ```zsh
+paseo daemon stop
 npm install --prefix ~/.local/share/paseo-fork/0.7.0-beta.2.fork.1 \
   @paseo-fork/paseo-cli@0.7.0-beta.2.fork.1
 cd ~/.local/dotfiles
 PASEO_FORK_BIN=$HOME/.local/share/paseo-fork/0.7.0-beta.2.fork.1/node_modules/.bin/paseo \
   ./scripts/setup-paseo.sh
-launchctl kickstart -k gui/$(id -u)/local.paseo-daemon   # only if the script didn't start it
+launchctl kickstart -k gui/$(id -u)/local.paseo-daemon   # only if the daemon is not running after the script
 ```
 
 The script validates `PASEO_FORK_BIN` up front (absolute and executable —
-launchd consults no PATH), writes it into `ProgramArguments[0]`, and starts
-and restarts through it. If the old daemon was still holding the port, the
-`kickstart -k` bounces it into the new version. Each version gets its own
-prefix; delete the stale one after upgrading. A fresh interactive shell must
-still resolve `command -v paseo` to the brew prefix.
+launchd consults no PATH), writes it into `ProgramArguments[0]`, and both
+its start and restart branches exec the pinned binary — with the daemon
+stopped first, the start branch brings the fork daemon up. The `kickstart
+-k` is only a fallback for when the daemon is not running afterwards: it
+re-runs the one-shot job, and `paseo daemon start` starts anything only
+when 6767 is free — a live daemon is left alone, which is why the stop
+comes first. Each version gets its own prefix; delete the stale one after
+upgrading. A fresh interactive shell must still resolve `command -v paseo`
+to the brew prefix.
 
 ### Rolling back to stock
 
@@ -409,7 +416,7 @@ Deliberate by design (next section). The Macs:
 ```zsh
 paseo daemon stop                                                # stops the fork daemon
 cd ~/.local/dotfiles && PASEO_ALLOW_STOCK_REVERT=1 ./scripts/setup-paseo.sh
-launchctl kickstart -k gui/$(id -u)/local.paseo-daemon           # if needed
+launchctl kickstart -k gui/$(id -u)/local.paseo-daemon           # only if the daemon is not running
 ```
 
 The override regenerates the plist at the brew symlink and restarts the
