@@ -74,7 +74,7 @@ LaunchAgent must be the sole daemon owner. With both enabled, Desktop can
 misread the password-protected local daemon as unavailable and a duplicate
 start fails with exit code 1.
 
-Two deliberate choices in that plist:
+Three deliberate choices in that plist:
 
 - **One-shot** (`RunAtLoad`, no `KeepAlive`). `paseo daemon start` exits 1 when
   a daemon already holds the port — it leaves the running one alone, but under
@@ -84,6 +84,14 @@ Two deliberate choices in that plist:
 - **`AbandonProcessGroup`** is load-bearing. `paseo daemon start` forks and
   returns; without it launchd reaps the whole process group when the job exits
   and kills the daemon it just started.
+
+- **`USER`** decides which credential store Claude Code reads, and is the
+  subtlest of the three. Claude Code looks its OAuth token up in the login
+  keychain as generic-password service `Claude Code-credentials`, account
+  `$USER`. launchd hands a LaunchAgent no `USER` at all — only what
+  `EnvironmentVariables` declares — so without it the keychain lookup cannot be
+  formed and Claude Code silently falls back to its *file* store,
+  `~/.claude/.credentials.json`. See *One login, two stores* below.
 
 It also sets a PATH containing the mise shims. launchd's default PATH has none,
 so a purely GUI-launched daemon cannot even find `claude`.
@@ -177,6 +185,45 @@ opencode auth login
 
 An unauthenticated provider fails at agent launch, not at daemon start, so the
 health check will happily pass while every agent dies.
+
+### One login, two stores
+
+Symptom — agents die, the daemon looks perfectly healthy, and `daemon.log`
+carries:
+
+```
+"lastResponse":"Failed to authenticate. API Error: 401 OAuth access token has been revoked."
+```
+
+Note **revoked**, not *expired*. Claude Code keeps its OAuth token in the login
+keychain (`Claude Code-credentials`, account `$USER`) **and** understands a file
+store at `~/.claude/.credentials.json`. A box that has ever written the file
+holds two copies of one login — and OAuth refresh tokens are single-use, so each
+renewal of the keychain copy revokes the token the file still carries. The file
+does not decay gracefully; it goes hard-invalid and stays that way. On this
+fleet the stale copy dated from June while the keychain copy was renewed daily.
+
+Which store a process reads is decided by whether `USER` is set. That is why the
+same binary succeeds in your terminal and 401s under the daemon:
+
+```zsh
+P="$HOME/.local/share/mise/shims:$HOME/.local/bin:/usr/bin:/bin"
+env -i HOME="$HOME" PATH="$P"              claude -p "say ok"   # 401 revoked  -> file
+env -i HOME="$HOME" PATH="$P" USER="$USER" claude -p "say ok"   # ok           -> keychain
+```
+
+Those two lines are the diagnostic: if the second succeeds and the first does
+not, the login is fine and the daemon's environment is at fault. Fix it in the
+plist (`setup-paseo.sh` writes `USER` and `LOGNAME`), not by re-logging-in.
+
+Copying the keychain token into the file is the tempting non-fix — it re-creates
+exactly the two-copies-of-one-grant state that breaks at the next renewal. If
+you want the file gone, delete it; the keychain is the store that gets renewed.
+
+The same trap is not unique to Claude Code: any provider CLI that resolves a
+per-user credential store will misresolve it under launchd. When a new provider
+starts failing only under the daemon, test it with the two lines above before
+touching its login.
 
 ## Day-to-day
 

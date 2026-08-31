@@ -531,6 +531,20 @@ setup_launchagent() {
          no mise shims, so a GUI-launched daemon cannot even find claude. -->
     <key>PATH</key>
     <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- USER is load-bearing, not cosmetic. Claude Code looks its OAuth token
+         up in the login keychain as generic-password service
+         "Claude Code-credentials", account "$USER". launchd hands a LaunchAgent
+         no USER at all, so without this the lookup cannot be formed, Claude
+         Code silently falls back to its file store
+         ~/.claude/.credentials.json, and every daemon-spawned agent dies with
+         "401 OAuth access token has been revoked" -- the file holds an old
+         copy of the same grant whose refresh token the keychain copy rotated
+         away months ago. One login, two stores, only one of them renewed.
+         LOGNAME rides along because some tools read it instead of USER. -->
+    <key>USER</key>
+    <string>$RUN_USER</string>
+    <key>LOGNAME</key>
+    <string>$RUN_USER</string>
   </dict>
   <key>WorkingDirectory</key>
   <string>$RUN_HOME</string>
