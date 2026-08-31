@@ -50,7 +50,8 @@ set -euo pipefail
 #   binaries; it does not carry its own model credentials.
 
 PASEO_PORT=${PASEO_PORT:-6767}
-PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@beta}"
+PASEO_TOOL_DEFAULT="npm:@getpaseo/cli@beta"   # the stock pin; the setup_systemd unpin guard keys on it
+PASEO_TOOL="${PASEO_TOOL:-$PASEO_TOOL_DEFAULT}"
 # Bundled browser client on the daemon's own port. OFF by default (2026-08-29):
 # it widens the attack surface of an already-RCE-shaped service for a UI the
 # desktop and phone apps already cover. Set PASEO_WEB_UI=true to turn it back
@@ -59,6 +60,23 @@ PASEO_TOOL="${PASEO_TOOL:-npm:@getpaseo/cli@beta}"
 # "requires a daemon restart".
 PASEO_WEB_UI="${PASEO_WEB_UI:-false}"
 BCRYPT_COST=12   # matches DAEMON_PASSWORD_BCRYPT_COST in paseo's server package
+
+# Fork pin (optional). PASEO_FORK_BIN is an absolute path to a fork-built
+# paseo CLI. When set, the macOS LaunchAgent plist names THIS binary in
+# ProgramArguments[0] and BOTH `daemon start` and `daemon restart` exec it -
+# never the stock PATH binary, because `paseo daemon restart` stops the
+# daemon and respawns it from the CALLING CLI's require.resolve
+# ("@getpaseo/server"), so a stock CLI would silently revert a fork daemon to
+# stock while the plist still names the fork binary. Validated here, once:
+# launchd does not consult PATH, so a relative or missing path would only
+# surface later as a login job that silently does nothing.
+PASEO_FORK_BIN="${PASEO_FORK_BIN:-}"
+if [[ -n "$PASEO_FORK_BIN" && ( "$PASEO_FORK_BIN" != /* || ! -x "$PASEO_FORK_BIN" ) ]]; then
+  echo "ERROR: PASEO_FORK_BIN='$PASEO_FORK_BIN' is not an executable absolute path."
+  echo "       Point it at the fork CLI, e.g."
+  echo "         ~/.local/share/paseo-fork/<version>/node_modules/.bin/paseo"
+  exit 1
+fi
 
 OS=$(uname -s)
 
@@ -276,18 +294,87 @@ resolve_password_hash() {
 
 # --- service -----------------------------------------------------------------
 
+# --- fork pin guard -----------------------------------------------------------
+# The repoint is an invariant, not an event: this script regenerates launchers
+# from defaults on every routine re-run (password rotation, hostname change,
+# PASEO_WEB_UI toggle), so a fork-pinned host would silently revert to a
+# stock daemon on the next maintenance run. The guard below detects a
+# fork-pointed launcher and refuses the rewrite unless the run carries the
+# pin (PASEO_TOOL on ceres, PASEO_FORK_BIN on the Macs) or
+# PASEO_ALLOW_STOCK_REVERT=1 makes the revert deliberate.
+
+# True when a launcher reference carries the fork signature: a `.fork.`
+# version component (the versioned-prefix installs on the Macs) or an npm
+# @scope other than @getpaseo (mise npm tools install under
+# installs/npm-<scope>/...). Keying on the SIGNATURE rather than on "differs
+# from stock" keeps the guard from over-tripping after an explicit stock
+# rollback, which leaves a plain stock reference behind.
+fork_pointed_ref() {
+  local ref="$1"
+  [[ "$ref" == *.fork.* ]] && return 0
+  case "$ref" in
+    *@getpaseo/*) return 1 ;;
+    *@*) return 0 ;;
+  esac
+  return 1
+}
+
+# Loud warning for a fork-pointed launcher found with no pin on this run.
+# Names the detected pin and both escape hatches - re-pin, or the deliberate
+# PASEO_ALLOW_STOCK_REVERT=1 rollback - so nobody has to reconstruct them.
+warn_fork_pin_missing() {
+  local what="$1" detected="$2" env_var="$3" rerun_pin="$4" rerun_stock="$5"
+  echo "======================================================================="
+  echo "WARNING: $what points at a Paseo FORK build, but this run carries no"
+  echo "         pin ($env_var is not set):"
+  echo "           $detected"
+  echo "         The launcher rewrite is SKIPPED - regenerating it now would"
+  echo "         silently revert the daemon to stock on its next (re)start."
+  echo "         Config and password changes still apply; the launcher and the"
+  echo "         running daemon are left exactly as they are."
+  echo "         To re-apply the fork pin, re-run with it set:"
+  echo "           $rerun_pin"
+  echo "         To go back to stock DELIBERATELY, re-run with the override:"
+  echo "           $rerun_stock"
+  echo "======================================================================="
+}
 setup_systemd() {
   local listen="$1" config_changed="$2"
   local unit=/etc/systemd/system/paseo-daemon.service
   local staged
   staged=$(mktemp "${TMPDIR:-/tmp}/paseo-unit.XXXXXX")
-  echo "Installing paseo-daemon systemd service..."
-  # No --listen/--web-ui/--relay flags on ExecStart on purpose: per Paseo's
-  # configuration docs, start flags are LAUNCH OVERRIDES that outrank
-  # config.json and make later edits to those keys silently ineffective
-  # (reload reports them under overrideControlledPaths). config.json stays the
-  # single source of truth; the unit only says where home is.
-  cat > "$staged" <<EOF
+
+  # Unpin guard, BEFORE any unit regeneration: when the on-disk unit's
+  # ExecStart names a fork tool but this run carries no PASEO_TOOL, rewriting
+  # the unit would flip ExecStart back to the stock default and the next
+  # restart would silently return the daemon to stock - a rollback by
+  # accident. Skip the write instead; a changed config still restarts THROUGH
+  # the existing pinned unit below, so password rotation keeps working.
+  local unit_pin_kept=0
+  if [[ "$PASEO_TOOL" == "$PASEO_TOOL_DEFAULT" ]] && sudo test -f "$unit"; then
+    local current_tool
+    current_tool=$(sudo awk '$1 ~ /^ExecStart=/ { for (i = 2; i <= NF; i++) if ($i == "exec") { print $(i+1); exit } }' "$unit" 2>/dev/null) || current_tool=""
+    if [[ -n "$current_tool" && "$current_tool" != "$PASEO_TOOL" ]] && fork_pointed_ref "$current_tool"; then
+      if [[ "${PASEO_ALLOW_STOCK_REVERT:-}" == "1" ]]; then
+        echo "PASEO_ALLOW_STOCK_REVERT=1 is set: rewriting the unit back to"
+        echo "stock ($PASEO_TOOL) as a deliberate rollback."
+      else
+        warn_fork_pin_missing \
+          "the paseo-daemon unit" "$current_tool" "PASEO_TOOL" \
+          "sudo -E PASEO_TOOL='$current_tool' $SCRIPT_DIR/setup-paseo.sh" \
+          "sudo -E PASEO_ALLOW_STOCK_REVERT=1 $SCRIPT_DIR/setup-paseo.sh"
+        unit_pin_kept=1
+      fi
+    fi
+  fi
+  if (( ! unit_pin_kept )); then
+    echo "Installing paseo-daemon systemd service..."
+    # No --listen/--web-ui/--relay flags on ExecStart on purpose: per Paseo's
+    # configuration docs, start flags are LAUNCH OVERRIDES that outrank
+    # config.json and make later edits to those keys silently ineffective
+    # (reload reports them under overrideControlledPaths). config.json stays the
+    # single source of truth; the unit only says where home is.
+    cat > "$staged" <<EOF
 [Unit]
 Description=Paseo daemon for $HOSTNAME_SHORT (agent orchestrator, listen $listen)
 Documentation=https://paseo.sh/docs
@@ -315,11 +402,12 @@ NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 EOF
+  fi
 
   # Only bounce the daemon when something actually changed. A re-run that finds
   # the unit and config identical should not interrupt running agents.
   local unit_changed=0
-  if ! sudo cmp -s "$staged" "$unit" 2>/dev/null; then
+  if (( ! unit_pin_kept )) && ! sudo cmp -s "$staged" "$unit" 2>/dev/null; then
     unit_changed=1
     sudo cp "$staged" "$unit"
     sudo chmod 644 "$unit"
@@ -364,6 +452,41 @@ setup_launchagent() {
     for _p in /opt/homebrew/bin/paseo /usr/local/bin/paseo; do
       [[ -x "$_p" ]] && { paseo_bin="$_p"; break; }
     done
+  fi
+  # The fork pin outranks the stock resolution: with PASEO_FORK_BIN set the
+  # plist must name the fork binary even when no stock `paseo` exists, so the
+  # override lands BEFORE the not-found bail-out below. (PASEO_FORK_BIN was
+  # validated - absolute and executable - at the top of the script.)
+  if [[ -n "$PASEO_FORK_BIN" ]]; then
+    paseo_bin="$PASEO_FORK_BIN"
+  fi
+
+  # Unpin guard, BEFORE any regeneration: refuse to rewrite a fork-pointed
+  # plist when this run carries no PASEO_FORK_BIN. A routine re-run (password
+  # rotation, hostname change, PASEO_WEB_UI toggle) would otherwise flip
+  # ProgramArguments[0] back to the stock brew symlink, and the daemon would
+  # come back as STOCK at the next login - rollback by accident, the exact
+  # failure this guard exists to make impossible. Skipping is the fail-safe
+  # direction: config/password work already happened upstream; only the
+  # launcher rewrite is gated (and restart_macos_daemon keeps the stock CLI
+  # away from the daemon too).
+  FORK_LAUNCHER_LEFT_ALONE=0
+  if [[ -f "$plist" && -z "$PASEO_FORK_BIN" ]]; then
+    local current_bin
+    current_bin=$(plutil -extract ProgramArguments.0 raw "$plist" 2>/dev/null) || current_bin=""
+    if [[ -n "$current_bin" && "$current_bin" != "$paseo_bin" ]] && fork_pointed_ref "$current_bin"; then
+      if [[ "${PASEO_ALLOW_STOCK_REVERT:-}" == "1" ]]; then
+        echo "PASEO_ALLOW_STOCK_REVERT=1 is set: rewriting the plist back to"
+        echo "stock ($paseo_bin) as a deliberate rollback."
+      else
+        warn_fork_pin_missing \
+          "the local.paseo-daemon LaunchAgent plist" "$current_bin" "PASEO_FORK_BIN" \
+          "PASEO_FORK_BIN='$current_bin' $SCRIPT_DIR/setup-paseo.sh" \
+          "PASEO_ALLOW_STOCK_REVERT=1 $SCRIPT_DIR/setup-paseo.sh"
+        FORK_LAUNCHER_LEFT_ALONE=1
+        return 0
+      fi
+    fi
   fi
   if [[ -z "$paseo_bin" ]]; then
     echo "NOTE: no \`paseo\` binary found; skipping the login job."
@@ -411,6 +534,20 @@ setup_launchagent() {
          no mise shims, so a GUI-launched daemon cannot even find claude. -->
     <key>PATH</key>
     <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- USER is load-bearing, not cosmetic. Claude Code looks its OAuth token
+         up in the login keychain as generic-password service
+         "Claude Code-credentials", account "$USER". launchd hands a LaunchAgent
+         no USER at all, so without this the lookup cannot be formed, Claude
+         Code silently falls back to its file store
+         ~/.claude/.credentials.json, and every daemon-spawned agent dies with
+         "401 OAuth access token has been revoked" -- the file holds an old
+         copy of the same grant whose refresh token the keychain copy rotated
+         away months ago. One login, two stores, only one of them renewed.
+         LOGNAME rides along because some tools read it instead of USER. -->
+    <key>USER</key>
+    <string>$RUN_USER</string>
+    <key>LOGNAME</key>
+    <string>$RUN_USER</string>
   </dict>
   <key>WorkingDirectory</key>
   <string>$RUN_HOME</string>
@@ -531,22 +668,40 @@ EOF
 
 restart_macos_daemon() {
   local config_changed="$1"
+  local cli
+  # Pin, not PATH: `paseo daemon restart` stops the daemon and respawns it
+  # from the CALLING CLI's require.resolve("@getpaseo/server") - so a stock
+  # `paseo` on PATH would silently revert a fork-pinned daemon to stock while
+  # the plist still names the fork binary. Same for the start branch. Honor
+  # PASEO_FORK_BIN on BOTH branches, and when the unpin guard in
+  # setup_launchagent just kept a fork-pointed launcher (no pin this run),
+  # keep the stock CLI away from the daemon entirely - that would be the same
+  # silent revert, one step later.
+  if [[ -n "$PASEO_FORK_BIN" ]]; then
+    cli="$PASEO_FORK_BIN"
+  elif [[ "${FORK_LAUNCHER_LEFT_ALONE:-0}" == "1" ]]; then
+    echo "Fork-pinned launcher left in place and no PASEO_FORK_BIN given;"
+    echo "leaving the running daemon alone (no stock CLI start/restart)."
+    return 0
+  else
+    if ! command -v paseo &>/dev/null; then
+      echo "No \`paseo\` binary yet - open Paseo.app once to start the daemon."
+      return 0
+    fi
+    cli="paseo"
+  fi
   # daemon.listen and auth are STARTUP settings - `paseo reload` cannot apply
   # them - so a changed config needs a bounce. An unchanged one does not, and
   # bouncing anyway would kill whatever agents are mid-task.
-  if ! command -v paseo &>/dev/null; then
-    echo "No \`paseo\` binary yet - open Paseo.app once to start the daemon."
-    return 0
-  fi
-  if ! paseo daemon status >/dev/null 2>&1; then
+  if ! "$cli" daemon status >/dev/null 2>&1; then
     echo "Starting the daemon..."
-    paseo daemon start --home "$PASEO_HOME_DIR" >/dev/null 2>&1 \
+    "$cli" daemon start --home "$PASEO_HOME_DIR" >/dev/null 2>&1 \
       || echo "  ...could not start it from the CLI; open Paseo.app."
     return 0
   fi
   if [[ "$config_changed" == "1" ]]; then
     echo "Restarting the daemon to pick up config.json..."
-    paseo daemon restart >/dev/null 2>&1 \
+    "$cli" daemon restart >/dev/null 2>&1 \
       || echo "  ...could not restart from the CLI; use Settings -> your host -> Restart daemon."
   else
     echo "Daemon already running with this config; left alone."
