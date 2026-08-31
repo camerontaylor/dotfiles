@@ -65,6 +65,10 @@ package, nothing in the docs) and the daemon dies with the app. Left alone,
 saturn and neptune drop off the phone after every reboot until someone walks
 over and opens the app.
 
+This covers **login**. A daemon that dies *mid-session* is a separate problem
+the one-shot job deliberately cannot solve, and is handled by a second job —
+see *The watchdog* under Troubleshooting.
+
 `setup-paseo.sh` therefore installs a **user** LaunchAgent,
 `~/Library/LaunchAgents/local.paseo-daemon.plist` — user, not a system
 LaunchDaemon like `t3-serve`, because the daemon spawns claude/codex/opencode
@@ -413,19 +417,71 @@ the daemon is enforcing a password at all.
 
 ### Recovering a dead macOS daemon
 
-The LaunchAgent is one-shot `RunAtLoad` with no `KeepAlive` (deliberately — see
-*macOS has no launch-at-login* above), so a daemon that dies **mid-session stays
-dead until the next login**. `launchctl print` will show `state = not running`
-and `active count = 0`, which is correct and not itself the fault.
+Normally you do not have to: `local.paseo-watchdog` probes every 5 minutes and
+restarts a dead daemon on its own (see *The watchdog* below). Reach for this
+when you want it back **now**, or when the watchdog is deliberately holding off
+because the disk is full.
+
+The login job itself is one-shot `RunAtLoad` with no `KeepAlive` (deliberately —
+see *macOS has no launch-at-login* above), so it will not restart anything
+mid-session. `launchctl print gui/$(id -u)/local.paseo-daemon` showing
+`state = not running` and `active count = 0` is therefore correct, and not
+itself the fault.
 
 ```zsh
-ssh neptune 'launchctl kickstart -k gui/$(id -u)/local.paseo-daemon'
+ssh neptune 'launchctl kickstart -k gui/$(id -u)/local.paseo-daemon'   # the daemon
+ssh neptune 'launchctl kickstart gui/$(id -u)/local.paseo-watchdog'    # or force a probe
 ```
 
 Agents survive this. The five agents on neptune — including two mid-run —
 reattached from `~/.paseo/agents/` after a 2026-08-31 restart. Prefer the
 kickstart over a bare `paseo daemon start` so the LaunchAgent stays the single
 daemon owner.
+
+### The watchdog, and why it is a timer rather than `KeepAlive`
+
+`scripts/paseo-watchdog` runs from `local.paseo-watchdog` every 5 minutes,
+probes `/api/health`, and restarts the daemon if it does not answer. It bounds a
+mid-session outage to one interval instead of "until someone notices". macOS
+only — on ceres the unit runs the daemon with `--foreground`, so systemd
+supervises the daemon itself and `Restart=on-failure` already covers it.
+
+The tempting fix is `KeepAlive` on `local.paseo-daemon`. It is not just weaker,
+it is **backwards**. That job runs `paseo daemon start` *without* `--foreground`,
+so it forks the real daemon and returns: launchd supervises a launcher, and the
+exit status describes the launch attempt rather than the daemon's life. And
+`paseo daemon start` exits **1 when a daemon already holds the port** — verified
+on neptune 2026-08-31: exit 1, PID unchanged, health still 200, running agents
+undisturbed. So `KeepAlive={SuccessfulExit:false}` would restart on exactly the
+condition meaning *"everything is fine"* and never on the one meaning *"it
+died"*. `AbandonProcessGroup` in that plist is the tell that the real daemon
+outlives the job.
+
+A `StartInterval` job has no such edge — launchd fires it on a clock, never on
+exit status. Three properties keep it loop-free:
+
+1. No `KeepAlive` anywhere, so exit status is never a restart trigger.
+2. The corrective action is a verified no-op when a daemon is already up, so
+   even a *wrong* health verdict — a probe that times out because the event loop
+   is briefly busy — costs nothing. False positives are harmless by construction.
+3. Bounded work per tick: one probe, at most one start attempt.
+
+It also **refuses to start below a free-space floor** (`2048` MB, override with
+`PASEO_WATCHDOG_MIN_FREE_MB`). ENOSPC is what actually kills the daemon, and
+restarting into a full disk only re-crashes it — the one case a plain
+`KeepAlive` could not express. The daily `prune-tmpdir` reaper frees space and a
+later tick succeeds.
+
+Its plist mirrors the daemon job's environment, **`USER` and `LOGNAME`
+included**: a daemon started by the watchdog inherits *this* job's environment,
+so omitting them would bring the daemon back while every agent it spawned died
+with a revoked-token 401 (see *One login, two stores*). Keep the two
+`EnvironmentVariables` dicts in sync.
+
+```zsh
+cat ~/.paseo/watchdog.log        # empty while healthy; only real incidents land here
+launchctl print gui/$(id -u)/local.paseo-watchdog | grep -E 'state|run interval'
+```
 
 ### A full disk kills the daemon silently
 
@@ -670,8 +726,11 @@ carries the never-older property once the base is a stable
 |---|---|
 | `scripts/setup-paseo.sh` | per-host install + config + service. One-shot, idempotent. |
 | `scripts/paseo-config.mjs` | idempotent `~/.paseo/config.json` deep-merge, atomic 0600 write |
+| `scripts/paseo-watchdog` | 5-min health probe; restarts a dead daemon, with a free-space floor |
 | `scripts/deploy.d/75_brew_setup.zsh` | `paseo` cask on macOS |
 | `zsh/rc.d/12_paseo.zsh` | `paseo-at` / `paseo-ceres` / `paseo-hosts`, mise wrapper |
 | `zsh/env.d/90_secrets.zsh` | `PASEO_PASSWORD` (encrypted) |
 | `/etc/systemd/system/paseo-daemon.service` | generated on ceres by the setup script |
 | `~/Library/LaunchAgents/local.paseo-daemon.plist` | generated on the Macs by the setup script |
+| `~/Library/LaunchAgents/local.paseo-watchdog.plist` | ditto; the 5-min `StartInterval` job |
+| `~/.paseo/watchdog.log` | watchdog output; empty unless it actually did something |
