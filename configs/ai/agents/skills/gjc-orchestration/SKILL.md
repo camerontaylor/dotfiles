@@ -265,3 +265,23 @@ Run the gjc built-in **deep-interview** skill (/skill:deep-interview) on:
     against 0.5 fails the schema outright. Re-check the `create_agent`
     schema on every paseo minor bump; the §4 provider-format error message
     is unchanged, so the two failures look alike (2026-08-29).
+11. Paseo-hosted gjc sessions can wedge with a persistent
+    `[System Error] A foreground turn is already active` on interactive
+    operations — observed on a parallel review fan-out (subagent id
+    steering) and again on an `ask` gate. paseo shows `activeTurn: null`
+    and `cancel_agent` returns `success:false`, while the `gjc acp`
+    process holds the slot; prompts bounce until that process is killed
+    (identify it by `/proc/<pid>/cwd` + start time vs the agent's
+    createdAt — session id is NOT in the cmdline). After the kill, a
+    follow-up prompt respawns against the persisted native session and
+    ralplan resumes from its durable stage receipts — nothing is lost,
+    which is the `--write` policy paying off. Brief agents to run review
+    steps sequentially, but expect any interactive op to be able to
+    re-wedge (gjc 0.15.5 + paseo 0.7.0-beta.2, 2026-08-30).
+12. The ralplan planning-phase guard blocks the final repo-path write
+    (e.g. `plans/<name>.md`) — only run-dir artifacts and /tmp are
+    writable while the run is active, so a brief asking for a repo
+    output path ends in an `ask` gate (see #11). The canonical final
+    lands at `.gjc/_session-<id>/plans/ralplan/<run-id>/pending-approval.md`
+    (= `stage-03-final.md`); the dispatcher copies it out after the run.
+    Write briefs accordingly (2026-08-30).
