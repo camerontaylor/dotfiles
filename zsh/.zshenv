@@ -78,4 +78,10 @@ unset envfile homezshenv
 
 [[ -d "$HOME/.opencode/bin" ]] && path=("$HOME/.opencode/bin" $path)
 
+# Bash-compatible expansion in agent shells only: agents write bash-flavored
+# one-liners, so let unmatched globs pass through literally (no_nomatch) and
+# treat `=word` as plain text (no_equals). Last on purpose — nothing in env.d
+# may re-enable these behind our back.
+[[ -n $CLAUDECODE || -n $CODEX_SESSION_ID ]] && setopt no_nomatch no_equals
+
 _zshenv_dbg "done"
