@@ -112,4 +112,12 @@ Session.vim
 # Gajae Code (gjc) writes per-session state into every project it runs in
 .gjc/
 
+# gjc's exact-edit scratch files, dropped NEXT TO the file being edited rather
+# than inside .gjc/, so the rule above does not catch them. Named
+# .gjc-exact-<op>-<hash>-<id>, mostly 0 bytes, and they are not cleaned up: 16
+# had piled into configs/ai/gjc/ on neptune by 2026-08-31, several appearing
+# mid-session. Two ops seen so far (replace-destination, unlink-placeholder);
+# the prefix covers any others.
+.gjc-exact-*
+
 # vi: ft=gitignore
