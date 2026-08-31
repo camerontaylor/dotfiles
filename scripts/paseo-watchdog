@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Restart the Paseo daemon if it has died. macOS only — on ceres systemd's
+# Restart=on-failure already covers this, because the unit runs the daemon
+# with --foreground and therefore supervises the daemon process itself.
+#
+# WHY A TIMER AND NOT KeepAlive
+#
+# The obvious fix is KeepAlive on local.paseo-daemon. It does not work, because
+# that job's ProgramArguments is `paseo daemon start` WITHOUT --foreground: the
+# command forks the real daemon and returns immediately, so launchd supervises a
+# launcher, not a daemon, and the exit status describes the launch attempt
+# rather than the daemon's life. Specifically, `paseo daemon start` exits 1 when
+# a daemon already holds the port (verified on neptune 2026-08-31: exit 1, PID
+# unchanged, /api/health still 200, running agents undisturbed). So
+# KeepAlive={SuccessfulExit:false} would restart on exactly the condition that
+# means "everything is fine" and never on the condition that means "it died" —
+# the restart loop the local.paseo-daemon comment warns about, wired to the
+# wrong signal. AbandonProcessGroup in that plist is the tell that the real
+# daemon outlives the job.
+#
+# A StartInterval job sidesteps the whole problem. launchd fires it on a clock,
+# never on exit status, so the feedback edge that creates loops does not exist.
+# Three properties make it safe:
+#
+#   1. No KeepAlive anywhere. Exit status is never a restart trigger.
+#   2. The corrective action is a verified no-op when a daemon is already up
+#      (exit 1, running daemon untouched), so even a WRONG health verdict — a
+#      probe that times out because the daemon's event loop is briefly busy —
+#      costs nothing. False positives are harmless by construction.
+#   3. Bounded work per tick: one probe and at most one start attempt per
+#      interval, whatever state the box is in.
+#
+# THE DISK GUARD
+#
+# ENOSPC is what actually killed the daemon on neptune (2026-08-30): it took an
+# unhandled ENOSPC persisting an agent snapshot and exited with no crash report
+# and nothing in the system log. Restarting into a still-full disk just
+# re-crashes, so below a free-space floor this logs and waits instead. The daily
+# reaper (scripts/prune-tmpdir) frees space and a later tick then succeeds.
+# That is the one thing a plain KeepAlive could not express.
+#
+# /bin/sh rather than this repo's usual `#!/usr/bin/env zsh`: a zsh script
+# sources ~/.zshenv and the whole env.d chain, which this needs nothing from —
+# it takes PATH from the plist. A supervisor should depend on as little as
+# possible, since it runs precisely when things are broken. Keep it POSIX.
+
+set -u
+
+PASEO_HOME="${PASEO_HOME:-$HOME/.paseo}"
+PORT="${PASEO_PORT:-6767}"
+# Floor is generous on purpose: the daemon needs room for agent snapshots,
+# worktrees and its own 10 MB x 2 log rotation, not just to open a socket.
+MIN_FREE_MB="${PASEO_WATCHDOG_MIN_FREE_MB:-2048}"
+
+log() {
+  printf '%s paseo-watchdog: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*"
+}
+
+# /api/health is the one endpoint exempt from password auth, precisely so
+# supervisors can probe it. Healthy -> exit silently, so this job's log only
+# ever accumulates real incidents (unlike launchd.err, which is append-mode and
+# whose tail can be months stale).
+if curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$PORT/api/health" 2>/dev/null; then
+  exit 0
+fi
+
+# df -P -k: POSIX output, one line per filesystem, 1K blocks. Avoids both BSD's
+# -g and GNU's --output, neither of which the other has.
+free_mb=$(df -P -k "$PASEO_HOME" 2>/dev/null | awk 'NR==2 { print int($4/1024) }')
+if [ "${free_mb:-0}" -lt "$MIN_FREE_MB" ]; then
+  log "daemon down, but only ${free_mb:-0}MB free (floor ${MIN_FREE_MB}MB) - not restarting"
+  log "  check ~/.tmp, 'mise prune', ~/.cache/npm, then worktrees"
+  exit 0
+fi
+
+log "daemon not answering on :$PORT - starting it (${free_mb}MB free)"
+if paseo daemon start --home "$PASEO_HOME" >/dev/null 2>&1; then
+  log "  ...started"
+else
+  # Exit 1 here most likely means a daemon grabbed the port between the probe
+  # and now, which is a benign race and self-correcting: the next tick's probe
+  # will pass. Deliberately does NOT escalate to kill/restart — that would risk
+  # killing agents mid-task on the strength of one failed probe.
+  log "  ...start exited non-zero (a daemon may already hold :$PORT); will retry next tick"
+fi

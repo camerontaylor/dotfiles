@@ -18,7 +18,10 @@ set -euo pipefail
 #                              but the app has no launch-at-login support and
 #                              the daemon dies with it, so a one-shot user
 #                              LaunchAgent starts one at login too. See
-#                              setup_launchagent for why it is one-shot.
+#                              setup_launchagent for why it is one-shot, and
+#                              setup_watchdog for the 5-minute timer that
+#                              covers a daemon dying MID-session (which the
+#                              login-only job cannot).
 #
 # WHY NOT LOOPBACK-BEHIND-CADDY, like setup-t3.sh / setup-caddy.sh:
 #   Paseo's phone clients speak WebSocket to /ws and its own docs' Tailscale
@@ -434,6 +437,98 @@ EOF
   fi
 }
 
+setup_watchdog() {
+  # The login job above only fires at login, so a daemon that dies MID-SESSION
+  # stays dead until the next one. That is how neptune dropped off the phone for
+  # ~12 hours on 2026-08-30 after an ENOSPC kill. This is the missing piece: a
+  # timer that re-starts it, bounding the outage to one interval.
+  #
+  # StartInterval and NOT KeepAlive - see the long header in scripts/paseo-watchdog
+  # for why exit-status supervision is actively wrong for a `paseo daemon start`
+  # that forks. Short version: exit 1 means "a healthy daemon already holds the
+  # port", so KeepAlive would restart on the one condition meaning all is well.
+  #
+  # Linux needs none of this: setup_systemd runs the daemon with --foreground,
+  # so systemd supervises the daemon itself and Restart=on-failure already does it.
+  local watchdog="$SCRIPT_DIR/paseo-watchdog"
+  local plist="$RUN_HOME/Library/LaunchAgents/local.paseo-watchdog.plist"
+
+  if [[ ! -x "$watchdog" ]]; then
+    echo "NOTE: $watchdog missing or not executable; skipping the watchdog."
+    return 0
+  fi
+
+  echo "Installing the daemon watchdog (~/Library/LaunchAgents/local.paseo-watchdog.plist)..."
+  mkdir -p "$RUN_HOME/Library/LaunchAgents"
+  cat > "$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.paseo-watchdog</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$watchdog</string>
+  </array>
+  <!-- This env dict must MIRROR the daemon job's. A daemon started by this
+       watchdog inherits the environment of this job, not of the login job, so
+       any variable the daemon needs has to be here too or a watchdog-restarted
+       daemon comes back subtly broken. Keep the two dicts in sync. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>$RUN_HOME</string>
+    <!-- Must reach \`paseo\` and, through it, the agent CLIs a restarted daemon
+         will spawn. Same PATH as the daemon job on purpose. -->
+    <key>PATH</key>
+    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <!-- USER/LOGNAME are load-bearing for the same reason as in the daemon job:
+         Claude Code resolves its OAuth token from the login keychain by
+         account "\$USER", and launchd supplies no USER. Omit them here and the
+         daemon still comes back — but every agent it spawns dies with
+         "401 OAuth access token has been revoked". -->
+    <key>USER</key>
+    <string>$RUN_USER</string>
+    <key>LOGNAME</key>
+    <string>$RUN_USER</string>
+    <key>PASEO_PORT</key>
+    <string>$PASEO_PORT</string>
+  </dict>
+  <key>WorkingDirectory</key>
+  <string>$RUN_HOME</string>
+  <!-- Every 5 minutes. launchd also fires a missed interval on wake, so a box
+       that slept through a crash is recovered shortly after it wakes. -->
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <!-- Probe once at load too, so re-running this script heals a dead daemon. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- Deliberately NO KeepAlive. See setup_watchdog's comment. -->
+  <!-- AbandonProcessGroup so launchd does not reap the daemon this job just
+       started when the short-lived probe process exits. Same reason as the
+       daemon job. -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$PASEO_HOME_DIR/watchdog.log</string>
+  <key>StandardErrorPath</key>
+  <string>$PASEO_HOME_DIR/watchdog.log</string>
+</dict>
+</plist>
+EOF
+  chmod 644 "$plist"
+  local uid
+  uid=$(id -u "$RUN_USER")
+  launchctl bootout "gui/$uid/local.paseo-watchdog" >/dev/null 2>&1 || true
+  if launchctl bootstrap "gui/$uid" "$plist" >/dev/null 2>&1; then
+    echo "  ...loaded (checks every 5 min; logs to ~/.paseo/watchdog.log)"
+  else
+    echo "  ...could not bootstrap the watchdog; load it by hand with:"
+    echo "       launchctl bootstrap gui/$uid $plist"
+  fi
+}
+
 restart_macos_daemon() {
   local config_changed="$1"
   # daemon.listen and auth are STARTUP settings - `paseo reload` cannot apply
@@ -524,7 +619,9 @@ echo ""
 
 case "$OS" in
   Linux)  setup_systemd "$LISTEN" "$CONFIG_CHANGED" ;;
-  Darwin) setup_launchagent; restart_macos_daemon "$CONFIG_CHANGED" ;;
+  # setup_watchdog runs LAST: its plist is RunAtLoad, so bootstrapping it before
+  # the daemon is settled would race restart_macos_daemon for the port.
+  Darwin) setup_launchagent; restart_macos_daemon "$CONFIG_CHANGED"; setup_watchdog ;;
 esac
 
 # --- verify ------------------------------------------------------------------
