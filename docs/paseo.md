@@ -287,6 +287,129 @@ it, which is also how the CLI gets upgraded.
   `setup-t3.sh` needs. The setup script verifies it anyway; that failure is
   invisible until someone opens an agent terminal.
 
+## Troubleshooting: "paseo is down"
+
+### `daemon status` lies about two of its four health fields
+
+Against a **completely healthy** daemon, `paseo daemon status` (CLI
+`0.7.0-beta.2`) reports:
+
+```
+Local Daemon      unresponsive
+Connected Daemon  unreachable
+Note              Local daemon PID is running but websocket at :::6767 is not reachable
+```
+
+Verified 2026-08-31 on neptune *and* saturn at the same time — saturn's daemon
+had not crashed, was serving the phone, and still printed all three lines. It is
+a CLI probe bug, not a per-box fault. Do not go chasing a bind or an auth
+problem on the strength of that `Note`; the daemon really is listening on
+`[::]:6767` and the websocket really does accept upgrades.
+
+`Local Daemon` is worth reading for exactly one value: **`stale_pid` is real.**
+It means the PID recorded in `~/.paseo/paseo.pid` is gone and nothing holds
+6767 — the daemon is genuinely dead and needs the kickstart below.
+
+The `Providers` block at the bottom of that output is also trustworthy; it is
+resolved by the CLI itself rather than probed over the socket.
+
+### Ground truth instead
+
+```zsh
+# 1. HTTP health on every address a client might use. All four must return 200.
+ip4=$(tailscale ip -4)
+for t in 127.0.0.1 '[::1]' localhost "$ip4"; do
+  printf '%-18s ' "$t"
+  curl -fsS -m 5 -o /dev/null -w '%{http_code}\n' "http://$t:6767/api/health" || echo FAIL
+done
+
+# 2. The websocket the phone and desktop actually speak. Want 101.
+#    curl exits non-zero (28, timeout) because the socket stays open after the
+#    upgrade — that is success, read the status code, not the exit code.
+curl -s -m 5 -o /dev/null -w '%{http_code}\n' \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+  http://localhost:6767/ws
+
+# 3. End to end: does it list agents, and did real clients reattach?
+#    Filter the metrics chatter or it buries everything else.
+paseo ls
+grep -a -o '"msg":"[^"]*"' ~/.paseo/daemon.log \
+  | grep -av ws_runtime_metrics | tail -15   # want "Client connected via hello"
+
+# 4. Is the bind dual-stack? TYPE must read IPv6, not IPv4 (see "Bind [::]" above).
+lsof -nP -iTCP:6767 -sTCP:LISTEN
+```
+
+Check 2 proves the websocket endpoint is **live**, not that auth works: the
+upgrade succeeds at the HTTP layer (101) and the daemon then rejects the
+passwordless connection at the application layer. So the probe writes its own
+scare line into `daemon.log` —
+
+```
+"userAgent":"curl/8.7.1","remoteAddress":"::1","hasToken":false,
+"msg":"Rejected WebSocket connection with invalid daemon password"
+```
+
+— one per run. Before reading that as a client failing to authenticate, check
+`userAgent` and `hasToken`: `curl/*` with `hasToken:false` is your own probe.
+
+What actually proves auth works is a real client reaching `Client connected via
+hello`. Grep for it and read the user-agent: `okhttp/*` from a `100.x`
+`remoteAddress` with `"peer":"external"` is **the phone over Tailscale**, which
+is usually the thing you are really trying to confirm. A client that cannot
+authenticate logs the rejection under its own user-agent and never reaches
+`hello`. `Daemon password authentication enabled` in the startup log confirms
+the daemon is enforcing a password at all.
+
+### Recovering a dead macOS daemon
+
+The LaunchAgent is one-shot `RunAtLoad` with no `KeepAlive` (deliberately — see
+*macOS has no launch-at-login* above), so a daemon that dies **mid-session stays
+dead until the next login**. `launchctl print` will show `state = not running`
+and `active count = 0`, which is correct and not itself the fault.
+
+```zsh
+ssh neptune 'launchctl kickstart -k gui/$(id -u)/local.paseo-daemon'
+```
+
+Agents survive this. The five agents on neptune — including two mid-run —
+reattached from `~/.paseo/agents/` after a 2026-08-31 restart. Prefer the
+kickstart over a bare `paseo daemon start` so the LaunchAgent stays the single
+daemon owner.
+
+### A full disk kills the daemon silently
+
+This is how neptune went down on 2026-08-30. The daemon takes an unhandled
+`ENOSPC` while persisting an agent snapshot and exits with no crash report, no
+dialog, and nothing in the system log:
+
+```zsh
+grep -a ENOSPC ~/.paseo/daemon.log | tail -3
+```
+
+```
+Error: ENOSPC: no space left on device
+path: /Users/ctaylor/.paseo/agents/<agent>/.<uuid>.json.<pid>.<ts>.tmp
+```
+
+Nothing restarts it afterwards, so the box drops off the phone until someone
+notices. Note the disk may look fine by the time you investigate — the daemon
+dying releases its own handles, and `56_tmpdir_prune.zsh` reaps `~/.tmp` daily.
+Check the log for `ENOSPC` before concluding the disk was never the problem.
+neptune's usual offenders, worst first: `~/.tmp/ruby-build.*`, `mise prune`,
+`~/.cache/npm`, then `~/repos/worktrees` and `~/.paseo/worktrees`.
+
+### `launchd.err` is append-mode — check timestamps before trusting it
+
+The plist appends rather than truncates, so the tail of
+`~/.paseo/launchd.err` can be months stale and reference a hostname and daemon
+version that no longer exist. On neptune in 2026-08 its last lines were still
+from `"hostname":"iMac"` / `"daemonVersion":"0.4.0"` in the previous August —
+including a run of `Rejected WebSocket connection with invalid daemon password`
+that had nothing to do with the outage being diagnosed. Read `~/.paseo/daemon.log`
+for current state; treat `launchd.err` as history.
+
 ## Two `paseo` binaries — don't
 
 The cask installs the app **and** a version-locked `paseo` CLI symlinked into
