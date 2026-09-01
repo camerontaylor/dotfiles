@@ -431,7 +431,9 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     printf '%s\n' "Installing JankyBorders..."
     brew_formula_install_or_upgrade felixkratz/formulae/borders || true
     if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
-        if brew services list 2>/dev/null | grep -qE '^borders[[:space:]]+(started|running)'; then
+        # Producer `|| true`-guarded: under the bash driver's pipefail a grep -q
+        # early exit could SIGPIPE brew and flip this gate (see 73_tailscale.zsh).
+        if { brew services list 2>/dev/null || true; } | grep -qE '^borders[[:space:]]+(started|running)'; then
             printf '%s\n' "  ...borders service already running"
         elif brew services start felixkratz/formulae/borders > /dev/null 2>&1; then
             printf '%s\n' "  ...borders service started"

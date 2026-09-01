@@ -196,7 +196,10 @@ fi
 # can exit 0 while in NeedsLogin (e.g. after a key rotation), which would wrongly
 # skip the re-auth. The status table only prints a self/peer line beginning with
 # a 100.x CGNAT address when the node is actually Running, so grep for that.
-if "$ts_cli" status 2>/dev/null | grep -q '^100\.'; then
+# The producer is `{ … || true }`-guarded: `tailscale status` streams slowly, so
+# `grep -q`'s early exit SIGPIPEs it (141) — under the bash driver's `pipefail`
+# that would invert this gate and re-run `tailscale up` on every deploy.
+if { "$ts_cli" status 2>/dev/null || true; } | grep -q '^100\.'; then
     return 0
 fi
 
