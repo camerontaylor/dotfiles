@@ -109,9 +109,13 @@ crash-looped three services for a week in 2026-07.
 │   └── keybindings/    # README + printable cheat sheet (keyboard/nav/GUI/WM)
 ├── zsh/
 │   ├── .zshenv         # Entry point, sets ZDOTDIR
-│   ├── env.d/          # ALL shells (export PATH, XDG vars, mise shims)
-│   ├── rc.d/           # Interactive only (plugins, completions, prompts)
+│   ├── env.d/          # ALL shells, BOTH zsh and bash (export PATH, XDG vars, mise shims)
+│   ├── rc.d/           # Interactive zsh only (plugins, completions, prompts)
 │   └── fpath/          # Autoloaded functions (evalcache, dotfiles-encrypt, etc.)
+├── bash/               # Opt-in bash twin (zsh stays default; 21_bash_symlinks)
+│   ├── env.sh          # Shared env entrypoint: sources zsh/env.d/* + exports BASH_ENV
+│   ├── rc.d/           # Interactive bash only (history/setopt/gnubin/completion/paseo)
+│   └── inputrc         # readline config ($INPUTRC, zero home presence)
 ├── nvim/               # Lua config (0.11.0+): mini.nvim, mason, blink.cmp
 ├── tmux/               # Solarized, vim-aware pane nav
 ├── yazi/               # Yazi file manager config + plugins

@@ -1,0 +1,17 @@
+# readline config for the bash tree — the .inputrc half of zsh's completion
+# setopts (docs/bash-compatibility.md §C). Reached via $INPUTRC exported by
+# bash/env.sh, so nothing lands in $HOME (zero-home-presence rule).
+
+# unsetopt BEEP
+set bell-style none
+# setopt LIST_TYPES — append file-type chars to listed completions
+set visible-stats on
+set colored-stats on
+# setopt AUTO_PARAM_SLASH — completed directories gain a trailing slash
+set mark-directories on
+# case-insensitive completion (matches the fzf-flavored workflow)
+set completion-ignore-case on
+# first Tab shows all matches instead of ringing
+set show-all-if-ambiguous on
+# cycle with the common prefix already inserted
+set menu-complete-display-prefix on

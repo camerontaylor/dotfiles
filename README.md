@@ -189,7 +189,7 @@ restores `ssh/*.enc` with a date guard; `./deploy.zsh --force` overrides it.
 
 ## Zero home presence
 
-The shell can be installed without even a `~/.zshenv` symlink: set `ZDOTDIR` to
+**zsh** can be installed without even a `~/.zshenv` symlink: set `ZDOTDIR` to
 `<install dir>/zsh` early in login, before zsh sources the user's `.zshenv` —
 e.g. add to `/etc/zsh/zshenv`:
 
@@ -198,8 +198,21 @@ export ZDOTDIR="$HOME/.local/dotfiles/zsh"
 ```
 
 (Or set it via a PAM environment module.) Deploy detects this and skips the
-`~/.zshenv` symlink. Note this applies to the shell; AI CLIs and GUI apps still
-create their own `$HOME` dotfiles.
+`~/.zshenv` symlink.
+
+**bash** has no ZDOTDIR — it reads `~/.bash_profile` (login), `~/.bashrc`
+(interactive), and `$BASH_ENV` (non-interactive) by absolute home paths, so
+three symlinks are the floor `21_bash_symlinks.zsh` installs:
+`~/.bash_profile`, `~/.bashrc`, and `~/.config/bash → <install dir>/bash`.
+Everything else (env.sh, rc.d/, inputrc) lives under that one dir link, and
+`bash/env.sh` exports `BASH_ENV`/`INPUTRC` pointing into it so non-interactive
+children and readline resolve there too. A truly link-free install works the
+same way as zsh's: set `BASH_ENV=<install dir>/bash/env.sh` early in login
+(e.g. a PAM environment module) and start bash as
+`bash --rcfile <install dir>/bash/.bashrc`.
+
+Note this applies to the shells; AI CLIs and GUI apps still create their own
+`$HOME` dotfiles.
 
 ## Configuration
 
