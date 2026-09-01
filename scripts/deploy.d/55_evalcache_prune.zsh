@@ -28,7 +28,10 @@ printf '%s\n' "Pruning empty evalcache entries..."
 empty_caches=()
 while IFS= read -r _cache_file; do
     empty_caches+=("$_cache_file")
-done < <(find "$cache_dir" -maxdepth 1 -type f -name '*.zsh' -size 0c 2>/dev/null | sort)
+# `|| true`: the cache dir legitimately doesn't exist on a fresh box, but
+# under deploy.bash's `set -eE -o pipefail` the failing find fires the ERR
+# trap inside the process substitution (see 73_tailscale.zsh).
+done < <(find "$cache_dir" -maxdepth 1 -type f -name '*.zsh' -size 0c 2>/dev/null | sort || true)
 
 if (( ${#empty_caches[@]} == 0 )); then
     printf '%s\n' "  ...none found"

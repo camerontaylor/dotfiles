@@ -33,13 +33,21 @@ fi
 # deploy). Rendered state dir first, in-tree env.d second — per-dir sort keeps
 # the load order byte-identical to the old brace-glob concatenation, so a
 # deliberate 96_local override still wins over the rendered 95 file.
+# The find pipelines end in "|| true" because the state-dir find legitimately
+# misses on a box that never rendered secrets — but under deploy.bash's
+# "set -eE -o pipefail" a failing find fires the ERR trap inside the process
+# substitution, printing a bogus "aborted at line N" for a tolerated
+# condition. (And keep commentary OUT of the <( ... ) body: bash 3.2's paren
+# scanner is comment-blind, so quotes or backticks inside a procsub comment
+# read as an unterminated string and the redirect dies at runtime even though
+# bash -n passes.)
 secret_files=()
 while IFS= read -r secret_file; do
     [[ -f $secret_file ]] || continue
     secret_files+=("$secret_file")
 done < <(
-    find "${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh" -maxdepth 1 -name '9[0-9]_tailscale_secrets.zsh' 2>/dev/null | sort
-    find "$SCRIPT_DIR/zsh/env.d" -maxdepth 1 -name '9[0-9]_*tailscale*.zsh' 2>/dev/null | sort
+    find "${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh" -maxdepth 1 -name '9[0-9]_tailscale_secrets.zsh' 2>/dev/null | sort || true
+    find "$SCRIPT_DIR/zsh/env.d" -maxdepth 1 -name '9[0-9]_*tailscale*.zsh' 2>/dev/null | sort || true
 )
 secret_file=
 for secret_file in "${secret_files[@]}"; do

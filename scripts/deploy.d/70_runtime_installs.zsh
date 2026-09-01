@@ -2,6 +2,16 @@
 # rustup/cargo, linear-cli, CodeWhale), npm globals through the mise-managed
 # node (pinned in configs/mise.toml, installed by 50_mise.zsh), and gjc as a
 # bun global (bun-only package; see its block below).
+#
+# Dry-run contract (AGENTS.md): same story as 50_mise.zsh — the npm and gjc
+# blocks below had per-step gates, but the curl/rustup/cargo blocks did not,
+# and on a provisioned box every install is a quiet `have`-skipped no-op, so
+# nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
+# mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
+if (( DEPLOY_DRY_RUN )); then
+    printf '%s\n' "Runtime installs skipped in dry-run (would: Claude Code, npm globals, gjc, rustup, linear-cli, CodeWhale, moor)"
+    return 0
+fi
 
 if ! have claude; then
     printf '%s\n' "Installing Claude Code..."

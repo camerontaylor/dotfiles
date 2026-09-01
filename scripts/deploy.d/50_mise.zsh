@@ -1,5 +1,18 @@
 # Bootstrap mise, then run `mise install` to materialize tools from
 # configs/mise.toml. Brew fallback follows for tools mise couldn't acquire.
+#
+# Dry-run contract (AGENTS.md: "--dry-run — fragments print intentions
+# without mutating"): this fragment's whole job is mutation — downloading
+# the mise binary, `mise install` (node/bun/python/… runtimes), `mise
+# upgrade`, and brew fallbacks. On a box where tools are already
+# materialized those steps are quiet no-ops, which is why this ran green
+# under --dry-run for so long, but on a fresh machine (CI) it would
+# install gigabytes mid-"dry-run". Preview and stop, 73_tailscale.zsh's
+# per-step "[dry-run] would:" idiom compressed to fragment scope.
+if (( DEPLOY_DRY_RUN )); then
+    printf '%s\n' "Mise bootstrap skipped in dry-run (would: install mise if missing, 'mise install', 'mise upgrade', brew fallbacks)"
+    return 0
+fi
 
 if ! have mise; then
     printf '%s\n' "Installing mise..."

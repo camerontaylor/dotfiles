@@ -26,7 +26,9 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 # already passwordless/cached or stdin is a terminal (interactive `./deploy.zsh`).
 # Otherwise we print a copy-paste hint instead of hanging — same guard as
 # 75_brew_setup.zsh's htop, honouring the no-sudo-in-hook rule.
-if [[ $DOTFILES_OS == Darwin ]] && have brew; then
+# `have brew` probes PATH directly, so the DOTFILES_SKIP_BREW gate in
+# ensure_homebrew_path doesn't reach this branch — CI needs it here.
+if [[ $DOTFILES_OS == Darwin ]] && have brew && [[ -z ${DOTFILES_SKIP_BREW:-} ]]; then
     brew_tool= formula= bin_name=
     for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl; do
         formula=${brew_tool%%:*}
@@ -124,20 +126,32 @@ elif [[ $DOTFILES_OS == Linux ]]; then
 fi
 
 if ! have wtp; then
-    $SCRIPT_DIR/scripts/install-wtp.zsh || true
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: scripts/install-wtp.zsh"
+    else
+        $SCRIPT_DIR/scripts/install-wtp.zsh || true
+    fi
 fi
 
 if have gh; then
-    gh extension list 2>/dev/null | grep -q chmouel/gh-prreview \
-        || gh extension install chmouel/gh-prreview 2>/dev/null \
-        || true
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: gh extension install chmouel/gh-prreview (if missing)"
+    else
+        gh extension list 2>/dev/null | grep -q chmouel/gh-prreview \
+            || gh extension install chmouel/gh-prreview 2>/dev/null \
+            || true
+    fi
 fi
 
 if ! have moor; then
-    printf '%s\n' "Installing moor..."
-    if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
-        printf '%s\n' "  ...done"
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: install moor (scripts/install-moor.sh)"
     else
-        printf '%s\n' "  ...failed to install moor, skipping"
+        printf '%s\n' "Installing moor..."
+        if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
+            printf '%s\n' "  ...done"
+        else
+            printf '%s\n' "  ...failed to install moor, skipping"
+        fi
     fi
 fi

@@ -1,0 +1,77 @@
+# Dual-shell matrix (docs/bash-compatibility.md): the repo must parse and
+# dry-run identically under zsh and bash on both platforms this fleet runs.
+#
+#   macOS leg  — /bin/bash is 3.2.57, the FLOOR (§E): if the bootstrap
+#                parses and dry-runs there, it parses and runs on the oldest
+#                shell the repo targets.
+#   Ubuntu leg — /bin/bash is the distro 5.x and /bin/sh is dash, the Linux
+#                reality (eris box, GitHub Actions).
+#
+# No brew installs: hosted macOS runners ship Homebrew, but CI must not
+# install anything into them — DOTFILES_SKIP_BREW=1 (helpers.zsh) makes
+# every brew-dependent step take its no-brew path. mise/cargo/npm installs
+# are skipped by the drivers' own --dry-run gates.
+#
+# Kept minutes-fast: submodules come from the checkout (30_submodules'
+# update is then a no-op), and every leg is a parse/print exercise.
+name: shells
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Report shell fleet
+        run: |
+          zsh --version
+          /bin/bash --version | head -n 1
+          echo "sh -> $(readlink /bin/sh)"
+
+      # (a) tree-wide dual -n sweep — the same gate pre-commit runs over
+      # staged scripts/ files, expanded to the whole tree (zsh/, bash/,
+      # bin/, deploy drivers), where the interactive layers live.
+      - name: Tree-wide dual-shell syntax sweep
+        run: scripts/tests/shell-syntax-gate.sh --all
+
+      # (b) pre-commit gate logic — run the hook's exact --staged path over
+      # the whole bootstrap layer. A fresh checkout has nothing staged, and
+      # `git add -A` alone stages nothing (index == HEAD), which would pass
+      # vacuously — so point the index at the empty tree first, making every
+      # file an add. Index-only: the worktree is never touched, and
+      # read-tree HEAD puts it back.
+      - name: Pre-commit gate logic (whole tree staged)
+        run: |
+          git read-tree --empty
+          git add -A
+          scripts/tests/shell-syntax-gate.sh --staged
+          git read-tree HEAD
+
+      # (c) both drivers' --dry-run. GITHUB_TOKEN keeps 30_submodules and
+      # any incidental fetches inside GitHub's rate budget.
+      - name: Driver dry-run (zsh)
+        env:
+          DOTFILES_SKIP_BREW: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./deploy.zsh --dry-run
+
+      - name: Driver dry-run (bash)
+        env:
+          DOTFILES_SKIP_BREW: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./deploy.bash --dry-run

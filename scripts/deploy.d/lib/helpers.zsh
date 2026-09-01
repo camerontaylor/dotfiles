@@ -108,6 +108,16 @@ deploy_rm() {
 }
 
 ensure_homebrew_path() {
+    # DOTFILES_SKIP_BREW=1 treats Homebrew as absent: every brew-dependent
+    # step takes its no-brew fallback instead of installing anything. CI
+    # (.github/workflows/shells.yml) sets this because hosted runners ship
+    # brew but must not have packages installed into them — "no brew
+    # installs in CI". Callers that probe `have brew` directly instead of
+    # this helper (40_tools, 75_brew_setup) carry their own guard.
+    if [[ -n ${DOTFILES_SKIP_BREW:-} ]]; then
+        return 1
+    fi
+
     if have brew; then
         return 0
     fi

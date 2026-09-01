@@ -44,7 +44,13 @@ secrets_bootstrap_help() {
 # ── age key bootstrap ──────────────────────────────────────────────────────
 
 if [[ ! -f $age_key_dir/keys.txt ]]; then
-    if have age-keygen; then
+    if (( DEPLOY_DRY_RUN )); then
+        # Preview, don't generate: keygen is a mutation (a real key materialises
+        # on disk), and with deploy_mkdir dry-runned the unguarded path left
+        # age-keygen/chmod failing under bash's errexit — an abort the zsh
+        # driver silently tolerated.
+        printf '%s\n' "  [dry-run] would: generate a fresh age key at $age_key_dir/keys.txt"
+    elif have age-keygen; then
         printf '%s\n' "Generating age key for secrets..."
         deploy_mkdir -p $age_key_dir
         age-keygen -o $age_key_dir/keys.txt 2>/dev/null

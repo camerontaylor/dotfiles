@@ -13,6 +13,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 - `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
 - `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
 - Deploy runs automatically on `git pull` via `scripts/post-merge` (guards: `zsh -n` precheck, `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
+- CI: `.github/workflows/shells.yml` — macOS + Ubuntu matrix running the tree-wide dual `-n` sweep (`scripts/tests/shell-syntax-gate.sh`, the same gate `scripts/pre-commit` runs over staged files), and both drivers' `--dry-run` with `DOTFILES_SKIP_BREW=1` (no brew installs on hosted runners; macOS `/bin/bash` 3.2 is the floor leg)
 - `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function; honors `.sops.yaml` recipients)
 
 ## Where to Add Commands/Tools

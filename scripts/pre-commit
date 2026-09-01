@@ -30,56 +30,12 @@ SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
 
 # ── Dual-shell syntax gate for scripts/ ──────────────────────────────────
 # The bootstrap layer must run under both zsh (deploy.zsh today) and bash
-# 3.2 (the driver floor; see docs/bash-compatibility.md). Every staged
-# shell file under scripts/ has to parse under BOTH shells — a file only
-# zsh -n accepts would break the bash driver silently at runtime.
-#
-# Shell file = .zsh/.sh extension (deploy.d fragments carry no shebang) or
-# a shell shebang on line 1. Checked with /bin/bash to pin the macOS 3.2
-# floor (a brew bash 5 first on PATH would accept more syntax than the
-# fleet's oldest shell; on Linux /bin/bash is the real target) and plain
-# `zsh` (any 5.x parses identically).
-#
-# Skip-list (file: reason) — intentionally empty:
-#   (none)
-_gate_fail=0
-_gate_tmp=$(mktemp "${TMPDIR:-/tmp}/pre-commit.XXXXXX") || {
-    printf '%s\n' "pre-commit: mktemp failed" >&2
-    exit 1
-}
-# A failing `git diff --cached` aborts loud rather than letting the gate
-# pass vacuously on an empty list (the old <(...) form failed silently).
-if ! git diff --cached --name-only --diff-filter=ACMR -- scripts > "$_gate_tmp"; then
-    rm -f "$_gate_tmp"
-    printf '%s\n' "pre-commit: git diff --cached failed; refusing to pass the gate on an empty list" >&2
-    exit 1
-fi
-while IFS= read -r _gate_f; do
-    [ -n "$_gate_f" ] || continue
-    case $_gate_f in
-        *.zsh|*.sh) _gate_shell=1 ;;
-        *)
-            if head -n 1 "$_gate_f" 2>/dev/null | grep -qE '^#!.*(bash|zsh|sh)([[:space:]]|$)'; then
-                _gate_shell=1
-            else
-                _gate_shell=0
-            fi
-            ;;
-    esac
-    [ "$_gate_shell" = 1 ] || continue
-    if ! zsh -n "$_gate_f" 2>/dev/null; then
-        printf '%s\n' "pre-commit: zsh -n failed: $_gate_f" >&2
-        _gate_fail=1
-    fi
-    if ! /bin/bash -n "$_gate_f" 2>/dev/null; then
-        printf '%s\n' "pre-commit: /bin/bash -n failed: $_gate_f" >&2
-        _gate_fail=1
-    fi
-done < "$_gate_tmp"
-rm -f "$_gate_tmp"
-
-if [ "$_gate_fail" = 1 ]; then
-    printf '%s\n' "pre-commit: shell syntax gate failed — fix before committing" >&2
+# 3.2 (the driver floor; see docs/bash-compatibility.md). The gate lives in
+# scripts/tests/shell-syntax-gate.sh so CI runs the exact same logic
+# tree-wide (--all) that the hook runs over staged files (--staged).
+# --staged has zero exemptions: the bootstrap layer is fully dual by
+# policy.
+if ! "$SCRIPT_DIR/tests/shell-syntax-gate.sh" --staged; then
     exit 1
 fi
 

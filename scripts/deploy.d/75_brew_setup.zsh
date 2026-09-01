@@ -2,6 +2,14 @@
 # brew upgrade in --upgrade mode, latest zsh registered as login shell,
 # ncurses for Ghostty terminfo, engram tap, iTerm2 cask, Nerd Font cask.
 
+# This fragment probes brew directly (`have brew`), bypassing
+# ensure_homebrew_path's DOTFILES_SKIP_BREW gate — so the knob needs its own
+# check here. Hosted CI runners ship brew but must not be installed into.
+if [[ -n ${DOTFILES_SKIP_BREW:-} ]]; then
+    printf '%s\n' "Homebrew setup skipped (DOTFILES_SKIP_BREW=1)"
+    return 0
+fi
+
 # Find Homebrew on fresh macOS shells before running brew-managed setup.
 if [[ $(uname -s) == Darwin ]] && ! have brew; then
     for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
