@@ -5,6 +5,13 @@ report). That doc says *what* is broken; this one sequences the fixes as
 independently executable plans, **ordered by how automatic and how simple**
 each is. Counts below were re-measured against the tree on 2026-08-31.
 
+> **Status: EXECUTED** — P0–P7 and the lanes below were implemented on
+> branch `orchestrate/bash-compatibility` (commits `2a30ebd9..4cb67dca`);
+> see the implementation-status preamble in
+> [`bash-compatibility.md`](bash-compatibility.md). This doc is kept as the
+> record of how the work was sequenced, not as a to-do list — its counts and
+> line numbers are research-time (2026-08-31 tree) and have drifted.
+
 ## The governing rule: zsh-identical first
 
 Every plan in the numbered sequence (P0–P7) contains only rewrites whose

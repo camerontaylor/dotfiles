@@ -16,6 +16,73 @@ against its cited `file:line`; parse-level claims were reproduced with
 
 ---
 
+## Implementation status (2026-09-01): IMPLEMENTED
+
+Phases 2–5 of the "Recommended sequencing" below landed on branch
+`orchestrate/bash-compatibility` as 30 commits, `2a30ebd9..4cb67dca`:
+
+- **Mechanical sweep (§B)** — `${+commands}` → `have()` (`2a30ebd9`),
+  `print` → `printf` (`e6b9bcc1`), file-scope `local`/`typeset` stripped
+  (`0cee1e6a`), `zf_*` through plain-command wrappers (`6f27e840`),
+  brace-group `; }` (`cc0823fe`), shell-agnostic probes in shared env.d
+  (`e57a3049`).
+- **Semantic fixes (§B6)** — glob qualifiers → find/nullguard (`f6051cae`),
+  0/1-based array safety (`87e0524a`), `"${arr[@]}"` quoting (`4ee9cf10`),
+  history modifiers → POSIX (`e5ec637b`), expansion flags → hand-rolled
+  splits/joins/quotes (`14530951` — including `sh_quote()`, the POSIX
+  single-quote renderer byte-identical to `${(qq)}`), `N++` counters
+  (`e3e30464`), extended_glob → ERE (`571270da`), small builtins
+  (`566c0996`).
+- **Driver + pin points (§A, §D)** — dual `zsh -n && /bin/bash -n`
+  pre-commit gate (`04a08b2e`, `scripts/tests/shell-syntax-gate.sh`),
+  `deploy.bash` twin driver (`128c813f`), SIGPIPE-safe gate probes
+  (`f1021d50`), `05_bash.zsh` hoist + driver version assert (`8019f4cf`),
+  POSIX post-merge with zsh→bash fallback + POSIX pre-commit (`a947b791`),
+  POSIX git-diff-pager + `CLAUDE_CODE_SHELL` depinned (`67ea9784`),
+  env-var unit runners + `DOTFILES_SHELL` login-shell knob + ranger z →
+  zoxide (`07875396`, follow-up `cb80a9bb`), cc-worker.sh bash port
+  (`00126d3e`), bash-runnable twin of the tailscale secrets verify
+  (`54dde224`).
+- **Interactive layer (§C)** — shared files dual-cleaned (`160f9709`),
+  `path_prepend()` replaces the tied `path` array (`e66f7034`), `bash/`
+  tree + `21_bash_symlinks.zsh` (`496e2b4b`), fpath split — CLI wrappers →
+  `bin/` (`ef3ba0c8`), CI dual-shell matrix `.github/workflows/shells.yml`
+  (`ec8dbb75`), `99_periodic` dry-run fix (`4cb67dca`).
+
+Deliberate deviations from the sequencing below:
+
+- The dual `-n` gate (sequencing item 2) landed at the **end of phase 3**
+  (`04a08b2e`), not alongside the mechanical sweep.
+- §C lists "the env-only halves of `08_mise.zsh` and `12_paseo.zsh`" as
+  reusable fragments — an env.d `12_paseo.zsh` never existed (the zsh one
+  is `rc.d/12_paseo.zsh`). Bash got `bash/rc.d/10_paseo.bash` instead
+  (`496e2b4b`).
+- Line numbers below are research-time (2026-08-31 tree) and have drifted;
+  read them as findings, not live references.
+
+Findings the implementation disproved or sharpened:
+
+- **The parses-fine-wrong class is broader than §B6 estimated.** `bash -n`
+  accepts every zsh parameter flag tested — `${(@f)v}`, `${+commands[x]}`,
+  `${~v}`, `[[ -o interactive ]]` — so the dual `-n` gate covers parse
+  divergence only; runtime semantics are covered by
+  `diff <(./deploy.zsh --dry-run) <(./deploy.bash --dry-run)` and the CI
+  dry-run legs (scope caveat in `scripts/tests/shell-syntax-gate.sh`).
+  Corollary: a file can look hopeless and still be bash-parse-clean —
+  `scripts/agent-aliases.zsh` (`typeset -gA`, `emulate -L zsh`) passes
+  `bash -n` outright; every construct in it fails at runtime, not parse
+  time. Parse failure and runtime failure are independent axes.
+- **`zsh -n` has false positives of its own** —
+  `${(pl:$((…))::\n:)}` in command-argument position trips "bad math
+  expression" while `autoload -Uz +X` compiles the body clean; the gate
+  arbitrates those with `+X` (`_zsh_n_exempt`).
+- **zwc completion caches are per-zsh-build** — two zsh versions sharing a
+  worktree (brew vs stock) leave stale `.zwc` files behind.
+
+---
+
+---
+
 ## Executive summary
 
 The repo is coupled to zsh at **four layers**, and the correct shape of the
@@ -307,9 +374,20 @@ path_prepend() {
 | secrets quoting contract | `secrets-render.zsh:60` `${(qq)val}` ↔ `89_secrets_loader.zsh` | zsh-quoted output sourced by bash (and vice versa) | render POSIX single-quote with `'\''` escaping — byte-identical in both; give `docs/tailscale-migration-runbook.md:89` a bash-runnable twin |
 | login shell | `README.md:126` + `75_brew_setup.zsh:92,112-116` | deploy **re-pins every fresh Mac to zsh** behind the user's back | `DOTFILES_SHELL` deploy-time knob; `chsh` only when the value is on disk and in `/etc/shells` |
 
+**Resolution:** all nine pin points above are depinned on this branch —
+post-merge + pre-commit (`a947b791`, gate `04a08b2e`), git pager +
+`CLAUDE_CODE_SHELL` (`67ea9784`), cc-worker.sh (`00126d3e`), ranger z
+(`07875396`, `cb80a9bb`), launchd/systemd runners (`07875396`), secrets
+POSIX quoting (`14530951`, runbook twin `54dde224`), login-shell knob
+(`07875396`).
+
 ---
 
 ## E. Version floor and ordering constraints
+
+> Status: resolved — bash hoisted to `scripts/deploy.d/05_bash.zsh` + a hard
+> `>= 3.2` assert in both drivers (`8019f4cf`); the CI shell matrix landed as
+> `.github/workflows/shells.yml` (`ec8dbb75`).
 
 - **The floor is a decision, not a fact.** A census claiming "zero bash-4+
   features, so 3.2 suffices" was **refuted** during verification:
