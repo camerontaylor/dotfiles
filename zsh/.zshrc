@@ -41,14 +41,18 @@ fi
 # (after clear-screen-soft-bottom, so the clear doesn't trigger the
 # "console output during initialization" warning)
 
-# Include interactive rc files
-for conffile in $ZDOTDIR/rc.d/*(N); do
+# Include interactive rc files. Plain glob + [ -e ] guard + null_glob sandwich
+# is the dual-shell iteration template (see .zshenv's env.d loop).
+setopt null_glob
+for conffile in $ZDOTDIR/rc.d/*; do
+  [[ -e $conffile ]] || continue
   [[ $conffile == *.enc ]] && continue
   _zshrc_dbg "sourcing $conffile"
   if ! source "$conffile" 2>&1; then
     echo "Warning: error in $conffile" >&2
   fi
 done
+unsetopt null_glob
 unset conffile
 
 # To customize prompt, run `p10k configure` or edit ~/.local/dotfiles/zsh/.p10k.zsh.

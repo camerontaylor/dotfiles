@@ -17,10 +17,22 @@
 # Silent no-op when the directory is absent: a box that has not completed the
 # two-credential bootstrap must still get a working shell.
 
-() {
+# A named function, invoked, then undefined — the dual-shell replacement for
+# zsh's anonymous `() { … }` (a bash parse error, under which no credential
+# would export). The glob uses the plain-glob + [ -e ] guard template; zsh
+# errors on an unmatched glob before the guard could run, so null_glob is on
+# for the loop under zsh only (bare `setopt` would be a bash 127; bash leaves
+# the literal pattern for the guard to skip).
+_dotfiles_load_secrets() {
     local _secrets_dir=${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh
     local _f
-    for _f in $_secrets_dir/*.zsh(N); do
-        source $_f
+    [ -z "${ZSH_VERSION:-}" ] || setopt null_glob
+    for _f in "$_secrets_dir"/*.zsh; do
+        [ -e "$_f" ] || continue
+        # shellcheck disable=SC1090  # rendered files are POSIX single-quoted
+        source "$_f"
     done
+    [ -z "${ZSH_VERSION:-}" ] || unsetopt null_glob
 }
+_dotfiles_load_secrets
+unset -f _dotfiles_load_secrets

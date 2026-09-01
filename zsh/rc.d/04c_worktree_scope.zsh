@@ -32,13 +32,26 @@ _agents_worktree_scope_resolve_path() {
   print -r -- "${path:A}"
 }
 
+# The zsh `always` block used to clear the latch after every exit path; the
+# dual-shell spelling is an inner function whose status is captured, cleanup
+# run, then returned — identical in zsh, and correct under bash too (where the
+# `always` keyword is a parse error and a brace group would leave the latch
+# set forever, silently disabling the hook on every cd after the first).
 _agents_worktree_scope_enter() {
+  local _aws_ret
   [[ -z "${_AGENTS_WORKTREE_SCOPE_ACTIVE:-}" ]] || return 0
   typeset -g _AGENTS_WORKTREE_SCOPE_ACTIVE=1
 
-  {
-  # Must be in an interactive shell.
-  [[ -o interactive ]] || return 0
+  _agents_worktree_scope_inner
+  _aws_ret=$?
+  unset _AGENTS_WORKTREE_SCOPE_ACTIVE
+  return $_aws_ret
+}
+
+_agents_worktree_scope_inner() {
+  # Must be in an interactive shell. `case $-` is the dual-shell spelling of
+  # `[[ -o interactive ]]` (unconditionally false in bash).
+  case $- in *i*) ;; *) return 0 ;; esac
 
   # Do not replace command-string shells (`zsh -ic 'cd worktree && ...'`) with
   # a fresh prompt; callers use that form specifically because it should return.
@@ -102,7 +115,4 @@ _agents_worktree_scope_enter() {
   exec systemd-run --user --scope --slice=agents.slice --unit="$unit" \
     --property=MemoryMax=${mem_max} --property=MemorySwapMax=0 \
     --property=CPUQuota=200% --same-dir --quiet --collect -- "$SHELL" -i
-  } always {
-    unset _AGENTS_WORKTREE_SCOPE_ACTIVE
-  }
 }

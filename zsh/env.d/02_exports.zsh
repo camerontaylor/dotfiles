@@ -8,8 +8,10 @@ export LESS="--RAW-CONTROL-CHARS --ignore-case --hilite-unread --LONG-PROMPT --w
 export READNULLCMD=$PAGER
 
 # make sure local gpg knows about current TTY; avoid pinentry prompts in SSH sessions
+# ($TTY is zsh-only and always set there; bash falls back to `tty`, which is
+# empty on the same non-terminal contexts zsh leaves $TTY empty for.)
 if [[ -z ${SSH_TTY:-} && -z ${SSH_CONNECTION:-} && -z ${SSH_CLIENT:-} ]]; then
-    export GPG_TTY=$TTY
+    export GPG_TTY=${TTY:-$(command tty 2>/dev/null || true)}
 else
     unset GPG_TTY
 fi
@@ -36,8 +38,10 @@ fi
 unset _systemd_runtime_dir
 
 # ensure that XDG_RUNTIME_DIR dir exists, as it can be under tmpfs
+# (plain mkdir, not zf_mkdir: the zsh/files builtin is gone under bash, and
+# one early-shell mkdir doesn't buy anything from being a builtin)
 if [[ ! -d $XDG_RUNTIME_DIR ]]; then
-    zf_mkdir -m 0700 -p $XDG_RUNTIME_DIR
+    mkdir -m 0700 -p $XDG_RUNTIME_DIR
 fi
 
 # best effort to make tools compliant to XDG basedir spec

@@ -2,7 +2,12 @@
 # (zsh -c, mise env, script invocations) and parsing them wastes startup time.
 # CLAUDE_ALIAS_TEST=1 bypasses the guard so harnesses (e.g. webfront
 # scripts/test-alias-sync.zsh) can source this file under `zsh -fc`.
-[[ -o interactive || -n "${CLAUDE_ALIAS_TEST:-}" ]] || return 0
+# `case $-` is the dual-shell spelling of `[[ -o interactive ]]`, which is
+# unconditionally false in bash.
+case $- in
+    *i*) ;;
+    *) [[ -z "${CLAUDE_ALIAS_TEST:-}" ]] && return 0 ;;
+esac
 
 # Restore terminal state after TUIs that leave enhanced keyboard modes enabled.
 _restore_terminal_input_modes() {
@@ -22,15 +27,14 @@ _run_with_terminal_restore() {
         saved_stty=$(command stty -g 2>/dev/null)
     fi
 
-    {
-        command "$@"
-        ret=$?
-    } always {
-        if [[ -n $saved_stty ]]; then
-            command stty "$saved_stty" 2>/dev/null
-        fi
-        _restore_terminal_input_modes
-    }
+    # `ret=$?` … restore … `return $ret` replaces zsh's `always` block (a bash
+    # parse error): the restore runs on the normal exit path either way.
+    command "$@"
+    ret=$?
+    if [[ -n $saved_stty ]]; then
+        command stty "$saved_stty" 2>/dev/null
+    fi
+    _restore_terminal_input_modes
 
     return $ret
 }
@@ -131,23 +135,29 @@ alias ccx='ccx-direct'
 alias yolo='unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC && CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions'
 
 # Callable clones for webfront fpath wrappers to fall back on
-_cc()        { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC ENABLE_TOOL_SEARCH; CLAUDE_CODE_ATTRIBUTION_HEADER=0 claude "$@" }
-_cc-ccr()    { (unset CLAUDE_CODE_SUBAGENT_MODEL && eval "$(ccr activate)" && CLAUDE_CODE_ATTRIBUTION_HEADER=0 exec claude "$@") }
-_ccm-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_SMALL_FAST_MODEL=MiniMax-M2.7 CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" claude --model MiniMax-M2.7 "$@" }
-_ccm-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_SMALL_FAST_MODEL=MiniMax-M2.7 CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
-_ccfw-direct()      { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=accounts/fireworks/models/minimax-m2p7 ANTHROPIC_DEFAULT_HAIKU_MODEL=accounts/fireworks/models/gpt-oss-120b ANTHROPIC_DEFAULT_OPUS_MODEL=accounts/fireworks/models/kimi-k2p6 ANTHROPIC_MODEL=accounts/fireworks/models/minimax-m2p7 ANTHROPIC_SMALL_FAST_MODEL=accounts/fireworks/models/gpt-oss-120b CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$FIREWORKS_API_KEY" ANTHROPIC_BASE_URL="https://api.fireworks.ai/inference" API_TIMEOUT_MS="3000000" claude --model accounts/fireworks/models/minimax-m2p7 "$@" }
-_ccz-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5.3-flash CLAUDE_CODE_SUBAGENT_MODEL=glm-5.3-flash ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" claude --model glm-5.3 "$@" }
-_ccz-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5.3-flash CLAUDE_CODE_SUBAGENT_MODEL=glm-5.3-flash ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
-_ccd-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" claude --model "deepseek-v4-pro[1m]" "$@" }
-_ccx-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false CLAUDE_CODE_MAX_CONTEXT_TOKENS=1048576 ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" claude --model stealth/ox-alpha "$@" }
-_ccx-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false CLAUDE_CODE_MAX_CONTEXT_TOKENS=1048576 ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
-_ccd-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@" }
-_yolo()      { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC; CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions "$@" }
+_cc()        { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC ENABLE_TOOL_SEARCH; CLAUDE_CODE_ATTRIBUTION_HEADER=0 claude "$@"; }
+_cc-ccr()    { (unset CLAUDE_CODE_SUBAGENT_MODEL && eval "$(ccr activate)" && CLAUDE_CODE_ATTRIBUTION_HEADER=0 exec claude "$@"); }
+_ccm-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_SMALL_FAST_MODEL=MiniMax-M2.7 CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" claude --model MiniMax-M2.7 "$@"; }
+_ccm-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_SMALL_FAST_MODEL=MiniMax-M2.7 CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$MINIMAX_API_KEY" ANTHROPIC_BASE_URL="https://api.minimax.io/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@"; }
+_ccfw-direct()      { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=accounts/fireworks/models/minimax-m2p7 ANTHROPIC_DEFAULT_HAIKU_MODEL=accounts/fireworks/models/gpt-oss-120b ANTHROPIC_DEFAULT_OPUS_MODEL=accounts/fireworks/models/kimi-k2p6 ANTHROPIC_MODEL=accounts/fireworks/models/minimax-m2p7 ANTHROPIC_SMALL_FAST_MODEL=accounts/fireworks/models/gpt-oss-120b CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$FIREWORKS_API_KEY" ANTHROPIC_BASE_URL="https://api.fireworks.ai/inference" API_TIMEOUT_MS="3000000" claude --model accounts/fireworks/models/minimax-m2p7 "$@"; }
+_ccz-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5.3-flash CLAUDE_CODE_SUBAGENT_MODEL=glm-5.3-flash ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" claude --model glm-5.3 "$@"; }
+_ccz-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5.3-flash CLAUDE_CODE_SUBAGENT_MODEL=glm-5.3-flash ANTHROPIC_AUTH_TOKEN="$Z_AI_API_KEY" ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@"; }
+_ccd-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" claude --model "deepseek-v4-pro[1m]" "$@"; }
+_ccx-direct()       { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false CLAUDE_CODE_MAX_CONTEXT_TOKENS=1048576 ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_API_KEY="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" claude --model stealth/ox-alpha "$@"; }
+_ccx-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ENABLE_TOOL_SEARCH=false CLAUDE_CODE_MAX_CONTEXT_TOKENS=1048576 ANTHROPIC_DEFAULT_SONNET_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_HAIKU_MODEL=stealth/ox-alpha ANTHROPIC_DEFAULT_OPUS_MODEL=stealth/ox-alpha ANTHROPIC_SMALL_FAST_MODEL=stealth/ox-alpha CLAUDE_CODE_SUBAGENT_MODEL="" ANTHROPIC_AUTH_TOKEN="$OPENROUTER_API_KEY" ANTHROPIC_BASE_URL="https://openrouter.ai/api" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@"; }
+_ccd-direct-happy() { CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 ANTHROPIC_DEFAULT_SONNET_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash ANTHROPIC_DEFAULT_OPUS_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_MODEL="deepseek-v4-pro[1m]" ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash ANTHROPIC_AUTH_TOKEN="$DEEPSEEK_API_KEY" ANTHROPIC_BASE_URL="https://api.deepseek.com/anthropic" API_TIMEOUT_MS="3000000" ANTHROPIC_API_KEY="" happy yolo --dangerously-skip-permissions "$@"; }
+_yolo()      { unset ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS ANTHROPIC_MODEL ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_SMALL_FAST_MODEL CLAUDE_CODE_SUBAGENT_MODEL API_TIMEOUT_MS CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC; CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions "$@"; }
 
 _cc_fast_portkey() {
-    if (( ! ${+functions[_portkey_run_cc_fast]} )); then
+    # `typeset -f` exits 0 for a defined function in both shells — the
+    # dual-shell spelling of zsh's `(( ${+functions[...]} ))`.
+    if ! typeset -f _portkey_run_cc_fast >/dev/null 2>&1; then
+        if [[ -z "${ZSH_VERSION:-}" ]]; then
+            printf '%s\n' "cc-fast: the Portkey wrapper (rc.d/11_portkey.zsh) is zsh-only; use a cc*-direct route under bash" >&2
+            return 1
+        fi
         [[ -r "$ZDOTDIR/rc.d/11_portkey.zsh" ]] || {
-            print -u2 -- "cc-fast: missing Portkey wrapper at $ZDOTDIR/rc.d/11_portkey.zsh"
+            printf '%s\n' "cc-fast: missing Portkey wrapper at $ZDOTDIR/rc.d/11_portkey.zsh" >&2
             return 1
         }
         source "$ZDOTDIR/rc.d/11_portkey.zsh" || return $?

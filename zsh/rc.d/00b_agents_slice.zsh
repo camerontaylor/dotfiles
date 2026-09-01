@@ -37,8 +37,9 @@ if [[ -r /proc/self/cgroup ]] && grep -q '/agents\.slice' /proc/self/cgroup; the
   return 0
 fi
 
-# Only apply to interactive shells.
-[[ -o interactive ]] || return 0
+# Only apply to interactive shells. `case $-` is the dual-shell spelling of
+# `[[ -o interactive ]]`, which is unconditionally false in bash.
+case $- in *i*) ;; *) return 0 ;; esac
 
 # `zsh -ic '...'` is technically interactive, but it is still a command-string
 # shell whose caller expects the command to return. Re-execing it into a fresh
