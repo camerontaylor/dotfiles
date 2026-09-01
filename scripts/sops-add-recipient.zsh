@@ -31,8 +31,11 @@ fi
 
 new_key=$1
 
-# Bech32 age public key: starts with "age1", 62 chars total.
-if [[ ! $new_key =~ '^age1[0-9a-z]{58}$' ]]; then
+# Bech32 age public key: starts with "age1", 62 chars total. Regex kept in a
+# variable — bash 3.2 treats a quoted regex as a literal string, so the old
+# inline-quoted form never matched anything there.
+_age_key_re='^age1[0-9a-z]{58}$'
+if [[ ! $new_key =~ $_age_key_re ]]; then
     printf '%s\n' "ERROR: '$new_key' is not a valid age public key (expected age1<58 lowercase alphanumerics>)." >&2
     exit 1
 fi

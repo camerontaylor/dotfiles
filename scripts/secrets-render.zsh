@@ -33,7 +33,7 @@ emulate -L zsh
 # zsh *print* `x='...'` (the bug that once sprayed leaked locals into a real
 # deploy log — see deploy.zsh's own note). Nothing here holds a secret value in
 # a variable, but a renderer must not print anything it was not asked to.
-setopt extended_glob typeset_silent
+setopt typeset_silent
 
 # ── dotenv -> zsh converter ────────────────────────────────────────────────
 #
@@ -73,6 +73,12 @@ _join_commas() {
     printf '%s' "$_j"
 }
 
+# ERE (not extended_glob): matches a value that is exactly a reference to
+# another variable, e.g. $PORTKEY_LOCAL_API_KEY. Kept in a variable — the one
+# form `=~` accepts in both bash 3.2 and zsh (bash 3.2 treats a quoted regex
+# as a literal string).
+_var_ref_re='^\$[A-Za-z_][A-Za-z_0-9]*$'
+
 secrets_convert_dotenv() {
     local line key val
     while IFS= read -r line; do
@@ -80,7 +86,7 @@ secrets_convert_dotenv() {
         [[ $line == \#* ]] && continue
         key=${line%%=*}
         val=${line#*=}
-        if [[ $val == \$[A-Za-z_]##[A-Za-z_0-9]# ]]; then
+        if [[ $val =~ $_var_ref_re ]]; then
             printf '%s\n' "export ${key}=\"${val}\""
         else
             printf '%s\n' "export ${key}=$(_sh_quote "$val")"
