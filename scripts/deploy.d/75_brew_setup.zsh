@@ -136,16 +136,9 @@ elif [[ $(uname -s) == Darwin ]] && have brew; then
     fi
 fi
 
-# Modern bash via brew. macOS ships bash 3.2.57 (frozen at the last GPLv2
-# release); installing 5.x unlocks associative arrays, `mapfile`,
-# `${var^^}`, `**` globstar, etc. for any script that uses
-# `#!/usr/bin/env bash` (or `bash some-script.sh` typed interactively,
-# which goes through the brew-first PATH). Not registered in /etc/shells —
-# zsh remains the login shell.
-if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    printf '%s\n' "Installing modern bash via brew..."
-    brew_formula_install_or_upgrade bash || true
-fi
+# Modern bash via brew: HOISTED to 05_bash.zsh (ahead of fragments 10–74)
+# per docs/bash-compatibility.md §E — the chicken-and-egg on the
+# direct-install path. Nothing to do here.
 
 # ncurses for Ghostty terminfo compilation.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then

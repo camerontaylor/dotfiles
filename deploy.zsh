@@ -6,6 +6,7 @@
 # Usage: ./deploy.zsh [--upgrade|-u] [--dry-run|-n] [--only NAME ...]
 #
 # Fragment numbering convention (current layout):
+#   05  bash           — hoist a modern brew bash ahead of fragments ≤74 (§E)
 #   10  dirs           — XDG dirs, $HOME scaffolding
 #   20  symlinks       — link zsh/git/tmux/nvim configs into $HOME
 #   30  submodules     — `git submodule update --init`
@@ -31,6 +32,24 @@
 # 85_verify_tools spray "entry='...'" into a real deploy's output. Only ever
 # visible on a real run: --dry-run skips the loop that assigns them.
 setopt extended_glob err_exit typeset_silent
+
+# ── Version floor assert (docs/bash-compatibility.md §E) ──────────────────
+# Fragments ≤74 and both drivers must run on the fleet's oldest shell, so the
+# floor is /bin/bash 3.2 (macOS stock). Anything older/missing fails loud
+# instead of half-running the deploy. Dual-parseable: deploy.bash carries the
+# same block.
+_bash_version=$(/bin/bash --version 2>/dev/null | head -n 1)
+_bash_version=${_bash_version#*version }
+_bash_major=${_bash_version%%.*}
+_bash_minor=${_bash_version#*.}
+_bash_minor=${_bash_minor%%.*}
+case $_bash_major in (''|*[!0-9]*) _bash_major=0 ;; esac
+case $_bash_minor in (''|*[!0-9]*) _bash_minor=0 ;; esac
+if (( _bash_major < 3 )) || { (( _bash_major == 3 )) && (( _bash_minor < 2 )); }; then
+    print "FATAL: /bin/bash is version $_bash_major.$_bash_minor; this deploy needs >= 3.2" >&2
+    exit 2
+fi
+unset _bash_version _bash_major _bash_minor
 
 # Argument parsing — fail-closed on unknown flags or missing --only value.
 local upgrade_mode=false
