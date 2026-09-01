@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# psg — grep from ps output, header kept, paged when long.
+# Bash twin of zsh/fpath/psg ((f) line split → head; ${query[1]} → :0:1 —
+# same dodge of the first char forming a regex class).
+if [ $# -eq 0 ]; then
+    echo "Please specify process search pattern"
+    exit 2
+fi
+_psg_query="$*"
+_psg_aux=$(ps aux)
+if _psg_result=$(grep --color=always -i "[${_psg_query:0:1}]${_psg_query#?}" <<< "$_psg_aux"); then
+    { head -n 1 <<< "$_psg_aux"; echo "$_psg_result"; } | less --quit-if-one-screen
+else
+    echo "No process found matching pattern '$_psg_query'"
+    exit 1
+fi

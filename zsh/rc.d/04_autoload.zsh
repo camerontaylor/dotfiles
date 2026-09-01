@@ -39,8 +39,12 @@ autoload -Uz add-zsh-hook
 
 # Custom personal functions
 # Don't use -U as we need aliases here
-autoload -z lspath bag fgb fgd fgl fz ineachdir psg vpaste evalcache compdefcache
-autoload -Uz _webfront_root p w cc ccm ccm-direct ccd-direct ccfw-direct ccz ccz-direct ccm-happy ccm-direct-happy ccd-direct-happy ccz-happy ccz-direct-happy yolo
+# (lspath bag fgb fgd fgl psg moved to bin/ as bash twins — linked into
+# ~/.local/bin by 21_bash_symlinks; vpaste never had a file and is dropped.)
+autoload -z fz ineachdir evalcache compdefcache
+# (p cc yolo *-direct moved to bin/; the ccm/ccz non-direct wrappers keep
+# their zsh-only Portkey fallback, so they stay fpath functions.)
+autoload -Uz _webfront_root w ccm ccz ccm-happy ccz-happy
 
 # Enable wrapper, if original command is available
 (( ${+commands[man]} )) && autoload -Uz wrap-man

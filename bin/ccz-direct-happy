@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ccz-direct-happy — Z.ai GLM route direct via happy yolo.
+# Bash twin of zsh/fpath/ccz-direct-happy; env chain mirrors the
+# _ccz-direct-happy fallback in zsh/env.d/09_claude_code_aliases.zsh.
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    exec env CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5.3-flash ANTHROPIC_DEFAULT_HAIKU_MODEL=glm-5.3-flash \
+        ANTHROPIC_DEFAULT_OPUS_MODEL=glm-5.3 ANTHROPIC_SMALL_FAST_MODEL=glm-5.3-flash \
+        CLAUDE_CODE_SUBAGENT_MODEL=glm-5.3-flash \
+        "ANTHROPIC_AUTH_TOKEN=$Z_AI_API_KEY" \
+        ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic API_TIMEOUT_MS=3000000 \
+        ANTHROPIC_API_KEY= \
+        happy yolo --dangerously-skip-permissions "$@"
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccz-direct-happy "$@"

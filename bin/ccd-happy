@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# ccd-happy — webfront-dispatched DeepSeek V4 via happy yolo.
+# Bash twin of zsh/fpath/ccd-happy (never autoloaded in zsh, so dead — this
+# is its first reachable form). Portkey fallback is zsh-only; see bin/ccd.
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    printf '%s\n' "ccd-happy: the Portkey fallback (zsh rc.d/11_portkey.zsh) is zsh-only; run from a webfront repo or use ccd-direct-happy" >&2
+    exit 1
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccd-happy "$@"

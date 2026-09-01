@@ -1,0 +1,72 @@
+# ineachdir — run a command in each subdirectory of the current directory.
+# Bash twin of zsh/fpath/ineachdir (sourced function: it cds the caller).
+# Mapping: zparseopts → manual case parse; TRAPINT → trap INT;
+# assoc status table → parallel indexed arrays; the zsh `always { cd $cwd }`
+# → explicit cd-back on every exit path. The zsh ${fg[…]} row colors are
+# dropped (plain text) — cosmetic only.
+ineachdir() {
+    local _ied_cwd=$PWD _ied_ignore=0 _ied_table=0 dir _ied_rc=0 i
+    local -a _ied_dirs=() _ied_rcs=()
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -i|--ignore-errors) _ied_ignore=1; shift ;;
+            -s|--status-table) _ied_table=1; shift ;;
+            *) break ;;
+        esac
+    done
+
+    if [ $# -eq 0 ]; then
+        cat <<'EOH'
+Usage: ineachdir [-i | --ignore-errors] [-s | --status-table] <command>
+
+Perform specified <command> in each directory.
+
+Arguments:
+-i, --ignore-errors    Ignore <command> execution error,
+                       continue to next dir
+
+-s, --status-table     Show status table at the end
+
+Example:
+ineachdir -s git pull --prune
+EOH
+        return 0
+    fi
+
+    trap 'builtin cd "$_ied_cwd"' INT
+
+    for dir in */; do
+        [ -d "$dir" ] || continue
+        printf '%s\n' "--- IED: Executing '$*' in '$_ied_cwd/$dir'..."
+        if ! builtin cd "$_ied_cwd/$dir"; then
+            _ied_rc=$?
+            break
+        fi
+        "$@"
+        _ied_rc=$?
+        [ $_ied_table -eq 1 ] && { _ied_dirs+=("$dir"); _ied_rcs+=("$_ied_rc"); }
+        if [ $_ied_rc -ne 0 ]; then
+            if [ $_ied_ignore -eq 1 ]; then
+                printf '%s\n' "--- IED: '$*' returned $_ied_rc, ignoring."
+            else
+                printf '%s\n' "--- IED: '$*' returned $_ied_rc, aborting."
+                builtin cd "$_ied_cwd"
+                trap - INT
+                return $(( 128 + _ied_rc ))
+            fi
+        fi
+        echo
+    done
+
+    builtin cd "$_ied_cwd"
+    trap - INT
+
+    if [ $_ied_table -eq 1 ]; then
+        printf '%s\n' "--- IED: Execution results"
+        for i in "${!_ied_dirs[@]}"; do
+            printf '%-35s: %s\n' "${_ied_dirs[$i]}" "${_ied_rcs[$i]}"
+        done
+    fi
+    return 0
+}

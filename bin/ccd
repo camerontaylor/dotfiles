@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ccd — webfront-dispatched DeepSeek V4 Claude Code session.
+# Bash twin of zsh/fpath/ccd (which was never autoloaded and thus dead in
+# zsh — this is its first reachable form). The non-webfront fallback
+# (_portkey_run_ccd, zsh rc.d/11_portkey.zsh) is zsh-only: under any shell
+# here, say so instead of failing silently; interactive zsh keeps the fpath
+# function with the working Portkey fallback.
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    printf '%s\n' "ccd: the Portkey fallback (zsh rc.d/11_portkey.zsh) is zsh-only; run from a webfront repo or use ccd-direct" >&2
+    exit 1
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccd "$@"

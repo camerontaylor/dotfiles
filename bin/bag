@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# bag — recursively search for a string, feed matches to fzf with preview,
+# launch $EDITOR at the selected match.
+# Bash twin of zsh/fpath/bag. The sed fallback highlight branch used zsh's
+# ${bg[grey]}/${bg[default]} color vars — hardcoded to the same ANSI codes.
+if command -v bat >/dev/null 2>&1; then
+    _bag_preview='bat --style=numbers --color=always --highlight-line=${2} ${1}'
+else
+    _bag_preview='sed -E "s/(.*'$*'.*)/\x1b[100m\1\x1b[49m/gI;" < ${1}'
+fi
+# whole input as single fixed query; prefer rg over ag over grep
+if command -v rg >/dev/null 2>&1; then
+    command rg --no-heading --line-number --smart-case --fixed-strings --color=always "$*"
+elif command -v ag >/dev/null 2>&1; then
+    command ag --nogroup --color --silent "$*"
+else
+    command grep --line-number --recursive --ignore-case --color=always --no-messages "$*"
+fi | fzf --no-sort --delimiter=: \
+         --preview="$_bag_preview" \
+         --preview-window='right,50%,+{2}/2' \
+         --bind='enter:become($EDITOR {1} +{2})'

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# ccfw-direct — Fireworks route (minimax default, gpt-oss small-fast) direct
+# Claude Code. Bash twin of zsh/fpath/ccfw-direct; env chain mirrors the
+# _ccfw-direct fallback in zsh/env.d/09_claude_code_aliases.zsh (keep in sync).
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    exec env CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ENABLE_TOOL_SEARCH=false \
+        ANTHROPIC_DEFAULT_SONNET_MODEL=accounts/fireworks/models/minimax-m2p7 \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL=accounts/fireworks/models/gpt-oss-120b \
+        ANTHROPIC_DEFAULT_OPUS_MODEL=accounts/fireworks/models/kimi-k2p6 \
+        ANTHROPIC_MODEL=accounts/fireworks/models/minimax-m2p7 \
+        ANTHROPIC_SMALL_FAST_MODEL=accounts/fireworks/models/gpt-oss-120b \
+        CLAUDE_CODE_SUBAGENT_MODEL= ANTHROPIC_API_KEY= \
+        "ANTHROPIC_AUTH_TOKEN=$FIREWORKS_API_KEY" \
+        ANTHROPIC_BASE_URL=https://api.fireworks.ai/inference API_TIMEOUT_MS=3000000 \
+        claude --model accounts/fireworks/models/minimax-m2p7 "$@"
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccfw-direct "$@"

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# p — plan/worktree shortcut: pick a plan branch, cd into its worktree.
+# Bash twin of zsh/fpath/p.
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    printf '%s\n' "p is only available inside a compatible webfront repository" >&2
+    exit 1
+}
+branch=$(command bash "$root/scripts/wt-plan.sh" "$@") || exit $?
+wtp cd "$branch"

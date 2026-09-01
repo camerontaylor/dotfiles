@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# ccm-direct — MiniMax M2.7 direct Claude Code (no happy yolo).
+# Bash twin of zsh/fpath/ccm-direct; env chain mirrors the _ccm-direct
+# fallback in zsh/env.d/09_claude_code_aliases.zsh (keep in sync).
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    exec env CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        ANTHROPIC_DEFAULT_SONNET_MODEL=MiniMax-M2.7 ANTHROPIC_DEFAULT_HAIKU_MODEL=MiniMax-M2.7 \
+        ANTHROPIC_DEFAULT_OPUS_MODEL=MiniMax-M2.7 ANTHROPIC_SMALL_FAST_MODEL=MiniMax-M2.7 \
+        CLAUDE_CODE_SUBAGENT_MODEL= ANTHROPIC_API_KEY= \
+        "ANTHROPIC_AUTH_TOKEN=$MINIMAX_API_KEY" \
+        ANTHROPIC_BASE_URL=https://api.minimax.io/anthropic API_TIMEOUT_MS=3000000 \
+        claude --model MiniMax-M2.7 "$@"
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccm-direct "$@"

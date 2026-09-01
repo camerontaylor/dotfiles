@@ -1,0 +1,8 @@
+# w — jump to a worktree. Bash twin of zsh/fpath/w — a sourced FUNCTION,
+# not a bin/ script: it must cd the calling shell.
+w() {
+    local wt_path
+    wt_path="$(wtp cd "$@" 2>/dev/null)" || return
+    [ -n "$wt_path" ] || return 1
+    builtin cd "$wt_path"
+}

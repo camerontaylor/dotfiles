@@ -1,8 +1,0 @@
-emulate -L zsh
-
-local root
-root="$(_webfront_root)" || { _ccz-direct-happy "$@"; return }
-
-command zsh "$root/scripts/run-agent-alias.sh" ccz-direct-happy "$@"
-
-# vim: ft=zsh

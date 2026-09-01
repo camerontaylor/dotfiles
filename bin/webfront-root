@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# webfront-root — print the root of the enclosing webfront-compatible repo,
+# or exit non-zero. Bash twin of zsh/fpath/_webfront_root (which stays there
+# for zsh function callers); bin wrappers invoke this as a sibling so the
+# repo bin/ and the deployed ~/.local/bin copies stay paired.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 1
+[ -f "$root/scripts/run-agent-alias.sh" ] || exit 1
+[ -f "$root/scripts/wt-archive" ] || exit 1
+printf '%s\n' "$root"

@@ -27,6 +27,8 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
+| cross-shell CLI wrapper (bash+zsh) | `bin/` → executable; link in `scripts/deploy.d/21_bash_symlinks.zsh` (~/.local/bin) |
+| bash function (must cd the caller) | `bash/fpath.d/` → sourced by `.bashrc` (w, fz, ineachdir) |
 | AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
 | Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
 | macOS App Shortcuts / Finder `defaults` / default-app associations | `scripts/macos/macos-defaults.sh` (shortcuts + Finder prefs + `duti` file-type→VS Code; change-aware, backs up to `$XDG_STATE_HOME/macos-defaults/`; applied on deploy by `77_macos_defaults.zsh`, needs `duti` from brew). Capture hand-set shortcuts with `capture-shortcuts.sh`. See [`scripts/macos/README.md`](scripts/macos/README.md) |
@@ -115,7 +117,9 @@ crash-looped three services for a week in 2026-07.
 ├── bash/               # Opt-in bash twin (zsh stays default; 21_bash_symlinks)
 │   ├── env.sh          # Shared env entrypoint: sources zsh/env.d/* + exports BASH_ENV
 │   ├── rc.d/           # Interactive bash only (history/setopt/gnubin/completion/paseo)
+│   ├── fpath.d/        # Sourced functions that cd the caller (w, fz, ineachdir)
 │   └── inputrc         # readline config ($INPUTRC, zero home presence)
+├── bin/                # Cross-shell CLI wrappers (cc, psg, lspath, …) → ~/.local/bin
 ├── nvim/               # Lua config (0.11.0+): mini.nvim, mason, blink.cmp
 ├── tmux/               # Solarized, vim-aware pane nav
 ├── yazi/               # Yazi file manager config + plugins

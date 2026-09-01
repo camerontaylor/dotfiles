@@ -14,4 +14,18 @@ deploy_ln -sfn $SCRIPT_DIR/bash $XDG_CONFIG_HOME/bash
 deploy_ln -sfn $SCRIPT_DIR/bash/.bash_profile $HOME/.bash_profile
 deploy_ln -sfn $SCRIPT_DIR/bash/.bashrc $HOME/.bashrc
 
+# fpath CLI wrappers moved out of zsh/fpath into bin/ (bash twins, shared by
+# both shells — ~/.local/bin is already on PATH via zsh/env.d/03_paths.zsh,
+# so linking here adds NO new PATH entry and cannot change PATH order).
+# webfront-root goes first as a sibling: the wrappers resolve it via
+# $(dirname "$0") so repo bin/ and ~/.local/bin stay self-consistent pairs.
+deploy_ln -sfn $SCRIPT_DIR/bin/webfront-root $HOME/.local/bin/webfront-root
+for _bash_wrapper in cc yolo p ccd ccd-happy \
+                      ccm-direct ccm-direct-happy ccd-direct ccd-direct-happy \
+                      ccfw-direct ccz-direct ccz-direct-happy \
+                      lspath bag fgb fgd fgl psg; do
+    deploy_ln -sfn $SCRIPT_DIR/bin/$_bash_wrapper $HOME/.local/bin/$_bash_wrapper
+done
+unset _bash_wrapper
+
 printf '%s\n' "  ...done"

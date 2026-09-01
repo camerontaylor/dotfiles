@@ -1,12 +1,9 @@
-# git log browser with fzf
-
-emulate -L zsh
-
-git rev-parse --is-inside-work-tree &> /dev/null || return
+#!/usr/bin/env bash
+# fgl — git log browser with fzf.
+# Bash twin of zsh/fpath/fgl (verbatim).
+git rev-parse --is-inside-work-tree &> /dev/null || exit 0
 
 git log --date=short --format='%C(green)%C(bold)%cd %C(auto)%h%d %s (%an)' --graph --color=always |
 fzf --no-sort --scheme=history \
     --preview='grep -o "[a-f0-9]\{8,\}" <<< {} | xargs git show --color=always' |
 grep -o '[a-f0-9]\{8,\}'
-
-# vim: ft=zsh

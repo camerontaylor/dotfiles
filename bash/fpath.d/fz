@@ -1,0 +1,26 @@
+# fz — z via fzf selector. Bash twin of zsh/fpath/fz (sourced function: it
+# cds the calling shell). ${+commands[x]} → command -v; `cd $destination`
+# is quoted here — zsh's unquoted form is single-word by zsh rules, bash's
+# would word-split paths with spaces.
+fz() {
+    local preview_cmd dir_list destination
+    if command -v eza >/dev/null 2>&1; then
+        preview_cmd='eza -l --all --group-directories-first --icons --git --color=always {}'
+    else
+        preview_cmd='LC_COLLATE=C ls -l -v --almost-all --group-directories-first --classify --color=always --human-readable {}'
+    fi
+
+    if command -v zoxide >/dev/null 2>&1; then
+        dir_list=$(zoxide query -l -- "$@")
+    else
+        dir_list=$(z -l "$*" | sed 's/^[0-9. ]*//')
+    fi
+
+    destination=$(
+        echo $dir_list |
+        fzf --no-sort --tac --filepath-word --scheme=path --query="$*" --preview="$preview_cmd"
+    )
+    if [ -n "$destination" ]; then
+        builtin cd "$destination"
+    fi
+}

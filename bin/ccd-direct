@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# ccd-direct — DeepSeek V4 (Pro default, Flash small-fast) direct Claude Code.
+# Bash twin of zsh/fpath/ccd-direct; env chain mirrors the _ccd-direct
+# fallback in zsh/env.d/09_claude_code_aliases.zsh (keep in sync).
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    exec env CLAUDE_CODE_ATTRIBUTION_HEADER=0 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        'ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro[1m]' ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash \
+        'ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]' 'ANTHROPIC_MODEL=deepseek-v4-pro[1m]' \
+        ANTHROPIC_SMALL_FAST_MODEL=deepseek-v4-flash CLAUDE_CODE_SUBAGENT_MODEL=deepseek-v4-flash \
+        ANTHROPIC_API_KEY= \
+        "ANTHROPIC_AUTH_TOKEN=$DEEPSEEK_API_KEY" \
+        ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic API_TIMEOUT_MS=3000000 \
+        claude --model 'deepseek-v4-pro[1m]' "$@"
+}
+exec zsh "$root/scripts/run-agent-alias.sh" ccd-direct "$@"

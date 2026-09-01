@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# lspath — list every directory leading up to a path; useful for spotting
+# which permission blocks access to a file.
+# Bash twin of zsh/fpath/lspath ((s:/:) array splits → leading-slash walk;
+# the zsh original's leading empty element is elided by zsh word splitting,
+# so this starts at the first real component to match its output).
+_rest=${1:-}
+case $_rest in
+    /*) ;;
+    *)  _rest=$PWD/$_rest ;;
+esac
+_filepath=
+_ls_args=()
+while [ -n "$_rest" ]; do
+    _rest=${_rest#/}
+    _component=${_rest%%/*}
+    _filepath=$_filepath/$_component
+    _ls_args+=("$_filepath")
+    [ "$_component" = "$_rest" ] && break
+    _rest=${_rest#$_component}
+done
+ls -ld "${_ls_args[@]}"

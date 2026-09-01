@@ -1,7 +1,0 @@
-#compdef ccd
-
-# Proxy-routed DeepSeek V4 (V4 Pro for sonnet/opus, V4 Flash for haiku),
-# strict provider.only=["DeepSeek"]. Outside webfront, falls back to
-# _portkey_run_ccd defined in rc.d/11_portkey.zsh.
-root="$(_webfront_root)" || { _portkey_run_ccd ccd claude "$@"; return }
-command zsh "$root/scripts/run-agent-alias.sh" ccd "$@"

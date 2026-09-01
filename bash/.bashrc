@@ -26,3 +26,12 @@ for _rcfile in "$DOTFILES"/bash/rc.d/*; do
     fi
 done
 unset _rcfile
+
+# Function ports of the zsh/fpath utilities that must cd the calling shell
+# (w, fz, ineachdir) — they cannot be bin/ scripts. Eagerly sourced: there
+# are only three, and lazy loading has no bash autoload to build on.
+for _fnfile in "$DOTFILES"/bash/fpath.d/*; do
+    [ -e "$_fnfile" ] || continue
+    . "$_fnfile"
+done
+unset _fnfile

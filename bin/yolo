@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# yolo — webfront-dispatched `happy yolo` against real Anthropic.
+# Bash twin of zsh/fpath/yolo. Outside a webfront repo: the _yolo fallback
+# from zsh/env.d/09_claude_code_aliases.zsh, exec'd via env (keep the var
+# lists in sync).
+_wfr="$(dirname "$0")/webfront-root"
+root=$("$_wfr") || {
+    exec env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
+        -u ANTHROPIC_CUSTOM_HEADERS -u ANTHROPIC_MODEL -u ANTHROPIC_DEFAULT_OPUS_MODEL \
+        -u ANTHROPIC_DEFAULT_SONNET_MODEL -u ANTHROPIC_DEFAULT_HAIKU_MODEL \
+        -u ANTHROPIC_SMALL_FAST_MODEL -u CLAUDE_CODE_SUBAGENT_MODEL -u API_TIMEOUT_MS \
+        -u CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC \
+        CLAUDE_CODE_ATTRIBUTION_HEADER=0 happy yolo --dangerously-skip-permissions "$@"
+}
+exec zsh "$root/scripts/run-agent-alias.sh" yolo "$@"
