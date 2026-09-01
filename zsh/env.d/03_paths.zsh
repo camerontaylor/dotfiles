@@ -1,5 +1,6 @@
 # Add custom functions and completions
-fpath=($ZDOTDIR/fpath $fpath)
+# fpath is zsh-only; bash's loader exports ZDOTDIR but has no fpath machinery.
+[ -n "${ZSH_VERSION:-}" ] && fpath=($ZDOTDIR/fpath $fpath)
 
 if [[ $OSTYPE = darwin* ]]; then
     # Locate brew at a known prefix WITHOUT prepending its sbin dir to PATH.
@@ -10,16 +11,26 @@ if [[ $OSTYPE = darwin* ]]; then
     # Adding only the bin dir keeps brew findable as a bare command for
     # evalcache (which uses ${+commands[brew]}) while letting shellenv add
     # sbin and the rest of the brew env via path_helper.
-    local _brew
+    # (No `local` — this runs at the top level of .zshenv/env.sh where bash
+    # rejects it; `${_brew%/*}` replaces the zsh-only `${_brew:h}`.)
+    _brew=
     for _brew in /opt/homebrew/bin/brew /usr/local/bin/brew; do
         [[ -x $_brew ]] && break
         _brew=
     done
 
     if [[ -n $_brew ]]; then
-        path=(${_brew:h} $path)
-        autoload -z evalcache
-        evalcache brew shellenv
+        if [ -n "${ZSH_VERSION:-}" ]; then
+            path_prepend "${_brew%/*}"
+            autoload -z evalcache
+            evalcache brew shellenv
+        else
+            # bash: no evalcache. shellenv's own PATH prepend puts
+            # bin:sbin at the head — do NOT pre-prepend bin as zsh does,
+            # because bash has no unique tied array to dedup the copy back
+            # off afterwards.
+            eval "$("$_brew" shellenv)"
+        fi
 
         # Note: GNU userland gnubin PATH prepends live in
         # zsh/rc.d/02b_gnubin_path.zsh, NOT here. macOS's /etc/zprofile runs
@@ -29,24 +40,28 @@ if [[ $OSTYPE = darwin* ]]; then
         # rewrite, so the gnubin/gnu-getopt PATH manipulation has to live
         # there to actually take effect for `sed`, `find`, `awk`, etc.
         # Prefer curl installed via brew
+        # (two sequential path_prepend calls, like the two sequential
+        # path=() prepends they replace: final order libpq:curl:<rest>;
+        # the [[ -d ]] guards stay at the call site — path_prepend itself
+        # deliberately does no existence check)
         if [[ -d $HOMEBREW_PREFIX/opt/curl/bin ]]; then
-            path=($HOMEBREW_PREFIX/opt/curl/bin $path)
+            path_prepend "$HOMEBREW_PREFIX/opt/curl/bin"
         fi
         if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
-            path=($HOMEBREW_PREFIX/opt/libpq/bin $path)
+            path_prepend "$HOMEBREW_PREFIX/opt/libpq/bin"
         fi
     fi
     unset _brew
 else
     # Non-macOS: keep /usr/local/{bin,sbin} on PATH for locally installed tools
-    path=(/usr/local/bin /usr/local/sbin $path)
+    path_prepend /usr/local/bin /usr/local/sbin
 fi
 
 # Enable local binaries and man pages
-path=($HOME/.local/bin $HOME/.cargo/bin $path)
+path_prepend "$HOME/.local/bin" "$HOME/.cargo/bin"
 MANPATH=$XDG_DATA_HOME/man:$MANPATH
 
 # Add go binaries to paths
-path=($GOPATH/bin $path)
+path_prepend "$GOPATH/bin"
 
 export PNPM_STORE_DIR="$XDG_DATA_HOME/pnpm/store"

@@ -6,7 +6,7 @@ export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 
 # Add mise shims to PATH for non-interactive shells and scripts.
 # Full hook-based activation happens in rc.d/22_mise.zsh for interactive shells.
-[[ -d "$MISE_DATA_DIR/shims" ]] && path=("$MISE_DATA_DIR/shims" $path)
+[[ -d "$MISE_DATA_DIR/shims" ]] && path_prepend "$MISE_DATA_DIR/shims"
 
 # GitHub token — lifts mise's GitHub-release version-resolution rate limit
 # from 60/hr (unauthenticated) to 5000/hr. Read from gh's keyring so it stays

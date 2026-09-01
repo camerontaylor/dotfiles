@@ -20,7 +20,7 @@ fi
 
 for gnuutil in coreutils gnu-sed gnu-tar gawk findutils grep; do
     if [[ -d $HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnubin ]]; then
-        path=($HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnubin $path)
+        path_prepend "$HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnubin"
     fi
     if [[ -d $HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnuman ]]; then
         MANPATH=$HOMEBREW_PREFIX/opt/$gnuutil/libexec/gnuman:$MANPATH
@@ -32,7 +32,7 @@ unset gnuutil
 # short-opt-only version). Wire it in by hand so `getopt --long foo,bar`
 # works interactively.
 if [[ -d $HOMEBREW_PREFIX/opt/gnu-getopt/bin ]]; then
-    path=($HOMEBREW_PREFIX/opt/gnu-getopt/bin $path)
+    path_prepend "$HOMEBREW_PREFIX/opt/gnu-getopt/bin"
 fi
 if [[ -d $HOMEBREW_PREFIX/opt/gnu-getopt/share/man ]]; then
     MANPATH=$HOMEBREW_PREFIX/opt/gnu-getopt/share/man:$MANPATH

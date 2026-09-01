@@ -47,10 +47,20 @@ if [[ $SHELL != /* ]]; then
     export SHELL=${commands[zsh]:-/usr/bin/zsh}
 fi
 
-# Determine own path if ZDOTDIR isn't set or home symlink exists
+# Determine own path if ZDOTDIR isn't set or home symlink exists.
+# Symlink walk (not ${...:A:h} — those history modifiers are zsh-only, and
+# readlink -f is only macOS ≥ 12.3).
 if [[ -z $ZDOTDIR || -L $HOME/.zshenv ]]; then
-    local homezshenv=$HOME/.zshenv
-    ZDOTDIR=${homezshenv:A:h}
+    _homezshenv=$HOME/.zshenv
+    while [ -L "$_homezshenv" ]; do
+        _homezshenv_link=$(readlink "$_homezshenv")
+        case $_homezshenv_link in
+            /*) _homezshenv=$_homezshenv_link ;;
+            *) _homezshenv=${_homezshenv%/*}/$_homezshenv_link ;;
+        esac
+    done
+    ZDOTDIR=${_homezshenv%/*}
+    unset _homezshenv _homezshenv_link
 fi
 
 _zshenv_dbg "ZDOTDIR=$ZDOTDIR"
@@ -63,20 +73,28 @@ _zshenv_dbg "DOTFILES=$DOTFILES"
 
 # Source local env files — skip if dir is empty/missing
 if [[ -d $ZDOTDIR/env.d ]]; then
-    for envfile in $ZDOTDIR/env.d/*(N); do
+    # Plain glob + [ -e ] guard is the repo's dual-shell iteration template
+    # (docs/bash-compatibility.md §C): the `(N)` glob qualifier is a bash parse
+    # error, and without it zsh aborts on an empty dir before any guard could
+    # run — so null_glob is set for the loop and restored after. bash's default
+    # leaves an unmatched pattern literal, which the [ -e ] guard skips.
+    setopt null_glob
+    for envfile in $ZDOTDIR/env.d/*; do
+        [[ -e $envfile ]] || continue
         [[ $envfile == *.enc ]] && continue
         _zshenv_dbg "sourcing $envfile"
         if ! source "$envfile" 2>&1; then
             echo "Warning: error in $envfile" >&2
         fi
     done
+    unsetopt null_glob
 else
     _zshenv_dbg "env.d not found, skipping"
 fi
 
-unset envfile homezshenv
+unset envfile
 
-[[ -d "$HOME/.opencode/bin" ]] && path=("$HOME/.opencode/bin" $path)
+[[ -d "$HOME/.opencode/bin" ]] && path_prepend "$HOME/.opencode/bin"
 
 # Bash-compatible expansion in agent shells only: agents write bash-flavored
 # one-liners, so let unmatched globs pass through literally (no_nomatch) and

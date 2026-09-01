@@ -2,7 +2,7 @@
 if [[ -v ITERM_PROFILE || -v ITERM_SESSION ]]; then
     export ITERM_ENABLE_SHELL_INTEGRATION_WITH_TMUX=1
     source $ZDOTDIR/plugins/iterm2-shell-integration/shell_integration/zsh
-    path=($ZDOTDIR/plugins/iterm2-shell-integration/utilities $path)
+    path_prepend "$ZDOTDIR/plugins/iterm2-shell-integration/utilities"
 fi
 
 # Konsole integration
