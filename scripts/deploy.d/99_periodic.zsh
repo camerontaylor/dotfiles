@@ -18,6 +18,11 @@ if have systemctl; then
     fi
     deploy_mkdir -p $systemd_unit_dir
 
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: write $systemd_unit_dir/pull-dotfiles.{service,timer} and enable the timer"
+        return 0
+    fi
+
     service_name=pull-dotfiles.service
     service_content="[Unit]
 Description=Pull dotfiles update
@@ -86,6 +91,11 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <string>$XDG_STATE_HOME/dotfiles-pull.err</string>
 </dict>
 </plist>"
+
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: write $launchd_plist and launchctl bootstrap gui/$EUID"
+        return 0
+    fi
     printf '%s\n' "$launchd_content" > $launchd_plist
 
     launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
@@ -99,7 +109,9 @@ elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job for periodic updates..."
     cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
     cron_schedule="0 0 * * * $cron_task"
-    if cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: install crontab job: $cron_schedule"
+    elif cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
         printf '%s\n' "  ...done"
     else
         printf '%s\n' "Please add \`cd $SCRIPT_DIR && git pull\` to your crontab or just ignore this, you can always update dotfiles manually"
