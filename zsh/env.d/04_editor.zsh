@@ -1,8 +1,8 @@
 # prefer nvim over vim
-if (( ${+commands[nvim]} )); then
+if command -v nvim >/dev/null 2>&1; then
     export EDITOR=nvim
     export VISUAL=nvim
-elif (( ${+commands[vim]} )); then
+elif command -v vim >/dev/null 2>&1; then
     export EDITOR=vim
     export VISUAL=vim
 fi

@@ -1,5 +1,5 @@
 # Pager configuration (prefer moor, fallback to less)
-if (( ${+commands[moor]} )); then
+if command -v moor >/dev/null 2>&1; then
     export PAGER=moor
 else
     export PAGER=less
@@ -15,22 +15,22 @@ else
 fi
 
 # XDG basedir spec compliance
-if [[ ! -v XDG_CONFIG_HOME ]]; then
+if [[ -z ${XDG_CONFIG_HOME+x} ]]; then
     export XDG_CONFIG_HOME=$HOME/.config
 fi
-if [[ ! -v XDG_CACHE_HOME ]]; then
+if [[ -z ${XDG_CACHE_HOME+x} ]]; then
     export XDG_CACHE_HOME=$HOME/.cache
 fi
-if [[ ! -v XDG_DATA_HOME ]]; then
+if [[ -z ${XDG_DATA_HOME+x} ]]; then
     export XDG_DATA_HOME=$HOME/.local/share
 fi
-if [[ ! -v XDG_STATE_HOME ]]; then
+if [[ -z ${XDG_STATE_HOME+x} ]]; then
     export XDG_STATE_HOME=$HOME/.local/state
 fi
 _systemd_runtime_dir="/run/user/${EUID:-$(id -u)}"
 if [[ -d $_systemd_runtime_dir && -O $_systemd_runtime_dir ]]; then
     export XDG_RUNTIME_DIR=$_systemd_runtime_dir
-elif [[ ! -v XDG_RUNTIME_DIR || -z $XDG_RUNTIME_DIR ]]; then
+elif [[ -z ${XDG_RUNTIME_DIR+x} || -z $XDG_RUNTIME_DIR ]]; then
     export XDG_RUNTIME_DIR=${TMPDIR:-/tmp}/runtime-$USER
 fi
 unset _systemd_runtime_dir
@@ -72,15 +72,15 @@ export GTK2_RC_FILES=$XDG_CONFIG_HOME/gtk-2.0/gtkrc
 export GHOSTTY_CONFIG_DIR="$HOME/.config/ghostty"
 
 # Ghostty sets COLORTERM locally but it doesn't survive SSH
-if [[ $TERM == xterm-ghostty && ! -v COLORTERM ]]; then
+if [[ $TERM == xterm-ghostty && -z ${COLORTERM+x} ]]; then
     export COLORTERM=truecolor
 fi
 
 # Remote hosts without Ghostty's terminfo decode keys poorly under xterm-ghostty.
 if [[ $TERM == xterm-ghostty && ( -n ${SSH_TTY:-} || -n ${SSH_CONNECTION:-} ) ]]; then
-    if (( ${+commands[infocmp]} )); then
+    if command -v infocmp >/dev/null 2>&1; then
         infocmp xterm-ghostty >/dev/null 2>&1 || export TERM=xterm-256color
-    elif (( ${+commands[tput]} )); then
+    elif command -v tput >/dev/null 2>&1; then
         tput -T xterm-ghostty longname >/dev/null 2>&1 || export TERM=xterm-256color
     else
         export TERM=xterm-256color

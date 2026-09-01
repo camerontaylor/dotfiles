@@ -13,7 +13,7 @@ export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 # in sync with `gh auth login` rotations. Skipped if already exported (e.g. CI).
 # The inner `if` ensures a missing/failed `gh auth token` doesn't make this
 # whole file exit non-zero — .zshenv reports any non-zero source as an error.
-if [[ -z ${GITHUB_TOKEN:-} ]] && (( ${+commands[gh]} )); then
+if [[ -z ${GITHUB_TOKEN:-} ]] && command -v gh >/dev/null 2>&1; then
     if _gh_token=$(gh auth token 2>/dev/null); then
         export GITHUB_TOKEN=$_gh_token
     fi
