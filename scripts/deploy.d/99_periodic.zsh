@@ -3,7 +3,7 @@
 # crontab fallback. Each branch is idempotent — re-running rewrites the unit.
 
 print "Installing periodic update task..."
-if (( ${+commands[systemctl]} )); then
+if have systemctl; then
     print "  ...systemd detected, installing timer for periodic updates..."
 
     local systemd_unit_dir systemctl_cmd
@@ -47,7 +47,7 @@ WantedBy=timers.target"
     else
        print "Failed to install systemd timer. Check permissions and systemd setup"
     fi
-elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID != 0 )); then
+elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     print "  ...launchd detected, installing user LaunchAgent..."
 
     local launchd_dir=$HOME/Library/LaunchAgents
@@ -90,7 +90,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID !=
     else
        print "Failed to install launchd task. Check $launchd_plist"
     fi
-elif (( ${+commands[crontab]} )); then
+elif have crontab; then
     print "  ...cron detected, installing job for periodic updates..."
     local cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
     local cron_schedule="0 0 * * * $cron_task"

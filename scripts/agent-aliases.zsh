@@ -28,7 +28,7 @@ agent_alias_portkey_remote_token_host() {
 agent_alias_portkey_fetch_remote_token_file() {
     emulate -L zsh
     ! agent_alias_portkey_is_host || return 1
-    (( ${+commands[ssh]} )) || return 1
+    have ssh || return 1
 
     local ssh_host token tmp
     ssh_host="$(agent_alias_portkey_remote_token_host)" || return $?
@@ -118,9 +118,9 @@ agent_alias_portkey_local_token() {
 
     [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
     local token
-    if (( ${+commands[openssl]} )); then
+    if have openssl; then
         token="$(openssl rand -hex 32)" || return $?
-    elif (( ${+commands[uuidgen]} )); then
+    elif have uuidgen; then
         token="$(uuidgen)$(uuidgen)" || return $?
     else
         token="$(printf '%s-%s-%s\n' "$(date +%s)" "$RANDOM" "$RANDOM")"
@@ -143,7 +143,7 @@ agent_alias_portkey_session_id() {
     local session_file="$AGENT_ALIAS_PORTKEY_STATE/sticky-session-id"
     if [[ ! -r "$session_file" ]]; then
         umask 077
-        if (( ${+commands[uuidgen]} )); then
+        if have uuidgen; then
             uuidgen >"$session_file"
         else
             printf '%s-%s\n' "$(date +%s)" "$RANDOM" >"$session_file"

@@ -64,7 +64,7 @@ else
     } > $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp
     mv -f $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
     # Pick the change up without killing cached passphrases / SSH keys.
-    (( ${+commands[gpgconf]} )) && gpgconf --reload gpg-agent 2> /dev/null || true
+    have gpgconf && gpgconf --reload gpg-agent 2> /dev/null || true
 fi
 deploy_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
 deploy_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional

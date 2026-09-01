@@ -1,6 +1,12 @@
 # Sourced by deploy.zsh before any fragment runs. Provides shared helpers used
 # across multiple fragments. Not designed for standalone invocation.
 
+# Shell-agnostic probe helpers (bash 3.2 + zsh). `have` replaces zsh's
+# `(( ${+commands[x]} ))`; `isfunc` replaces `(( ${+functions[x]} ))` —
+# `typeset -f` exits 0 for a defined function and 1 otherwise in both shells.
+have() { command -v -- "$1" >/dev/null 2>&1; }
+isfunc() { typeset -f -- "$1" >/dev/null 2>&1; }
+
 # Dry-run-aware wrappers over the zf_ln / zf_mkdir builtins loaded by
 # deploy.zsh. A real run passes straight through to the builtin (preserving
 # its exit status, and so err_exit behavior); under --dry-run
@@ -22,7 +28,7 @@ deploy_mkdir() {
 }
 
 ensure_homebrew_path() {
-    if (( ${+commands[brew]} )); then
+    if have brew; then
         return 0
     fi
 
@@ -82,7 +88,7 @@ brew_install_or_upgrade() {
         fi
         print "  ...failed to install $formula"
         return 1
-    elif (( ! ${+commands[$binary]} )); then
+    elif ! have "$binary"; then
         if brew link $formula > /dev/null 2>&1 || brew link --overwrite $formula > /dev/null 2>&1; then
             rehash
             print "  ...linked"

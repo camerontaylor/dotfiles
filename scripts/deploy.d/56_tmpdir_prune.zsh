@@ -29,7 +29,7 @@ print "Installing daily TMPDIR prune task..."
 
 # The job must run through a login shell so env.d sets TMPDIR before the
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
-local zsh_bin=${commands[zsh]:-/bin/zsh}
+local zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
 local prune_command="${(q)pruner}"
 
 if (( DEPLOY_DRY_RUN )); then
@@ -37,7 +37,7 @@ if (( DEPLOY_DRY_RUN )); then
     return 0
 fi
 
-if (( ${+commands[systemctl]} )); then
+if have systemctl; then
     print "  ...systemd detected, installing timer..."
 
     local systemd_unit_dir systemctl_cmd
@@ -75,7 +75,7 @@ WantedBy=timers.target"
     else
         print "Failed to install prune-tmpdir timer. Check permissions and systemd setup"
     fi
-elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID != 0 )); then
+elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     print "  ...launchd detected, installing user LaunchAgent..."
 
     local launchd_dir=$HOME/Library/LaunchAgents
@@ -117,7 +117,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[launchctl]} )) && (( EUID !=
     else
         print "Failed to install launchd task. Check $launchd_plist"
     fi
-elif (( ${+commands[crontab]} )); then
+elif have crontab; then
     print "  ...cron detected, installing job..."
     local cron_task="$zsh_bin -lc $prune_command"
     local cron_schedule="30 3 * * * $cron_task"

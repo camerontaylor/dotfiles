@@ -62,7 +62,7 @@ if [[ $DOTFILES_OS == Darwin ]]; then
         fi
     fi
 else
-    if (( ! ${+commands[tailscale]} )); then
+    if ! have tailscale; then
         print "Installing Tailscale..."
         # Distro-aware install. Tailscale's install.sh handles most families
         # (apt/dnf/zypper) well, but on Arch it shells out to `pacman -S` against
@@ -98,7 +98,7 @@ else
                 fi
                 ;;
             *)
-                if (( ! ${+commands[curl]} )); then
+                if ! have curl; then
                     print "Tailscale: curl not available for install.sh, skipping install and join"
                     return 0
                 fi
@@ -125,7 +125,7 @@ fi
 # system extension managed by macOS and bundled in the cask .app — opening the
 # app once (runbook Phase 2) activates it; there is no plist for us to load.
 if [[ $DOTFILES_OS == Linux ]]; then
-    if (( ${+commands[systemctl]} )) && ! systemctl is-active --quiet tailscaled 2>/dev/null; then
+    if have systemctl && ! systemctl is-active --quiet tailscaled 2>/dev/null; then
         if (( DEPLOY_DRY_RUN )); then
             print "  [dry-run] would: sudo systemctl enable --now tailscaled"
         else
@@ -138,8 +138,8 @@ fi
 # bundle (and may symlink to the legacy Intel prefix /usr/local/bin), neither of
 # which is guaranteed on deploy.zsh's PATH. Probe known locations.
 local ts_cli=""
-if (( ${+commands[tailscale]} )); then
-    ts_cli=$commands[tailscale]
+if have tailscale; then
+    ts_cli=$(command -v tailscale)
 else
     local candidate
     for candidate in \

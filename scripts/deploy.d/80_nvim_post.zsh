@@ -1,7 +1,7 @@
 # Post-install nvim housekeeping: helptags, treesitter parsers, mason
 # registries. All gated by `command -v nvim`.
 
-if (( ${+commands[nvim]} )); then
+if have nvim; then
     print "Generating nvim helptags..."
     command nvim --headless -c "helptags ALL" -c "qall" &> /dev/null
     print "  ...done"

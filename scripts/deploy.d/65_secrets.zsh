@@ -44,7 +44,7 @@ secrets_bootstrap_help() {
 # ── age key bootstrap ──────────────────────────────────────────────────────
 
 if [[ ! -f $age_key_dir/keys.txt ]]; then
-    if (( ${+commands[age-keygen]} )); then
+    if have age-keygen; then
         print "Generating age key for secrets..."
         zf_mkdir -p $age_key_dir
         age-keygen -o $age_key_dir/keys.txt 2>/dev/null
@@ -68,7 +68,7 @@ fi
 
 # Warn when this box's key is not among the secrets repo's recipients. Only
 # checkable once the clone exists; before that, the clone itself is the gate.
-if (( ${+commands[age-keygen]} )) && [[ -f $secrets_repo/.sops.yaml ]]; then
+if have age-keygen && [[ -f $secrets_repo/.sops.yaml ]]; then
     age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
     if [[ -n $age_public_key ]] && ! grep -Fq "$age_public_key" $secrets_repo/.sops.yaml; then
         print ""
@@ -96,7 +96,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         # reports login state, which diverges from repo-read capability when a
         # token's scopes are wrong or a macOS keychain is locked.
         local -i gh_ok=0 ssh_ok=0
-        if (( ${+commands[gh]} )); then
+        if have gh; then
             if gh api repos/$secrets_slug --silent > /dev/null 2>&1; then
                 gh_ok=1
             fi
@@ -200,6 +200,6 @@ fi
 unfunction secrets_bootstrap_help 2>/dev/null || true
 
 # Reload systemd to pick up any user units whose EnvironmentFile just changed.
-if (( ${+commands[systemctl]} )); then
+if have systemctl; then
     systemctl --user daemon-reload 2>/dev/null
 fi

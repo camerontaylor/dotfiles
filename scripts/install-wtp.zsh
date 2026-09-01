@@ -26,12 +26,12 @@ cd $SCRIPT_DIR
 local install_dir=$HOME/.local/bin
 local target=$install_dir/wtp
 
-if (( ${+commands[wtp]} )) && ! $force; then
+if have wtp && ! $force; then
     print "wtp already installed, skipping"
     exit 0
 fi
 
-if $force && (( ${+commands[wtp]} )); then
+if $force && have wtp; then
     print "Reinstalling wtp..."
 else
     print "Installing wtp..."
@@ -41,7 +41,7 @@ local wtp_arch=$(uname -m)
 local wtp_os=$(uname -s)
 
 ensure_homebrew_path() {
-    if (( ${+commands[brew]} )); then
+    if have brew; then
         return 0
     fi
 
@@ -67,7 +67,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
     local brew_output
     if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
         rehash
-        if (( ${+commands[wtp]} )); then
+        if have wtp; then
             print "  ...done"
             exit 0
         fi

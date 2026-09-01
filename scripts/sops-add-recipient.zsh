@@ -26,7 +26,7 @@ if [[ ! $new_key =~ '^age1[0-9a-z]{58}$' ]]; then
     exit 1
 fi
 
-if (( ! ${+commands[sops]} )); then
+if ! have sops; then
     print "ERROR: sops not found in PATH. Install via mise." >&2
     exit 1
 fi

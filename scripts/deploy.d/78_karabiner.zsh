@@ -36,12 +36,12 @@ print "Generating Karabiner config from karabiner.ts..."
 local kb_runner=
 local r
 for r in bun tsx; do
-    if (( ${+commands[$r]} )); then
+    if have "$r"; then
         kb_runner=$r
         break
     fi
 done
-if [[ -z $kb_runner ]] && (( ${+commands[npx]} )); then
+if [[ -z $kb_runner ]] && have npx; then
     kb_runner='npx --yes tsx'
 fi
 

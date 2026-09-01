@@ -33,7 +33,7 @@ fi
 #
 # Do NOT forward "$@": git invokes post-merge with a single squash-flag arg (0
 # or 1) that deploy.zsh's fail-closed parser would reject as "unknown argument".
-if (( ${+commands[timeout]} )); then
+if have timeout; then
     exec timeout 300 zsh "$repo_root/deploy.zsh"
 else
     exec zsh "$repo_root/deploy.zsh"

@@ -8,13 +8,13 @@ fi
 
 if [[ $DOTFILES_OS == Darwin ]]; then
     if ensure_homebrew_path; then
-        (( ${+commands[socat]} )) || brew_formula_install_or_upgrade socat || true
+        have socat || brew_formula_install_or_upgrade socat || true
     fi
     return 0
 fi
 
 # Linux: nothing to do if both are already present.
-if (( ${+commands[nc]} )) && (( ${+commands[socat]} )); then
+if have nc && have socat; then
     return 0
 fi
 

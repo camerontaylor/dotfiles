@@ -48,7 +48,7 @@ for entry in $tool_checks; do
     tool=${entry%%:*}
     bin_name=${entry##*:}
 
-    if (( ! ${+commands[$bin_name]} )); then
+    if ! have "$bin_name"; then
         failed+=("$tool ($bin_name): not on PATH")
         continue
     fi

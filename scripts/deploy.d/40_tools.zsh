@@ -26,13 +26,13 @@ zf_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-s
 # already passwordless/cached or stdin is a terminal (interactive `./deploy.zsh`).
 # Otherwise we print a copy-paste hint instead of hanging — same guard as
 # 75_brew_setup.zsh's htop, honouring the no-sudo-in-hook rule.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     local brew_tool formula bin_name
     for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl; do
         formula=${brew_tool%%:*}
         bin_name=${brew_tool#*:}
         brew list --formula $formula > /dev/null 2>&1 && continue
-        (( ${+commands[$bin_name]} )) && continue
+        have "$bin_name" && continue
         print "Installing $formula via brew..."
         if brew install $formula > /dev/null 2>&1; then
             print "  ...done"
@@ -56,7 +56,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     local -a recipes=()
     case " $distro_id $distro_like " in
         *" debian "*|*" ubuntu "*)
-            if (( ${+commands[apt-get]} )); then
+            if have apt-get; then
                 recipes+=( "git-extras|sudo apt-get install -y git-extras" )
                 recipes+=( "git-restore-mtime|sudo apt-get install -y git-restore-mtime" )
                 recipes+=( "testssl testssl.sh|sudo apt-get install -y testssl.sh" )
@@ -66,13 +66,13 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             # testssl.sh: official repo -> pacman (-Sy refreshes a stale db so it
             # doesn't 404; --needed makes it idempotent). See 41_net_tools.zsh for
             # the partial-upgrade caveat of -Sy without -u.
-            (( ${+commands[pacman]} )) \
+            have pacman \
                 && recipes+=( "testssl testssl.sh|sudo pacman -Sy --needed --noconfirm testssl.sh" )
             # git-extras: AUR -> first available helper (run WITHOUT a sudo prefix;
             # helpers call sudo internally and refuse to run as root).
             local aur=""
-            (( ${+commands[paru]} )) && aur=paru
-            [[ -z $aur ]] && (( ${+commands[yay]} )) && aur=yay
+            have paru && aur=paru
+            [[ -z $aur ]] && have yay && aur=yay
             if [[ -n $aur ]]; then
                 recipes+=( "git-extras|$aur -S --needed --noconfirm git-extras" )
                 recipes+=( "git-restore-mtime|$aur -S --needed --noconfirm git-tools" )
@@ -85,11 +85,11 @@ elif [[ $DOTFILES_OS == Linux ]]; then
 
     if (( ${#recipes} == 0 )); then
         # Unknown distro or no package manager detected — hint with the generic names.
-        (( ${+commands[git-extras]} )) \
+        have git-extras \
             || print "  hint: git-extras not installed — install via your package manager"
-        (( ${+commands[git-restore-mtime]} )) \
+        have git-restore-mtime \
             || print "  hint: git-restore-mtime not installed — install git-tools/git-restore-mtime via your package manager"
-        (( ${+commands[testssl]} )) || (( ${+commands[testssl.sh]} )) \
+        have testssl || have testssl.sh \
             || print "  hint: testssl not installed — install via your package manager"
     else
         local recipe probe_str cmd label present p
@@ -99,7 +99,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             label=${probe_str%% *}        # first probe name = display label
             present=0
             for p in ${=probe_str}; do
-                (( ${+commands[$p]} )) && { present=1; break }
+                have "$p" && { present=1; break }
             done
             (( present )) && continue
             if [[ -z $cmd ]]; then
@@ -121,17 +121,17 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     fi
 fi
 
-if (( ! ${+commands[wtp]} )); then
+if ! have wtp; then
     $SCRIPT_DIR/scripts/install-wtp.zsh || true
 fi
 
-if (( ${+commands[gh]} )); then
+if have gh; then
     gh extension list 2>/dev/null | grep -q chmouel/gh-prreview \
         || gh extension install chmouel/gh-prreview 2>/dev/null \
         || true
 fi
 
-if (( ! ${+commands[moor]} )); then
+if ! have moor; then
     print "Installing moor..."
     if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
         print "  ...done"

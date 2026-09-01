@@ -3,7 +3,7 @@
 # ncurses for Ghostty terminfo, engram tap, iTerm2 cask, Nerd Font cask.
 
 # Find Homebrew on fresh macOS shells before running brew-managed setup.
-if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
+if [[ $(uname -s) == Darwin ]] && ! have brew; then
     for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
         if [[ -x $brew_bin ]]; then
             path=(${brew_bin:h} $path)
@@ -18,14 +18,14 @@ fi
 # HOMEBREW_REQUIRE_TAP_TRUST set silently ignores these taps and every install
 # below would no-op. Trust the exact items, not the whole taps (see brew_trust).
 # wtp (satococoa/tap) is trusted in scripts/install-wtp.zsh, which runs earlier.
-if (( ${+commands[brew]} )); then
+if have brew; then
     brew_trust --formula gentleman-programming/tap/engram
     brew_trust --formula felixkratz/formulae/borders
     brew_trust --cask nikitabobko/tap/aerospace
     brew_trust --cask manaflow-ai/cmux/cmux
 fi
 
-if (( ${+commands[brew]} )) && $upgrade_mode; then
+if have brew && $upgrade_mode; then
     print "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
         print "  ...done"
@@ -68,10 +68,10 @@ if (( ${+commands[brew]} )) && $upgrade_mode; then
 fi
 
 # Install and register latest Homebrew zsh on macOS.
-if [[ $(uname -s) == Darwin ]] && (( ! ${+commands[brew]} )); then
+if [[ $(uname -s) == Darwin ]] && ! have brew; then
     print "Setting up latest zsh via Homebrew..."
     print "  ...Homebrew not found, skipping"
-elif [[ $(uname -s) == Darwin ]] && (( ${+commands[brew]} )); then
+elif [[ $(uname -s) == Darwin ]] && have brew; then
     print "Setting up latest zsh via Homebrew..."
     if brew list --formula zsh > /dev/null 2>&1; then
         if $upgrade_mode; then
@@ -95,7 +95,7 @@ elif [[ $(uname -s) == Darwin ]] && (( ${+commands[brew]} )); then
             if (( EUID == 0 )); then
                 print -r -- "$brew_zsh" >> /etc/shells
                 print "  ...registered $brew_zsh in /etc/shells"
-            elif (( ${+commands[sudo]} )) && sudo -n true 2>/dev/null; then
+            elif have sudo && sudo -n true 2>/dev/null; then
                 print -r -- "$brew_zsh" | sudo tee -a /etc/shells > /dev/null
                 print "  ...registered $brew_zsh in /etc/shells"
             else
@@ -127,13 +127,13 @@ fi
 # `#!/usr/bin/env bash` (or `bash some-script.sh` typed interactively,
 # which goes through the brew-first PATH). Not registered in /etc/shells —
 # zsh remains the login shell.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing modern bash via brew..."
     brew_formula_install_or_upgrade bash || true
 fi
 
 # ncurses for Ghostty terminfo compilation.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing ncurses via brew..."
     brew_formula_install_or_upgrade ncurses || true
 fi
@@ -141,10 +141,10 @@ fi
 # htop process viewer; config is symlinked by 20_symlinks.zsh. There is no
 # mise/aqua backend for htop, so it comes from the platform package manager:
 # brew on macOS (refreshed every run), pacman on Arch-family Linux.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing htop via brew..."
     brew_formula_install_or_upgrade htop || true
-elif (( ${+commands[pacman]} )) && (( ! ${+commands[htop]} )); then
+elif have pacman && ! have htop; then
     # sudo can prompt for a password. In a non-interactive deploy (e.g. the
     # post-merge git hook) there's no TTY to answer it, so only attempt the
     # install when sudo is already passwordless/cached or stdin is a terminal;
@@ -165,10 +165,10 @@ fi
 # connections across the home cluster. No mise/aqua backend, so it comes from
 # the platform package manager: brew on macOS, apt on Debian/Ubuntu, pacman on
 # Arch-family Linux. Mirrors htop's per-OS fanout above.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing mosh via brew..."
     brew_formula_install_or_upgrade mosh || true
-elif (( ${+commands[apt-get]} )) && (( ! ${+commands[mosh]} )); then
+elif have apt-get && ! have mosh; then
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
         print "Installing mosh via apt..."
         if sudo apt-get install -y mosh > /dev/null 2>&1; then
@@ -179,7 +179,7 @@ elif (( ${+commands[apt-get]} )) && (( ! ${+commands[mosh]} )); then
     else
         print "mosh missing; install it with: sudo apt-get install -y mosh"
     fi
-elif (( ${+commands[pacman]} )) && (( ! ${+commands[mosh]} )); then
+elif have pacman && ! have mosh; then
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
         print "Installing mosh via pacman..."
         if sudo pacman -S --needed --noconfirm mosh > /dev/null 2>&1; then
@@ -198,7 +198,7 @@ fi
 # the gnubin PATH prepend in zsh/env.d/03_paths.zsh. gnu-getopt is keg-only
 # (would shadow /usr/bin/getopt), so it's symlinked through a dedicated
 # branch in 03_paths.zsh rather than the gnubin loop.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing GNU userland via brew..."
     brew_formula_install_or_upgrade coreutils || true
     brew_formula_install_or_upgrade grep || true
@@ -221,7 +221,7 @@ fi
 #   zsh-completions (brew formula) — redundant; zsh/plugins/completions is the
 #     same zsh-users/zsh-completions repo vendored as a submodule and already
 #     wired into fpath by zsh/rc.d/15_completion.zsh:19.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing Linux-script compat helpers via brew..."
     brew_formula_install_or_upgrade moreutils || true
     brew_formula_install_or_upgrade flock || true
@@ -233,7 +233,7 @@ fi
 
 # PostgreSQL client tools. Homebrew's libpq formula provides psql without
 # installing or starting a local PostgreSQL server.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing PostgreSQL client tools via brew..."
     brew_formula_install_or_upgrade libpq || true
     if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
@@ -244,7 +244,7 @@ fi
 
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
 # them through mise on Intel Macs. brew bottles ship for both arches.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing fd via brew..."
     brew_install_or_upgrade fd fd || true
     print "Installing git-delta via brew..."
@@ -254,14 +254,14 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
 fi
 
 # engram tap install.
-if (( ${+commands[brew]} )) && (( ! ${+commands[engram]} )); then
+if have brew && ! have engram; then
     print "Installing engram via brew..."
     if brew install gentleman-programming/tap/engram > /dev/null 2>&1; then
         print "  ...done"
     else
         print "  ...failed to install engram"
     fi
-elif (( ${+commands[brew]} )) && $upgrade_mode; then
+elif have brew && $upgrade_mode; then
     print "Upgrading engram via brew..."
     if brew upgrade gentleman-programming/tap/engram > /dev/null 2>&1; then
         print "  ...done"
@@ -276,7 +276,7 @@ fi
 # installed-but-unlinked as ghx's real binary — remove all of it plus ~/.ghx
 # (cache + auto-managed gh) so mise's gh owns the command again. Brew-less
 # hosts get the equivalent cleanup in 70_runtime_installs.zsh.
-if (( ${+commands[brew]} )) && brew list --formula ghx > /dev/null 2>&1; then
+if have brew && brew list --formula ghx > /dev/null 2>&1; then
     print "Removing ghx (gh is mise-managed again)..."
     # ghxd self-daemonizes (reparents to PID 1) and ignores SIGTERM; KILL it.
     pkill -9 -u "$USER" -x ghxd 2>/dev/null || true
@@ -289,7 +289,7 @@ if (( ${+commands[brew]} )) && brew list --formula ghx > /dev/null 2>&1; then
 fi
 
 # iTerm2 cask.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask iterm2 > /dev/null 2>&1; then
         print "Installing iTerm2..."
         brew_cask_install_or_upgrade iterm2 || true
@@ -302,7 +302,7 @@ fi
 configure_iterm2_profile
 
 # JetBrains Mono Nerd Font cask.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask font-jetbrains-mono-nerd-font > /dev/null 2>&1; then
         print "Installing JetBrains Mono Nerd Font..."
         brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
@@ -313,7 +313,7 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
 fi
 
 # cmux cask — Ghostty-based terminal wrapper with vertical tabs / agent notifications.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask cmux > /dev/null 2>&1; then
         print "Installing cmux..."
         brew_cask_install_or_upgrade cmux || true
@@ -324,7 +324,7 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
 fi
 
 # Raycast cask — launcher / keystroke productivity tool.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask raycast > /dev/null 2>&1; then
         print "Installing Raycast..."
         brew_cask_install_or_upgrade raycast || true
@@ -338,7 +338,7 @@ fi
 # The `t3` CLI (server form, port 3773) is installed cross-platform through
 # .default-npm-packages and exposed over the mesh by setup-caddy.sh; this cask
 # is the macOS desktop companion app.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask t3-code > /dev/null 2>&1; then
         print "Installing T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
@@ -372,7 +372,7 @@ fi
 # The app-bundle test is not redundant with the receipt test: a box that got
 # its beta straight from the DMG has /Applications/Paseo.app but NO Caskroom
 # receipt, and `brew install --cask` would happily write stable over it.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if [[ ! -d /Applications/Paseo.app ]] && ! brew list --cask paseo > /dev/null 2>&1; then
         print "Installing Paseo..."
         brew_cask_install_or_upgrade paseo || true
@@ -384,7 +384,7 @@ fi
 # AeroSpace cask — i3-like tiling window manager for macOS. Lives in the
 # maintainer's own tap (nikitabobko/tap), so the tap-qualified name is used for
 # both the `brew list` presence check and the install/upgrade.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask nikitabobko/tap/aerospace > /dev/null 2>&1; then
         print "Installing AeroSpace..."
         brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
@@ -395,7 +395,7 @@ if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
 fi
 
 # Karabiner-Elements cask — keyboard customizer / key remapper for macOS.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask karabiner-elements > /dev/null 2>&1; then
         print "Installing Karabiner-Elements..."
         brew_cask_install_or_upgrade karabiner-elements || true
@@ -412,7 +412,7 @@ fi
 # It runs as a per-user LaunchAgent via `brew services`; start it once installed
 # (idempotent — a no-op if already loaded). `brew services` needs the formula
 # present, so only attempt the start when the install above succeeded.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing JankyBorders..."
     brew_formula_install_or_upgrade felixkratz/formulae/borders || true
     if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
@@ -429,7 +429,7 @@ fi
 # duti — sets default applications for file types / UTIs from the CLI. Consumed
 # by scripts/macos/macos-defaults.sh (77_macos_defaults.zsh) to point text/code
 # file types at VS Code. Plain formula in homebrew-core.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing duti..."
     brew_formula_install_or_upgrade duti || true
 fi
@@ -442,13 +442,13 @@ fi
 # routes pinentry through scripts/pinentry-auto, which prefers this when
 # present. gnupg itself is not deploy-managed; the wrapper degrades gracefully
 # if either half is missing.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     print "Installing pinentry-mac..."
     brew_formula_install_or_upgrade pinentry-mac || true
 fi
 
 # ForkLift cask — dual-pane macOS file manager / FTP-SFTP client.
-if [[ $DOTFILES_OS == Darwin ]] && (( ${+commands[brew]} )); then
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask forklift > /dev/null 2>&1; then
         print "Installing ForkLift..."
         brew_cask_install_or_upgrade forklift || true

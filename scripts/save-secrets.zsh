@@ -30,7 +30,7 @@ cd $SCRIPT_DIR
 # Default XDG paths
 XDG_CONFIG_HOME=$HOME/.config
 
-if (( ! ${+commands[sops]} )); then
+if ! have sops; then
     print "sops not found; run 'mise install' first" >&2
     exit 1
 fi

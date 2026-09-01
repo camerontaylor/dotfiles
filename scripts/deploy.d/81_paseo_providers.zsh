@@ -30,7 +30,7 @@ if [[ ! -f $HOME/.paseo/config.json ]]; then
     return 0
 fi
 
-if (( ! ${+commands[python3]} )); then
+if ! have python3; then
     print "paseo providers: no python3 on PATH (mise.toml pins python 3); skipping"
     return 0
 fi
@@ -53,7 +53,7 @@ case $paseo_result in
             # agents.providers and daemon.agentProfiles are both in paseo's
             # RELOADABLE_PATHS, so this applies without restarting the daemon
             # and without interrupting any running agent.
-            if (( ${+commands[paseo]} )) && paseo daemon reload > /dev/null 2>&1; then
+            if have paseo && paseo daemon reload > /dev/null 2>&1; then
                 print "  ...daemon reloaded"
             else
                 print "  ...could not reload the daemon; run 'paseo daemon reload' when it is up"

@@ -1,7 +1,7 @@
 # Bootstrap mise, then run `mise install` to materialize tools from
 # configs/mise.toml. Brew fallback follows for tools mise couldn't acquire.
 
-if (( ! ${+commands[mise]} )); then
+if ! have mise; then
     print "Installing mise..."
     local mise_arch=$DOTFILES_ARCH
     local mise_os=${DOTFILES_OS:l}
@@ -25,7 +25,7 @@ if (( ! ${+commands[mise]} )); then
         if ensure_homebrew_path 2>/dev/null; then
             brew_install_or_upgrade mise mise || true
         fi
-        if (( ! ${+commands[mise]} )); then
+        if ! have mise; then
             local mise_dl_arch=$mise_arch
             [[ $mise_dl_arch == x86_64 ]] && mise_dl_arch=x64
             local mise_version
@@ -75,7 +75,7 @@ run_mise_step() {
     return $rc
 }
 
-if (( ${+commands[mise]} )); then
+if have mise; then
     if $upgrade_mode; then
         print "Upgrading mise..."
         run_mise_step "mise self-update" 20 mise self-update --yes --no-plugins
@@ -86,7 +86,7 @@ if (( ${+commands[mise]} )); then
     # and fail with 403 mid-install, leaving tools half-provisioned. Feed it a
     # token from the usual sources if one is reachable.
     if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
-        if (( ${+commands[gh]} )) && gh auth token > /dev/null 2>&1; then
+        if have gh && gh auth token > /dev/null 2>&1; then
             export MISE_GITHUB_TOKEN=$(gh auth token 2>/dev/null)
         fi
     fi
@@ -156,7 +156,7 @@ if [[ $DOTFILES_OS == Darwin ]] && ensure_homebrew_path 2>/dev/null; then
             awscli)  fallback_bin=aws ;;
             neovim)  fallback_bin=nvim ;;
         esac
-        if (( ! ${+commands[$fallback_bin]} )); then
+        if ! have "$fallback_bin"; then
             print "Mise didn't install $fallback_tool; trying brew fallback..."
             brew_install_or_upgrade $fallback_tool $fallback_bin || true
         fi

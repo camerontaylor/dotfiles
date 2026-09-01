@@ -3,7 +3,7 @@
 # node (pinned in configs/mise.toml, installed by 50_mise.zsh), and gjc as a
 # bun global (bun-only package; see its block below).
 
-if (( ! ${+commands[claude]} )); then
+if ! have claude; then
     print "Installing Claude Code..."
     if curl -fsSL https://claude.ai/install.sh | bash > /dev/null 2>&1; then
         print "  ...done"
@@ -16,7 +16,7 @@ local npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
 if (( DEPLOY_DRY_RUN )); then
     print "  [dry-run] would install npm globals through mise node's npm"
-elif (( ${+commands[mise]} )); then
+elif have mise; then
     # Drop mise installs that other installers own now. NOTE: node/npm and the
     # npm: backend tools that systemd units resolve through mise (npm:t3 for
     # t3-serve.service, npm:portless for the webfront runner + the pin in
@@ -121,7 +121,7 @@ fi
 # NOT on any PATH here — only ~/.local/bin is (zsh/env.d/03_paths.zsh:46) — so
 # link the binary there. A symlink beats adding a PATH entry to env.d because
 # ~/.local/bin also reaches non-zsh callers (systemd units, paseo dispatch).
-if (( ${+commands[bun]} )); then
+if have bun; then
     autoload -Uz is-at-least
 
     local gjc_bun_version gjc_bun_bin
@@ -169,7 +169,7 @@ if (( ${+commands[bun]} )); then
     fi
 fi
 
-if (( ! ${+commands[cargo]} )); then
+if ! have cargo; then
     print "Installing rustup and cargo..."
     if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path > /dev/null 2>&1; then
         export PATH=$HOME/.cargo/bin:$PATH
@@ -180,8 +180,8 @@ if (( ! ${+commands[cargo]} )); then
 fi
 
 # linear-cli: git-only upstream, no mise/aqua backend exists.
-if (( ${+commands[cargo]} )); then
-    if (( ! ${+commands[linear-cli]} )); then
+if have cargo; then
+    if ! have linear-cli; then
         print "Installing linear-cli via cargo..."
         if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked > /dev/null 2>&1; then
             print "  ...done"
@@ -199,7 +199,7 @@ if (( ${+commands[cargo]} )); then
 fi
 
 # CodeWhale: crates.io is the most direct update source for both the CLI and TUI.
-if (( ${+commands[cargo]} )); then
+if have cargo; then
     local codewhale_spec codewhale_package codewhale_binary codewhale_action
     local -a codewhale_cargo_packages=(
         codewhale-cli:codewhale
@@ -210,7 +210,7 @@ if (( ${+commands[cargo]} )); then
         codewhale_package=${codewhale_spec%%:*}
         codewhale_binary=${codewhale_spec#*:}
 
-        if (( ! ${+commands[$codewhale_binary]} )); then
+        if ! have "$codewhale_binary"; then
             codewhale_action=install
         elif $upgrade_mode; then
             codewhale_action=upgrade

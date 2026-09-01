@@ -42,7 +42,7 @@ for entry in $generators; do
     dest_name=${rest##*:}
     dest_path="$cache_fpath/$dest_name"
 
-    if (( ! ${+commands[$tool]} )); then
+    if ! have "$tool"; then
         print "  ...skip $tool (not installed)"
         (( skipped_count++ ))
         continue
@@ -75,7 +75,7 @@ done
 # `sg` is the binary name of ast-grep. The native generator emits a
 # `#compdef ast-grep` script, so reuse that completion under the sg name
 # via a 2-line shim rather than regenerating identical content.
-if (( ${+commands[sg]} )); then
+if have sg; then
     cat > $cache_fpath/_sg <<'COMPDEF'
 #compdef sg
 (( $+functions[_ast-grep] )) || autoload -Uz _ast-grep

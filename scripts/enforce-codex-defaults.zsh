@@ -73,7 +73,7 @@ local desired_approval='approval_policy = "never"'
 local head_model=""
 local head_effort=""
 local relpath=${config_file#$SCRIPT_DIR/}
-if [[ $relpath != /* ]] && (( ${+commands[git]} )) \
+if [[ $relpath != /* ]] && have git \
     && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
     head_model=$(git -C "$SCRIPT_DIR" show "HEAD:$relpath" 2>/dev/null \
@@ -189,7 +189,7 @@ fi
 # Staged blob pass (--git-add mode): hard-enforce sandbox/approval AND
 # revert model/effort drift back to HEAD's value, warning the user when the
 # staged blob still needed cleanup after the working-tree pass.
-if [[ $git_add == true ]] && (( ${+commands[git]} )); then
+if [[ $git_add == true ]] && have git; then
     if [[ $relpath != /* ]] \
         && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
         && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
