@@ -2,7 +2,7 @@
 # configs/mise.toml. Brew fallback follows for tools mise couldn't acquire.
 
 if ! have mise; then
-    print "Installing mise..."
+    printf '%s\n' "Installing mise..."
     local mise_arch=$DOTFILES_ARCH
     local mise_os=${DOTFILES_OS:l}
     if [[ $mise_os == linux && ($mise_arch == x86_64 || $mise_arch == aarch64) ]]; then
@@ -14,12 +14,12 @@ if ! have mise; then
             if curl -fsSL "https://github.com/jdx/mise/releases/download/v${mise_version}/mise-v${mise_version}-${mise_os}-${mise_arch}" -o $HOME/.local/bin/mise; then
                 chmod +x $HOME/.local/bin/mise
                 export PATH=$HOME/.local/bin:$PATH
-                print "  ...done"
+                printf '%s\n' "  ...done"
             else
-                print "  ...failed to download mise, skipping"
+                printf '%s\n' "  ...failed to download mise, skipping"
             fi
         else
-            print "  ...failed to determine latest mise version, skipping"
+            printf '%s\n' "  ...failed to determine latest mise version, skipping"
         fi
     elif [[ $mise_os == darwin && ($mise_arch == x86_64 || $mise_arch == arm64) ]]; then
         if ensure_homebrew_path 2>/dev/null; then
@@ -34,18 +34,18 @@ if ! have mise; then
                 if curl -fsSL "https://github.com/jdx/mise/releases/download/v${mise_version}/mise-v${mise_version}-macos-${mise_dl_arch}" -o $HOME/.local/bin/mise; then
                     chmod +x $HOME/.local/bin/mise
                     export PATH=$HOME/.local/bin:$PATH
-                    print "  ...done (direct download)"
+                    printf '%s\n' "  ...done (direct download)"
                 else
-                    print "  ...failed to download mise, try: brew install mise"
+                    printf '%s\n' "  ...failed to download mise, try: brew install mise"
                 fi
             else
-                print "  ...failed to determine latest mise version, try: brew install mise"
+                printf '%s\n' "  ...failed to determine latest mise version, try: brew install mise"
             fi
         else
             export PATH=$HOME/.local/bin:$PATH
         fi
     else
-        print "  ...unsupported platform for mise auto-install, skipping"
+        printf '%s\n' "  ...unsupported platform for mise auto-install, skipping"
     fi
 fi
 
@@ -61,15 +61,15 @@ run_mise_step() {
     "$@" > "$log" 2>&1
     local rc=$?
     if (( rc == 0 )); then
-        print "  ...done"
+        printf '%s\n' "  ...done"
         rm -f "$log"
         return 0
     fi
-    print "  ...$label had issues (exit $rc); last $tail_lines lines of output:"
+    printf '%s\n' "  ...$label had issues (exit $rc); last $tail_lines lines of output:"
     if [[ -s $log ]]; then
         tail -n "$tail_lines" "$log" | sed 's/^/    | /'
     else
-        print "    | (no output captured)"
+        printf '%s\n' "    | (no output captured)"
     fi
     rm -f "$log"
     return $rc
@@ -77,7 +77,7 @@ run_mise_step() {
 
 if have mise; then
     if $upgrade_mode; then
-        print "Upgrading mise..."
+        printf '%s\n' "Upgrading mise..."
         run_mise_step "mise self-update" 20 mise self-update --yes --no-plugins
     fi
 
@@ -91,8 +91,8 @@ if have mise; then
         fi
     fi
     if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
-        print "  ...no GitHub token found; mise may hit API rate limits"
-        print "     (export GITHUB_TOKEN, or run 'gh auth login')"
+        printf '%s\n' "  ...no GitHub token found; mise may hit API rate limits"
+        printf '%s\n' "     (export GITHUB_TOKEN, or run 'gh auth login')"
     fi
 
     # `mise upgrade` bumps tools within their pinned major and PRUNES the old
@@ -116,28 +116,27 @@ if have mise; then
     # openclaw@beta into the new prefix, and the service comes back on a live
     # inode. Gated on the unit file existing, so this is ceres-only in practice
     # and silent everywhere else.
-    local node_prefix_before node_prefix_after
     node_prefix_before=$(mise where node 2>/dev/null)
 
-    print "Installing mise tools (node, bun, python, etc.)..."
+    printf '%s\n' "Installing mise tools (node, bun, python, etc.)..."
     run_mise_step "mise install" 30 mise install
 
-    print "Upgrading mise tools..."
+    printf '%s\n' "Upgrading mise tools..."
     run_mise_step "mise upgrade" 20 mise upgrade --yes
 
     node_prefix_after=$(mise where node 2>/dev/null)
     if [[ -n $node_prefix_after && $node_prefix_after != $node_prefix_before ]]; then
-        print "  ...node prefix moved (${node_prefix_before:-none} -> $node_prefix_after)"
+        printf '%s\n' "  ...node prefix moved (${node_prefix_before:-none} -> $node_prefix_after)"
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would try-restart openclaw-gateway.service onto the new prefix"
-        elif [[ -f $XDG_CONFIG_HOME/systemd/user/openclaw-gateway.service ]] && (( ${+commands[systemctl]} )); then
+            printf '%s\n' "  [dry-run] would try-restart openclaw-gateway.service onto the new prefix"
+        elif [[ -f $XDG_CONFIG_HOME/systemd/user/openclaw-gateway.service ]] && have systemctl; then
             # A post-merge hook shell may have no D-Bus session env, so reaching
             # the user bus can legitimately fail. Never fail the deploy for it —
             # report and move on; the 5-min drift detector is the backstop.
             if systemctl --user try-restart openclaw-gateway.service 2>/dev/null; then
-                print "  ...restarted openclaw-gateway onto the new node prefix"
+                printf '%s\n' "  ...restarted openclaw-gateway onto the new node prefix"
             else
-                print "  ...could not restart openclaw-gateway (no user bus?); do it manually"
+                printf '%s\n' "  ...could not restart openclaw-gateway (no user bus?); do it manually"
             fi
         fi
     fi
@@ -157,7 +156,7 @@ if [[ $DOTFILES_OS == Darwin ]] && ensure_homebrew_path 2>/dev/null; then
             neovim)  fallback_bin=nvim ;;
         esac
         if ! have "$fallback_bin"; then
-            print "Mise didn't install $fallback_tool; trying brew fallback..."
+            printf '%s\n' "Mise didn't install $fallback_tool; trying brew fallback..."
             brew_install_or_upgrade $fallback_tool $fallback_bin || true
         fi
     done

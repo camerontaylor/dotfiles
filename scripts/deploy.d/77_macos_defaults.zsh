@@ -12,16 +12,16 @@ fi
 
 local macos_script=$SCRIPT_DIR/scripts/macos/macos-defaults.sh
 if [[ ! -x $macos_script ]]; then
-    print "macos-defaults.sh missing or not executable; skipping"
+    printf '%s\n' "macos-defaults.sh missing or not executable; skipping"
     return 0
 fi
 
-print "Applying macOS defaults (shortcuts + Finder prefs)..."
+printf '%s\n' "Applying macOS defaults (shortcuts + Finder prefs)..."
 # Honour --dry-run by forwarding it as DRY_RUN=1 so the script previews without
 # mutating. `|| true` keeps cosmetic-settings failures from aborting deploy
 # (deploy.zsh runs under setopt err_exit).
 if (( DEPLOY_DRY_RUN )); then
     DRY_RUN=1 bash "$macos_script" || true
 else
-    bash "$macos_script" || print "  ...macos-defaults.sh reported issues (non-fatal)"
+    bash "$macos_script" || printf '%s\n' "  ...macos-defaults.sh reported issues (non-fatal)"
 fi

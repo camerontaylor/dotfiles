@@ -13,7 +13,7 @@ isfunc() { typeset -f -- "$1" >/dev/null 2>&1; }
 # (DEPLOY_DRY_RUN=1) they print the intended command instead of mutating.
 deploy_ln() {
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would ln $*"
+        printf '%s\n' "  [dry-run] would ln $*"
     else
         zf_ln "$@"
     fi
@@ -21,7 +21,7 @@ deploy_ln() {
 
 deploy_mkdir() {
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would mkdir $*"
+        printf '%s\n' "  [dry-run] would mkdir $*"
     else
         zf_mkdir "$@"
     fi
@@ -76,32 +76,32 @@ brew_install_or_upgrade() {
     local binary=${2:-$formula}
 
     if ! ensure_homebrew_path; then
-        print "  ...Homebrew not available, skipping $formula"
+        printf '%s\n' "  ...Homebrew not available, skipping $formula"
         return 1
     fi
 
     if ! brew list --formula $formula > /dev/null 2>&1; then
         if brew install $formula > /dev/null 2>&1; then
             rehash
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...failed to install $formula"
+        printf '%s\n' "  ...failed to install $formula"
         return 1
     elif ! have "$binary"; then
         if brew link $formula > /dev/null 2>&1 || brew link --overwrite $formula > /dev/null 2>&1; then
             rehash
-            print "  ...linked"
+            printf '%s\n' "  ...linked"
             return 0
         fi
-        print "  ...$formula installed but $binary is not on PATH"
+        printf '%s\n' "  ...$formula installed but $binary is not on PATH"
         return 1
     elif $upgrade_mode; then
         if brew upgrade $formula > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...$formula already at latest or upgrade failed"
+        printf '%s\n' "  ...$formula already at latest or upgrade failed"
         return 0
     fi
 }
@@ -110,23 +110,23 @@ brew_cask_install_or_upgrade() {
     local cask=$1
 
     if ! ensure_homebrew_path; then
-        print "  ...Homebrew not available, skipping $cask"
+        printf '%s\n' "  ...Homebrew not available, skipping $cask"
         return 1
     fi
 
     if ! brew list --cask $cask > /dev/null 2>&1; then
         if brew install --cask $cask > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...failed to install $cask"
+        printf '%s\n' "  ...failed to install $cask"
         return 1
     elif $upgrade_mode; then
         if brew upgrade --cask $cask > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...$cask already at latest or upgrade failed"
+        printf '%s\n' "  ...$cask already at latest or upgrade failed"
         return 0
     fi
 }
@@ -135,24 +135,24 @@ brew_formula_install_or_upgrade() {
     local formula=$1
 
     if ! ensure_homebrew_path; then
-        print "  ...Homebrew not available, skipping $formula"
+        printf '%s\n' "  ...Homebrew not available, skipping $formula"
         return 1
     fi
 
     if ! brew list --formula $formula > /dev/null 2>&1; then
         if brew install $formula > /dev/null 2>&1; then
             rehash
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...failed to install $formula"
+        printf '%s\n' "  ...failed to install $formula"
         return 1
     elif $upgrade_mode; then
         if brew upgrade $formula > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             return 0
         fi
-        print "  ...$formula already at latest or upgrade failed"
+        printf '%s\n' "  ...$formula already at latest or upgrade failed"
         return 0
     fi
 }
@@ -171,10 +171,10 @@ configure_iterm2_profile() {
         return 0
     fi
 
-    print "Configuring iTerm2 Solarized Dark defaults..."
+    printf '%s\n' "Configuring iTerm2 Solarized Dark defaults..."
     if /usr/bin/python3 "$SCRIPT_DIR/scripts/configure-iterm2-profile.py" "$prefs" "$preset"; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to update iTerm2 preferences"
+        printf '%s\n' "  ...failed to update iTerm2 preferences"
     fi
 }

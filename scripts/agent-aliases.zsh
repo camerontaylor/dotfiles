@@ -22,7 +22,7 @@ agent_alias_portkey_is_host() {
 
 agent_alias_portkey_remote_token_host() {
     emulate -L zsh
-    print -r -- "${PORTKEY_SSH_HOST:-$AGENT_ALIAS_PORTKEY_HOST}"
+    printf '%s\n' "${PORTKEY_SSH_HOST:-$AGENT_ALIAS_PORTKEY_HOST}"
 }
 
 agent_alias_portkey_fetch_remote_token_file() {
@@ -41,7 +41,7 @@ agent_alias_portkey_fetch_remote_token_file() {
     [[ -d "$AGENT_ALIAS_PORTKEY_STATE" ]] || mkdir -p "$AGENT_ALIAS_PORTKEY_STATE"
     tmp="$(mktemp "$AGENT_ALIAS_PORTKEY_STATE/local-api-key.tmp.XXXXXX")" || return $?
     umask 077
-    print -rn -- "$token" >"$tmp"
+    printf '%s' "" >"$tmp"
     chmod 600 "$tmp"
     mv "$tmp" "$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
 }
@@ -49,7 +49,7 @@ agent_alias_portkey_fetch_remote_token_file() {
 agent_alias_portkey_config_version() {
     emulate -L zsh
     (( $# > 0 )) || {
-        print -u2 -- "usage: agent_alias_portkey_config_version <route> [route...]"
+        printf '%s\n' "usage: agent_alias_portkey_config_version <route> [route...]" >&2
         return 1
     }
 
@@ -76,7 +76,7 @@ agent_alias_portkey_config_version() {
         ' "$AGENT_ALIAS_PORTKEY_CONFIG_FILE" | sha256sum | awk '{print $1}'
     )" || return $?
 
-    print -r -- "local-sha256:${hash[1,16]}"
+    printf '%s\n' "local-sha256:${hash[1,16]}"
 }
 
 agent_alias_portkey_config_slug() {
@@ -84,7 +84,7 @@ agent_alias_portkey_config_slug() {
     local alias_name="${1:?usage: agent_alias_portkey_config_slug <alias> <route> [route...]}"
     shift
     (( $# > 0 )) || {
-        print -u2 -- "usage: agent_alias_portkey_config_slug <alias> <route> [route...]"
+        printf '%s\n' "usage: agent_alias_portkey_config_slug <alias> <route> [route...]" >&2
         return 1
     }
 
@@ -92,13 +92,13 @@ agent_alias_portkey_config_slug() {
     version="$(agent_alias_portkey_config_version "$@")" || return $?
     slug_hash="$(printf '%s:%s\n' "$alias_name" "$version" | sha256sum | awk '{print substr($1,1,12)}')" || return $?
     safe_alias="${alias_name//[^A-Za-z0-9-]/-}"
-    print -r -- "pc-local-${safe_alias}-${slug_hash}"
+    printf '%s\n' "pc-local-${safe_alias}-${slug_hash}"
 }
 
 agent_alias_portkey_local_token() {
     emulate -L zsh
     if [[ -n "${PORTKEY_LOCAL_API_KEY:-}" ]]; then
-        print -r -- "$PORTKEY_LOCAL_API_KEY"
+        printf '%s\n' "$PORTKEY_LOCAL_API_KEY"
         return 0
     fi
 
@@ -109,7 +109,7 @@ agent_alias_portkey_local_token() {
 
     if ! agent_alias_portkey_is_host; then
         agent_alias_portkey_fetch_remote_token_file || {
-            print -u2 -- "Portkey local token missing at $AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(agent_alias_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN."
+            printf '%s\n' "Portkey local token missing at $AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE and could not be fetched from $(agent_alias_portkey_remote_token_host). Set PORTKEY_LOCAL_API_KEY or run portkey-sync-token on a trusted LAN." >&2
             return 1
         }
         <"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
@@ -126,8 +126,8 @@ agent_alias_portkey_local_token() {
         token="$(printf '%s-%s-%s\n' "$(date +%s)" "$RANDOM" "$RANDOM")"
     fi
     umask 077
-    print -rn -- "$token" >"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
-    print -r -- "$token"
+    printf '%s' "" >"$AGENT_ALIAS_PORTKEY_LOCAL_TOKEN_FILE"
+    printf '%s\n' "$token"
     return 0
 }
 
@@ -135,7 +135,7 @@ agent_alias_portkey_session_id() {
     emulate -L zsh
     local session="${PORTKEY_STICKY_SESSION:-${OMX_SESSION_ID:-${CODEX_SESSION_ID:-${TMUX_PANE:-}}}}"
     if [[ -n "$session" ]]; then
-        print -r -- "$session"
+        printf '%s\n' "$session"
         return 0
     fi
 
@@ -157,7 +157,7 @@ agent_alias_portkey_headers() {
     local alias_name="${1:?usage: agent_alias_portkey_headers <alias> <route> [route...]}"
     shift
     (( $# > 0 )) || {
-        print -u2 -- "usage: agent_alias_portkey_headers <alias> <route> [route...]"
+        printf '%s\n' "usage: agent_alias_portkey_headers <alias> <route> [route...]" >&2
         return 1
     }
 
@@ -168,10 +168,10 @@ agent_alias_portkey_headers() {
     session_id="$(agent_alias_portkey_session_id)" || return $?
     metadata="$(jq -cn --arg portkey_session "${alias_name}:${session_id}" '{portkey_session: $portkey_session}')" || return $?
 
-    print -r -- "x-portkey-api-key: ${token}"
-    print -r -- "x-portkey-config: ${config_slug}"
-    print -r -- "x-portkey-config-version: ${config_version}"
-    print -r -- "x-portkey-metadata: ${metadata}"
+    printf '%s\n' "x-portkey-api-key: ${token}"
+    printf '%s\n' "x-portkey-config: ${config_slug}"
+    printf '%s\n' "x-portkey-config-version: ${config_version}"
+    printf '%s\n' "x-portkey-metadata: ${metadata}"
 }
 
 agent_alias_normalize_args() {
@@ -182,7 +182,7 @@ agent_alias_normalize_args() {
         args=("${(@)args[2,-1]}")
     fi
 
-    print -r -- "${(@q)args}"
+    printf '%s\n' "${(@q)args}"
 }
 
 agent_alias_define_env() {
@@ -645,7 +645,7 @@ agent_alias_define_env() {
             )
             ;;
         *)
-            print -u2 -- "Unsupported agent alias: $alias_name"
+            printf '%s\n' "Unsupported agent alias: $alias_name" >&2
             return 1
             ;;
     esac
@@ -666,5 +666,5 @@ agent_alias_escape_dotenv() {
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     value="${value//$'\n'/\\n}"
-    print -- "$value"
+    printf '%s\n' "$value"
 }

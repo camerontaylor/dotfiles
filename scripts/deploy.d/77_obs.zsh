@@ -16,7 +16,7 @@ fi
 
 local obs_hosts=$SCRIPT_DIR/configs/obs/hosts.conf
 if [[ ! -r $obs_hosts ]]; then
-    print "obs: $obs_hosts not found, skipping"
+    printf '%s\n' "obs: $obs_hosts not found, skipping"
     return 0
 fi
 
@@ -24,7 +24,7 @@ fi
 local self
 self=$(scutil --get LocalHostName 2>/dev/null) || self=$(hostname -s 2>/dev/null) || self=""
 if [[ -z $self ]]; then
-    print "obs: could not determine local hostname, skipping"
+    printf '%s\n' "obs: could not determine local hostname, skipping"
     return 0
 fi
 
@@ -38,18 +38,18 @@ for host in $obs_enabled; do
 done
 
 if (( ! self_enabled )); then
-    print "obs: $self not in configs/obs/hosts.conf, skipping setup"
+    printf '%s\n' "obs: $self not in configs/obs/hosts.conf, skipping setup"
     return 0
 fi
 
-print "Setting up OBS two-track recording on $self..."
+printf '%s\n' "Setting up OBS two-track recording on $self..."
 
 # 1. Install the OBS cask (official homebrew/cask, no tap trust needed).
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] would: brew_cask_install_or_upgrade obs"
+    printf '%s\n' "  [dry-run] would: brew_cask_install_or_upgrade obs"
 else
     brew_cask_install_or_upgrade obs || {
-        print "  ...OBS install failed, skipping config seed"
+        printf '%s\n' "  ...OBS install failed, skipping config seed"
         return 0
     }
 fi
@@ -59,7 +59,7 @@ fi
 #    configure_iterm2_profile does.
 local obs_dir="$HOME/Library/Application Support/obs-studio"
 if [[ ! -x /usr/bin/python3 ]]; then
-    print "  ...python3 unavailable, skipping OBS config seed"
+    printf '%s\n' "  ...python3 unavailable, skipping OBS config seed"
     return 0
 fi
 /usr/bin/python3 "$SCRIPT_DIR/scripts/configure-obs.py" \

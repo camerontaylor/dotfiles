@@ -13,7 +13,7 @@ fi
 
 local peers_conf=$SCRIPT_DIR/configs/wake-peers/peers.conf
 if [[ ! -r $peers_conf ]]; then
-    print "wake-peers: $peers_conf not found, skipping"
+    printf '%s\n' "wake-peers: $peers_conf not found, skipping"
     return 0
 fi
 
@@ -21,7 +21,7 @@ fi
 local self
 self=$(scutil --get LocalHostName 2>/dev/null) || self=$(hostname -s 2>/dev/null) || self=""
 if [[ -z $self ]]; then
-    print "wake-peers: could not determine local hostname, skipping"
+    printf '%s\n' "wake-peers: could not determine local hostname, skipping"
     return 0
 fi
 
@@ -35,19 +35,19 @@ for host in $peers; do
 done
 
 if (( ! self_in_list )); then
-    print "wake-peers: $self not in peer list, skipping setup"
+    printf '%s\n' "wake-peers: $self not in peer list, skipping setup"
     return 0
 fi
 
-print "Setting up wake-peers on $self..."
+printf '%s\n' "Setting up wake-peers on $self..."
 
 # 1. Install sleepwatcher (brew formula provides /opt/homebrew/sbin/sleepwatcher
 #    on Apple Silicon, /usr/local/sbin/sleepwatcher on Intel).
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] would: brew_install_or_upgrade sleepwatcher"
+    printf '%s\n' "  [dry-run] would: brew_install_or_upgrade sleepwatcher"
 else
     brew_install_or_upgrade sleepwatcher sleepwatcher || {
-        print "  ...sleepwatcher install failed, skipping LaunchAgent setup"
+        printf '%s\n' "  ...sleepwatcher install failed, skipping LaunchAgent setup"
         return 0
     }
 fi
@@ -63,7 +63,7 @@ for candidate in /opt/homebrew/sbin/sleepwatcher /usr/local/sbin/sleepwatcher; d
     fi
 done
 if [[ -z $sw_path ]] && (( ! DEPLOY_DRY_RUN )); then
-    print "  ...sleepwatcher binary not found after install, skipping LaunchAgent"
+    printf '%s\n' "  ...sleepwatcher binary not found after install, skipping LaunchAgent"
     return 0
 fi
 [[ -z $sw_path ]] && sw_path="/opt/homebrew/sbin/sleepwatcher"  # placeholder for dry-run print
@@ -73,7 +73,7 @@ fi
 local plist_template=$SCRIPT_DIR/configs/wake-peers/com.github.ctaylor.wake-peers.plist
 local plist_target=$HOME/Library/LaunchAgents/com.github.ctaylor.wake-peers.plist
 if [[ ! -f $plist_template ]]; then
-    print "  ...plist template $plist_template missing, skipping"
+    printf '%s\n' "  ...plist template $plist_template missing, skipping"
     return 0
 fi
 
@@ -91,11 +91,11 @@ fi
 
 if (( needs_write )); then
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would: render plist -> $plist_target"
+        printf '%s\n' "  [dry-run] would: render plist -> $plist_target"
     else
         mkdir -p $HOME/Library/LaunchAgents
-        print -- "$plist_rendered" > $plist_target
-        print "  ...rendered $plist_target"
+        printf '%s\n' "$plist_rendered" > $plist_target
+        printf '%s\n' "  ...rendered $plist_target"
     fi
 fi
 
@@ -113,9 +113,9 @@ fi
 
 if (( DEPLOY_DRY_RUN )); then
     if (( already_loaded )); then
-        print "  [dry-run] would: launchctl bootout + bootstrap (reload)"
+        printf '%s\n' "  [dry-run] would: launchctl bootout + bootstrap (reload)"
     else
-        print "  [dry-run] would: launchctl bootstrap $domain $plist_target"
+        printf '%s\n' "  [dry-run] would: launchctl bootstrap $domain $plist_target"
     fi
     return 0
 fi
@@ -127,11 +127,11 @@ fi
 
 if (( ! already_loaded )); then
     if launchctl bootstrap "$domain" "$plist_target" > /dev/null 2>&1; then
-        print "  ...launchd agent $agent_label loaded"
+        printf '%s\n' "  ...launchd agent $agent_label loaded"
     else
-        print "  ...launchctl bootstrap failed (already loaded? rerun with --upgrade to refresh)"
+        printf '%s\n' "  ...launchctl bootstrap failed (already loaded? rerun with --upgrade to refresh)"
     fi
 elif $upgrade_mode; then
     launchctl kickstart -k "$domain/$agent_label" > /dev/null 2>&1 || true
-    print "  ...launchd agent $agent_label kickstarted"
+    printf '%s\n' "  ...launchd agent $agent_label kickstarted"
 fi

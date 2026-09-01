@@ -37,25 +37,25 @@ while (( $# )); do
         -n|--dry-run) dry_run=1 ;;
         -d|--days)
             shift
-            (( $# )) || { print -u2 "prune-tmpdir: --days needs a value"; exit 2 }
+            (( $# )) || { printf '%s\n' "prune-tmpdir: --days needs a value" >&2; exit 2 }
             days=$1
             ;;
         -p|--path)
             shift
-            (( $# )) || { print -u2 "prune-tmpdir: --path needs a value"; exit 2 }
+            (( $# )) || { printf '%s\n' "prune-tmpdir: --path needs a value" >&2; exit 2 }
             explicit_path=$1
             ;;
         -h|--help)
-            print "usage: prune-tmpdir [-n|--dry-run] [-d|--days N] [-p|--path DIR]"
+            printf '%s\n' "usage: prune-tmpdir [-n|--dry-run] [-d|--days N] [-p|--path DIR]"
             exit 0
             ;;
-        *) print -u2 "prune-tmpdir: unknown option: $1"; exit 2 ;;
+        *) printf '%s\n' "prune-tmpdir: unknown option: $1" >&2; exit 2 ;;
     esac
     shift
 done
 
 if [[ $days != <-> ]]; then
-    print -u2 "prune-tmpdir: --days must be a non-negative integer, got: $days"
+    printf '%s\n' "prune-tmpdir: --days must be a non-negative integer, got: $days" >&2
     exit 2
 fi
 
@@ -63,7 +63,7 @@ typeset target=${explicit_path:-${TMPDIR:-}}
 [[ $target == / ]] || target=${target%/}
 
 if [[ -z $target || ! -d $target ]]; then
-    print "prune-tmpdir: ${target:-TMPDIR} is unset or not a directory, nothing to do"
+    printf '%s\n' "prune-tmpdir: ${target:-TMPDIR} is unset or not a directory, nothing to do"
     exit 0
 fi
 
@@ -72,7 +72,7 @@ fi
 # /var/tmp are shared between users and already OS-reaped.
 case $target in
     (/|/tmp|/var/tmp|${HOME%/})
-        print -u2 "prune-tmpdir: refusing to prune shared/structural dir: $target"
+        printf '%s\n' "prune-tmpdir: refusing to prune shared/structural dir: $target" >&2
         exit 1
         ;;
 esac
@@ -83,7 +83,7 @@ typeset -a stale
 stale=( ${(0)"$(find $target -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)"} )
 
 if (( ${#stale} == 0 )); then
-    print "prune-tmpdir: $target has no entries older than ${days}d"
+    printf '%s\n' "prune-tmpdir: $target has no entries older than ${days}d"
     exit 0
 fi
 
@@ -98,7 +98,7 @@ if (( ${#stale} == 1 )); then noun=entry; else noun=entries; fi
 if (( dry_run )); then
     typeset e
     for e in $stale; do
-        print "  [dry-run] would remove $e"
+        printf '%s\n' "  [dry-run] would remove $e"
     done
     printf 'prune-tmpdir: [dry-run] would remove %d %s older than %dd (%d MB) from %s\n' \
         ${#stale} $noun $days $(( freed_kb / 1024 )) $target

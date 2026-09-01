@@ -45,13 +45,13 @@ while (( $# )); do
         --config)
             shift
             if (( ! $# )); then
-                print "Usage: $0 [--git-add] [--config PATH]" >&2
+                printf '%s\n' "Usage: $0 [--git-add] [--config PATH]" >&2
                 exit 1
             fi
             config_file=${~1}
             ;;
         *)
-            print "Usage: $0 [--git-add] [--config PATH]" >&2
+            printf '%s\n' "Usage: $0 [--git-add] [--config PATH]" >&2
             exit 1
             ;;
     esac
@@ -59,7 +59,7 @@ while (( $# )); do
 done
 
 if [[ ! -f $config_file ]]; then
-    print "Codex config not found: $config_file" >&2
+    printf '%s\n' "Codex config not found: $config_file" >&2
     exit 1
 fi
 
@@ -183,7 +183,7 @@ normalize_file() {
 # Working tree pass: hard-enforce sandbox/approval and revert model/effort
 # drift so per-session Codex model experiments do not linger as repo churn.
 if normalize_file "$config_file" yes; then
-    print "Enforced Codex defaults in ${relpath:-$config_file}"
+    printf '%s\n' "Enforced Codex defaults in ${relpath:-$config_file}"
 fi
 
 # Staged blob pass (--git-add mode): hard-enforce sandbox/approval AND
@@ -201,7 +201,7 @@ if [[ $git_add == true ]] && have git; then
         if git -C "$SCRIPT_DIR" show ":$relpath" > "$index_tmp" 2>/dev/null; then
             normalize_codex_config "$index_tmp" "$normalized_tmp" yes
             if ! cmp -s "$index_tmp" "$normalized_tmp"; then
-                print "Codex config: reverting drift in staged blob:"
+                printf '%s\n' "Codex config: reverting drift in staged blob:"
                 # diff returns 1 when files differ — which is exactly when
                 # this branch runs. Without `|| true` the pipefail+err_exit
                 # combo aborts the script before update-index can run.
@@ -212,9 +212,9 @@ if [[ $git_add == true ]] && have git; then
                 mode=$(git -C "$SCRIPT_DIR" ls-files -s -- "$relpath" | awk 'NR == 1 {print $1}')
                 blob=$(git -C "$SCRIPT_DIR" hash-object -w "$normalized_tmp")
                 git -C "$SCRIPT_DIR" update-index --cacheinfo "$mode" "$blob" "$relpath"
-                print "  ...staged blob normalized."
-                print "  ...to commit your model/effort change,"
-                print "     re-run with: SKIP_CODEX_ENFORCE=1 git commit ..."
+                printf '%s\n' "  ...staged blob normalized."
+                printf '%s\n' "  ...to commit your model/effort change,"
+                printf '%s\n' "     re-run with: SKIP_CODEX_ENFORCE=1 git commit ..."
             fi
         fi
 

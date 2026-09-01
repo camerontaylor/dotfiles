@@ -9,7 +9,7 @@ for arg in "$@"; do
             force=true
             ;;
         *)
-            print "Usage: $0 [--force|-f]" >&2
+            printf '%s\n' "Usage: $0 [--force|-f]" >&2
             exit 1
             ;;
     esac
@@ -27,14 +27,14 @@ local install_dir=$HOME/.local/bin
 local target=$install_dir/wtp
 
 if have wtp && ! $force; then
-    print "wtp already installed, skipping"
+    printf '%s\n' "wtp already installed, skipping"
     exit 0
 fi
 
 if $force && have wtp; then
-    print "Reinstalling wtp..."
+    printf '%s\n' "Reinstalling wtp..."
 else
-    print "Installing wtp..."
+    printf '%s\n' "Installing wtp..."
 fi
 
 local wtp_arch=$(uname -m)
@@ -68,7 +68,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
     if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
         rehash
         if have wtp; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             exit 0
         fi
         # brew install exited 0 but the keg is unlinked — typically because a
@@ -82,19 +82,19 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
             mkdir -p $install_dir
             ln -sf $wtp_prefix/bin/wtp $target
             rehash
-            print "  ...brew keg was unlinked; symlinking $wtp_prefix/bin/wtp -> $target"
-            print "  brew said:"
-            print -r -- "$brew_output" | sed 's/^/    /'
-            print "  ...done"
+            printf '%s\n' "  ...brew keg was unlinked; symlinking $wtp_prefix/bin/wtp -> $target"
+            printf '%s\n' "  brew said:"
+            printf '%s\n' "$brew_output" | sed 's/^/    /'
+            printf '%s\n' "  ...done"
             exit 0
         fi
-        print "  ...brew install reported success but produced no wtp binary"
-        print -r -- "$brew_output" | sed 's/^/    /'
+        printf '%s\n' "  ...brew install reported success but produced no wtp binary"
+        printf '%s\n' "$brew_output" | sed 's/^/    /'
     else
-        print "  ...Homebrew install failed:"
-        print -r -- "$brew_output" | sed 's/^/    /'
+        printf '%s\n' "  ...Homebrew install failed:"
+        printf '%s\n' "$brew_output" | sed 's/^/    /'
     fi
-    print "  ...trying direct release asset"
+    printf '%s\n' "  ...trying direct release asset"
 fi
 
 if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[ $wtp_os == Darwin && $wtp_arch == arm64 ]]; then
@@ -107,16 +107,16 @@ if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[
         mkdir -p $install_dir
         mv -f $wtp_tmp/wtp $target
         chmod +x $target
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to download wtp release asset, skipping"
+        printf '%s\n' "  ...failed to download wtp release asset, skipping"
         exit 1
     fi
 else
     if [[ $wtp_os == Darwin ]]; then
-        print "  ...wtp upstream only ships Darwin arm64 binaries; install Homebrew then: brew install satococoa/tap/wtp"
+        printf '%s\n' "  ...wtp upstream only ships Darwin arm64 binaries; install Homebrew then: brew install satococoa/tap/wtp"
     else
-        print "  ...unsupported platform for wtp auto-install, skipping"
+        printf '%s\n' "  ...unsupported platform for wtp auto-install, skipping"
     fi
     exit 1
 fi

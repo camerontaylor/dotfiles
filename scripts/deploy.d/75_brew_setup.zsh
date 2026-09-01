@@ -26,11 +26,11 @@ if have brew; then
 fi
 
 if have brew && $upgrade_mode; then
-    print "Updating Homebrew..."
+    printf '%s\n' "Updating Homebrew..."
     if brew update > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...brew update failed"
+        printf '%s\n' "  ...brew update failed"
     fi
     # A bare `brew upgrade` sweeps outdated CASKS as well as formulae, and brew
     # judges a cask's freshness from its Caskroom receipt — NOT from the app
@@ -53,54 +53,54 @@ if have brew && $upgrade_mode; then
     # alike; ${(f)...} splits on newlines and ${a:#p} drops matching elements.
     brew_outdated=( ${(f)"$(brew outdated --quiet 2>/dev/null)"} )
     brew_upgradable=( ${brew_outdated:|brew_upgrade_skip} )
-    print "Upgrading Homebrew packages..."
+    printf '%s\n' "Upgrading Homebrew packages..."
     if (( ${#brew_outdated} == 0 )); then
-        print "  ...nothing outdated"
+        printf '%s\n' "  ...nothing outdated"
     elif (( ${#brew_upgradable} == 0 )); then
-        print "  ...nothing to upgrade (held back: ${(j:, :)brew_upgrade_skip})"
+        printf '%s\n' "  ...nothing to upgrade (held back: ${(j:, :)brew_upgrade_skip})"
     elif brew upgrade $brew_upgradable > /dev/null 2>&1; then
-        print "  ...done (${#brew_upgradable} upgraded)"
+        printf '%s\n' "  ...done (${#brew_upgradable} upgraded)"
         (( ${#brew_outdated} != ${#brew_upgradable} )) \
-            && print "  ...held back: ${(j:, :)brew_upgrade_skip}"
+            && printf '%s\n' "  ...held back: ${(j:, :)brew_upgrade_skip}"
     else
-        print "  ...brew upgrade had issues (may be normal if no updates)"
+        printf '%s\n' "  ...brew upgrade had issues (may be normal if no updates)"
     fi
 fi
 
 # Install and register latest Homebrew zsh on macOS.
 if [[ $(uname -s) == Darwin ]] && ! have brew; then
-    print "Setting up latest zsh via Homebrew..."
-    print "  ...Homebrew not found, skipping"
+    printf '%s\n' "Setting up latest zsh via Homebrew..."
+    printf '%s\n' "  ...Homebrew not found, skipping"
 elif [[ $(uname -s) == Darwin ]] && have brew; then
-    print "Setting up latest zsh via Homebrew..."
+    printf '%s\n' "Setting up latest zsh via Homebrew..."
     if brew list --formula zsh > /dev/null 2>&1; then
         if $upgrade_mode; then
             if brew upgrade zsh > /dev/null 2>&1; then
-                print "  ...zsh upgraded"
+                printf '%s\n' "  ...zsh upgraded"
             else
-                print "  ...zsh already latest or upgrade failed"
+                printf '%s\n' "  ...zsh already latest or upgrade failed"
             fi
         else
-            print "  ...zsh already installed"
+            printf '%s\n' "  ...zsh already installed"
         fi
     elif brew install zsh > /dev/null 2>&1; then
-        print "  ...zsh installed"
+        printf '%s\n' "  ...zsh installed"
     else
-        print "  ...failed to install zsh"
+        printf '%s\n' "  ...failed to install zsh"
     fi
 
     local brew_zsh="$(brew --prefix)/bin/zsh"
     if [[ -x $brew_zsh ]]; then
         if ! grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null; then
             if (( EUID == 0 )); then
-                print -r -- "$brew_zsh" >> /etc/shells
-                print "  ...registered $brew_zsh in /etc/shells"
+                printf '%s\n' "$brew_zsh" >> /etc/shells
+                printf '%s\n' "  ...registered $brew_zsh in /etc/shells"
             elif have sudo && sudo -n true 2>/dev/null; then
-                print -r -- "$brew_zsh" | sudo tee -a /etc/shells > /dev/null
-                print "  ...registered $brew_zsh in /etc/shells"
+                printf '%s\n' "$brew_zsh" | sudo tee -a /etc/shells > /dev/null
+                printf '%s\n' "  ...registered $brew_zsh in /etc/shells"
             else
-                print "  ...$brew_zsh is not in /etc/shells"
-                print "     run: echo $brew_zsh | sudo tee -a /etc/shells"
+                printf '%s\n' "  ...$brew_zsh is not in /etc/shells"
+                printf '%s\n' "     run: echo $brew_zsh | sudo tee -a /etc/shells"
             fi
         fi
 
@@ -110,13 +110,13 @@ elif [[ $(uname -s) == Darwin ]] && have brew; then
         if [[ $current_shell != $brew_zsh ]]; then
             if grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null \
                 && chsh -s "$brew_zsh" "$USER" < /dev/null > /dev/null 2>&1; then
-                print "  ...login shell changed to $brew_zsh"
+                printf '%s\n' "  ...login shell changed to $brew_zsh"
             else
-                print "  ...login shell is still $current_shell"
-                print "     run: chsh -s $brew_zsh"
+                printf '%s\n' "  ...login shell is still $current_shell"
+                printf '%s\n' "     run: chsh -s $brew_zsh"
             fi
         else
-            print "  ...login shell already uses $brew_zsh"
+            printf '%s\n' "  ...login shell already uses $brew_zsh"
         fi
     fi
 fi
@@ -128,13 +128,13 @@ fi
 # which goes through the brew-first PATH). Not registered in /etc/shells —
 # zsh remains the login shell.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing modern bash via brew..."
+    printf '%s\n' "Installing modern bash via brew..."
     brew_formula_install_or_upgrade bash || true
 fi
 
 # ncurses for Ghostty terminfo compilation.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing ncurses via brew..."
+    printf '%s\n' "Installing ncurses via brew..."
     brew_formula_install_or_upgrade ncurses || true
 fi
 
@@ -142,7 +142,7 @@ fi
 # mise/aqua backend for htop, so it comes from the platform package manager:
 # brew on macOS (refreshed every run), pacman on Arch-family Linux.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing htop via brew..."
+    printf '%s\n' "Installing htop via brew..."
     brew_formula_install_or_upgrade htop || true
 elif have pacman && ! have htop; then
     # sudo can prompt for a password. In a non-interactive deploy (e.g. the
@@ -150,14 +150,14 @@ elif have pacman && ! have htop; then
     # install when sudo is already passwordless/cached or stdin is a terminal;
     # otherwise leave a copy-paste hint instead of hanging on the prompt.
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
-        print "Installing htop via pacman..."
+        printf '%s\n' "Installing htop via pacman..."
         if sudo pacman -S --needed --noconfirm htop > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to install htop via pacman"
+            printf '%s\n' "  ...failed to install htop via pacman"
         fi
     else
-        print "htop missing; install it with: sudo pacman -S --needed htop"
+        printf '%s\n' "htop missing; install it with: sudo pacman -S --needed htop"
     fi
 fi
 
@@ -166,29 +166,29 @@ fi
 # the platform package manager: brew on macOS, apt on Debian/Ubuntu, pacman on
 # Arch-family Linux. Mirrors htop's per-OS fanout above.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing mosh via brew..."
+    printf '%s\n' "Installing mosh via brew..."
     brew_formula_install_or_upgrade mosh || true
 elif have apt-get && ! have mosh; then
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
-        print "Installing mosh via apt..."
+        printf '%s\n' "Installing mosh via apt..."
         if sudo apt-get install -y mosh > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to install mosh via apt"
+            printf '%s\n' "  ...failed to install mosh via apt"
         fi
     else
-        print "mosh missing; install it with: sudo apt-get install -y mosh"
+        printf '%s\n' "mosh missing; install it with: sudo apt-get install -y mosh"
     fi
 elif have pacman && ! have mosh; then
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
-        print "Installing mosh via pacman..."
+        printf '%s\n' "Installing mosh via pacman..."
         if sudo pacman -S --needed --noconfirm mosh > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to install mosh via pacman"
+            printf '%s\n' "  ...failed to install mosh via pacman"
         fi
     else
-        print "mosh missing; install it with: sudo pacman -S --needed mosh"
+        printf '%s\n' "mosh missing; install it with: sudo pacman -S --needed mosh"
     fi
 fi
 
@@ -199,7 +199,7 @@ fi
 # (would shadow /usr/bin/getopt), so it's symlinked through a dedicated
 # branch in 03_paths.zsh rather than the gnubin loop.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing GNU userland via brew..."
+    printf '%s\n' "Installing GNU userland via brew..."
     brew_formula_install_or_upgrade coreutils || true
     brew_formula_install_or_upgrade grep || true
     brew_formula_install_or_upgrade diffutils || true
@@ -222,7 +222,7 @@ fi
 #     same zsh-users/zsh-completions repo vendored as a submodule and already
 #     wired into fpath by zsh/rc.d/15_completion.zsh:19.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing Linux-script compat helpers via brew..."
+    printf '%s\n' "Installing Linux-script compat helpers via brew..."
     brew_formula_install_or_upgrade moreutils || true
     brew_formula_install_or_upgrade flock || true
     # macOS ships openrsync (rsync 2.6.9 compat, protocol 29) which rejects
@@ -234,7 +234,7 @@ fi
 # PostgreSQL client tools. Homebrew's libpq formula provides psql without
 # installing or starting a local PostgreSQL server.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing PostgreSQL client tools via brew..."
+    printf '%s\n' "Installing PostgreSQL client tools via brew..."
     brew_formula_install_or_upgrade libpq || true
     if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
         path=($HOMEBREW_PREFIX/opt/libpq/bin $path)
@@ -245,28 +245,28 @@ fi
 # fd / git-delta: upstream releases dropped x86_64-apple-darwin, so we can't get
 # them through mise on Intel Macs. brew bottles ship for both arches.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing fd via brew..."
+    printf '%s\n' "Installing fd via brew..."
     brew_install_or_upgrade fd fd || true
-    print "Installing git-delta via brew..."
+    printf '%s\n' "Installing git-delta via brew..."
     brew_install_or_upgrade git-delta delta || true
-    print "Installing age via brew..."
+    printf '%s\n' "Installing age via brew..."
     brew_install_or_upgrade age age || true
 fi
 
 # engram tap install.
 if have brew && ! have engram; then
-    print "Installing engram via brew..."
+    printf '%s\n' "Installing engram via brew..."
     if brew install gentleman-programming/tap/engram > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to install engram"
+        printf '%s\n' "  ...failed to install engram"
     fi
 elif have brew && $upgrade_mode; then
-    print "Upgrading engram via brew..."
+    printf '%s\n' "Upgrading engram via brew..."
     if brew upgrade gentleman-programming/tap/engram > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...engram already at latest or upgrade failed"
+        printf '%s\n' "  ...engram already at latest or upgrade failed"
     fi
 fi
 
@@ -277,7 +277,7 @@ fi
 # (cache + auto-managed gh) so mise's gh owns the command again. Brew-less
 # hosts get the equivalent cleanup in 70_runtime_installs.zsh.
 if have brew && brew list --formula ghx > /dev/null 2>&1; then
-    print "Removing ghx (gh is mise-managed again)..."
+    printf '%s\n' "Removing ghx (gh is mise-managed again)..."
     # ghxd self-daemonizes (reparents to PID 1) and ignores SIGTERM; KILL it.
     pkill -9 -u "$USER" -x ghxd 2>/dev/null || true
     brew uninstall brunoborges/tap/ghx > /dev/null 2>&1 || true
@@ -285,16 +285,16 @@ if have brew && brew list --formula ghx > /dev/null 2>&1; then
     brew untap brunoborges/tap > /dev/null 2>&1 || true
     rm -rf "$HOME/.ghx"
     rehash
-    print "  ...done"
+    printf '%s\n' "  ...done"
 fi
 
 # iTerm2 cask.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask iterm2 > /dev/null 2>&1; then
-        print "Installing iTerm2..."
+        printf '%s\n' "Installing iTerm2..."
         brew_cask_install_or_upgrade iterm2 || true
     elif $upgrade_mode; then
-        print "Upgrading iTerm2..."
+        printf '%s\n' "Upgrading iTerm2..."
         brew_cask_install_or_upgrade iterm2 || true
     fi
 fi
@@ -304,10 +304,10 @@ configure_iterm2_profile
 # JetBrains Mono Nerd Font cask.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask font-jetbrains-mono-nerd-font > /dev/null 2>&1; then
-        print "Installing JetBrains Mono Nerd Font..."
+        printf '%s\n' "Installing JetBrains Mono Nerd Font..."
         brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
     elif $upgrade_mode; then
-        print "Upgrading JetBrains Mono Nerd Font..."
+        printf '%s\n' "Upgrading JetBrains Mono Nerd Font..."
         brew_cask_install_or_upgrade font-jetbrains-mono-nerd-font || true
     fi
 fi
@@ -315,10 +315,10 @@ fi
 # cmux cask — Ghostty-based terminal wrapper with vertical tabs / agent notifications.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask cmux > /dev/null 2>&1; then
-        print "Installing cmux..."
+        printf '%s\n' "Installing cmux..."
         brew_cask_install_or_upgrade cmux || true
     elif $upgrade_mode; then
-        print "Upgrading cmux..."
+        printf '%s\n' "Upgrading cmux..."
         brew_cask_install_or_upgrade cmux || true
     fi
 fi
@@ -326,10 +326,10 @@ fi
 # Raycast cask — launcher / keystroke productivity tool.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask raycast > /dev/null 2>&1; then
-        print "Installing Raycast..."
+        printf '%s\n' "Installing Raycast..."
         brew_cask_install_or_upgrade raycast || true
     elif $upgrade_mode; then
-        print "Upgrading Raycast..."
+        printf '%s\n' "Upgrading Raycast..."
         brew_cask_install_or_upgrade raycast || true
     fi
 fi
@@ -340,10 +340,10 @@ fi
 # is the macOS desktop companion app.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask t3-code > /dev/null 2>&1; then
-        print "Installing T3 Code..."
+        printf '%s\n' "Installing T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
     elif $upgrade_mode; then
-        print "Upgrading T3 Code..."
+        printf '%s\n' "Upgrading T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
     fi
 fi
@@ -374,10 +374,10 @@ fi
 # receipt, and `brew install --cask` would happily write stable over it.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if [[ ! -d /Applications/Paseo.app ]] && ! brew list --cask paseo > /dev/null 2>&1; then
-        print "Installing Paseo..."
+        printf '%s\n' "Installing Paseo..."
         brew_cask_install_or_upgrade paseo || true
     elif $upgrade_mode; then
-        print "Paseo: install-only, upgrades owned by the app's beta channel"
+        printf '%s\n' "Paseo: install-only, upgrades owned by the app's beta channel"
     fi
 fi
 
@@ -386,10 +386,10 @@ fi
 # both the `brew list` presence check and the install/upgrade.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask nikitabobko/tap/aerospace > /dev/null 2>&1; then
-        print "Installing AeroSpace..."
+        printf '%s\n' "Installing AeroSpace..."
         brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
     elif $upgrade_mode; then
-        print "Upgrading AeroSpace..."
+        printf '%s\n' "Upgrading AeroSpace..."
         brew_cask_install_or_upgrade nikitabobko/tap/aerospace || true
     fi
 fi
@@ -397,10 +397,10 @@ fi
 # Karabiner-Elements cask — keyboard customizer / key remapper for macOS.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask karabiner-elements > /dev/null 2>&1; then
-        print "Installing Karabiner-Elements..."
+        printf '%s\n' "Installing Karabiner-Elements..."
         brew_cask_install_or_upgrade karabiner-elements || true
     elif $upgrade_mode; then
-        print "Upgrading Karabiner-Elements..."
+        printf '%s\n' "Upgrading Karabiner-Elements..."
         brew_cask_install_or_upgrade karabiner-elements || true
     fi
 fi
@@ -413,15 +413,15 @@ fi
 # (idempotent — a no-op if already loaded). `brew services` needs the formula
 # present, so only attempt the start when the install above succeeded.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing JankyBorders..."
+    printf '%s\n' "Installing JankyBorders..."
     brew_formula_install_or_upgrade felixkratz/formulae/borders || true
     if brew list --formula felixkratz/formulae/borders > /dev/null 2>&1; then
         if brew services list 2>/dev/null | grep -qE '^borders[[:space:]]+(started|running)'; then
-            print "  ...borders service already running"
+            printf '%s\n' "  ...borders service already running"
         elif brew services start felixkratz/formulae/borders > /dev/null 2>&1; then
-            print "  ...borders service started"
+            printf '%s\n' "  ...borders service started"
         else
-            print "  ...failed to start borders service"
+            printf '%s\n' "  ...failed to start borders service"
         fi
     fi
 fi
@@ -430,7 +430,7 @@ fi
 # by scripts/macos/macos-defaults.sh (77_macos_defaults.zsh) to point text/code
 # file types at VS Code. Plain formula in homebrew-core.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing duti..."
+    printf '%s\n' "Installing duti..."
     brew_formula_install_or_upgrade duti || true
 fi
 
@@ -443,17 +443,17 @@ fi
 # present. gnupg itself is not deploy-managed; the wrapper degrades gracefully
 # if either half is missing.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    print "Installing pinentry-mac..."
+    printf '%s\n' "Installing pinentry-mac..."
     brew_formula_install_or_upgrade pinentry-mac || true
 fi
 
 # ForkLift cask — dual-pane macOS file manager / FTP-SFTP client.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     if ! brew list --cask forklift > /dev/null 2>&1; then
-        print "Installing ForkLift..."
+        printf '%s\n' "Installing ForkLift..."
         brew_cask_install_or_upgrade forklift || true
     elif $upgrade_mode; then
-        print "Upgrading ForkLift..."
+        printf '%s\n' "Upgrading ForkLift..."
         brew_cask_install_or_upgrade forklift || true
     fi
 fi

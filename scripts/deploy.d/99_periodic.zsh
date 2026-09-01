@@ -2,19 +2,19 @@
 # Prefers (in order): systemd timer (user or system), macOS launchd LaunchAgent,
 # crontab fallback. Each branch is idempotent — re-running rewrites the unit.
 
-print "Installing periodic update task..."
+printf '%s\n' "Installing periodic update task..."
 if have systemctl; then
-    print "  ...systemd detected, installing timer for periodic updates..."
+    printf '%s\n' "  ...systemd detected, installing timer for periodic updates..."
 
     local systemd_unit_dir systemctl_cmd
     if (( EUID == 0 )); then
         systemd_unit_dir=/etc/systemd/system
         systemctl_cmd=(systemctl)
-        print "  ...running as root, installing system-wide timer..."
+        printf '%s\n' "  ...running as root, installing system-wide timer..."
     else
         systemd_unit_dir=$XDG_CONFIG_HOME/systemd/user
         systemctl_cmd=(systemctl --user)
-        print "  ...running as regular user, installing user timer..."
+        printf '%s\n' "  ...running as regular user, installing user timer..."
     fi
     zf_mkdir -p $systemd_unit_dir
 
@@ -27,7 +27,7 @@ After=network-online.target
 Type=oneshot
 ExecStart=/usr/bin/git -c user.name=systemd.update -c user.email=systemd@localhost pull --force
 WorkingDirectory=$SCRIPT_DIR"
-    print -r -- $service_content > $systemd_unit_dir/$service_name
+    printf '%s\n' "$service_content" > $systemd_unit_dir/$service_name
 
     local timer_name=pull-dotfiles.timer
     local timer_content="[Unit]
@@ -40,15 +40,15 @@ Persistent=true
 
 [Install]
 WantedBy=timers.target"
-    print -r -- $timer_content > $systemd_unit_dir/$timer_name
+    printf '%s\n' "$timer_content" > $systemd_unit_dir/$timer_name
 
     if ${systemctl_cmd[@]} daemon-reload > /dev/null && ${systemctl_cmd[@]} enable --now $timer_name > /dev/null; then
-       print "  ...done"
+       printf '%s\n' "  ...done"
     else
-       print "Failed to install systemd timer. Check permissions and systemd setup"
+       printf '%s\n' "Failed to install systemd timer. Check permissions and systemd setup"
     fi
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
-    print "  ...launchd detected, installing user LaunchAgent..."
+    printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
     local launchd_dir=$HOME/Library/LaunchAgents
     local launchd_label=com.ctaylor.dotfiles.pull
@@ -81,24 +81,24 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <string>$XDG_STATE_HOME/dotfiles-pull.err</string>
 </dict>
 </plist>"
-    print -r -- $launchd_content > $launchd_plist
+    printf '%s\n' "$launchd_content" > $launchd_plist
 
     launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
     if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
         && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
-       print "  ...done"
+       printf '%s\n' "  ...done"
     else
-       print "Failed to install launchd task. Check $launchd_plist"
+       printf '%s\n' "Failed to install launchd task. Check $launchd_plist"
     fi
 elif have crontab; then
-    print "  ...cron detected, installing job for periodic updates..."
+    printf '%s\n' "  ...cron detected, installing job for periodic updates..."
     local cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
     local cron_schedule="0 0 * * * $cron_task"
     if cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "Please add \`cd $SCRIPT_DIR && git pull\` to your crontab or just ignore this, you can always update dotfiles manually"
+        printf '%s\n' "Please add \`cd $SCRIPT_DIR && git pull\` to your crontab or just ignore this, you can always update dotfiles manually"
     fi
 else
-    print "  ...no systemd or cron detected, skipping"
+    printf '%s\n' "  ...no systemd or cron detected, skipping"
 fi

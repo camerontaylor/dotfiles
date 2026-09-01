@@ -55,9 +55,9 @@ secrets_convert_dotenv() {
         key=${line%%=*}
         val=${line#*=}
         if [[ $val == \$[A-Za-z_]##[A-Za-z_0-9]# ]]; then
-            print -r -- "export ${key}=\"${val}\""
+            printf '%s\n' "export ${key}=\"${val}\""
         else
-            print -r -- "export ${key}=${(qq)val}"
+            printf '%s\n' "export ${key}=${(qq)val}"
         fi
     done
 }
@@ -75,11 +75,11 @@ while (( $# > 0 )); do
             _dry=1
             ;;
         --help|-h)
-            print "usage: secrets-render.zsh [--dry-run] [--convert-dotenv]"
+            printf '%s\n' "usage: secrets-render.zsh [--dry-run] [--convert-dotenv]"
             exit 0
             ;;
         *)
-            print "secrets-render: unknown argument: $1 (try --help)" >&2
+            printf '%s\n' "secrets-render: unknown argument: $1 (try --help)" >&2
             exit 2
             ;;
     esac
@@ -109,13 +109,13 @@ if [[ -z ${SOPS_AGE_KEY_FILE:-} && -f $CONFIG_HOME/sops/age/keys.txt ]]; then
 fi
 
 if [[ ! -d $SECRETS_REPO ]]; then
-    print "secrets-render: $SECRETS_REPO not found — nothing to render." >&2
-    print "  Bootstrap it with: ./deploy.zsh --only 65_secrets" >&2
+    printf '%s\n' "secrets-render: $SECRETS_REPO not found — nothing to render." >&2
+    printf '%s\n' "  Bootstrap it with: ./deploy.zsh --only 65_secrets" >&2
     exit 1
 fi
 
 if ! command -v sops > /dev/null 2>&1; then
-    print "secrets-render: sops not found in PATH; run 'mise install' first." >&2
+    printf '%s\n' "secrets-render: sops not found in PATH; run 'mise install' first." >&2
     exit 1
 fi
 
@@ -224,7 +224,7 @@ _gate_open() {
 # Absolute target path -> flat backup filename (slashes become __).
 _backup_name() {
     local p=${1#/}
-    print -r -- "${p//\//__}"
+    printf '%s\n' "${p//\//__}"
 }
 
 # ── Render ─────────────────────────────────────────────────────────────────
@@ -244,14 +244,14 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     fi
 
     if [[ ! -f $src ]]; then
-        print "  FAILED ${MAP_SRC[i]}: missing from $SECRETS_REPO" >&2
+        printf '%s\n' "  FAILED ${MAP_SRC[i]}: missing from $SECRETS_REPO" >&2
         FAILED_NAMES+=("${MAP_SRC[i]}")
         (( N_FAILED++ ))
         continue
     fi
 
     if (( _dry )); then
-        print "  [dry-run] would render ${MAP_SRC[i]} -> $dst (mode $mode)"
+        printf '%s\n' "  [dry-run] would render ${MAP_SRC[i]} -> $dst (mode $mode)"
         (( N_RENDERED++ ))
         [[ $post == sshlink ]] && SSH_LINKS+=("$dst")
         continue
@@ -275,7 +275,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     # existing target byte-for-byte untouched.
     local tmp
     tmp=$(mktemp "${dst}.render.XXXXXX") || {
-        print "  FAILED ${MAP_SRC[i]}: mktemp in $dstdir" >&2
+        printf '%s\n' "  FAILED ${MAP_SRC[i]}: mktemp in $dstdir" >&2
         FAILED_NAMES+=("${MAP_SRC[i]}"); (( N_FAILED++ )); continue
     }
     chmod 600 $tmp
@@ -284,8 +284,8 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     case $kind in
         shellenv)
             {
-                print -r -- "# MANAGED BY ~/.local/secrets (${MAP_SRC[i]}) — edit via sops, not here."
-                print -r -- "# Rendered by ~/.local/dotfiles/scripts/secrets-render.zsh; changes here are lost."
+                printf '%s\n' "# MANAGED BY ~/.local/secrets (${MAP_SRC[i]}) — edit via sops, not here."
+                printf '%s\n' "# Rendered by ~/.local/dotfiles/scripts/secrets-render.zsh; changes here are lost."
                 sops -d --output-type dotenv $src | secrets_convert_dotenv
             } > $tmp 2>/dev/null || ok=0
             # A failed sops leaves a header-only file; treat that as failure.
@@ -307,7 +307,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
 
     if (( ! ok )); then
         rm -f $tmp
-        print "  FAILED ${MAP_SRC[i]}: decrypt/render error (age key registered?)" >&2
+        printf '%s\n' "  FAILED ${MAP_SRC[i]}: decrypt/render error (age key registered?)" >&2
         FAILED_NAMES+=("${MAP_SRC[i]}")
         (( N_FAILED++ ))
         continue
@@ -322,7 +322,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
         local backup="$LEGACY_DIR/$(_backup_name "$dst")"
         if [[ ! -e $backup ]]; then
             cp $dst $backup && (( N_BACKED_UP++ ))
-            print "  backed up pre-existing $dst -> legacy-removed/${backup:t}"
+            printf '%s\n' "  backed up pre-existing $dst -> legacy-removed/${backup:t}"
         fi
     fi
 
@@ -336,7 +336,7 @@ done
 local _link
 for _link in $SSH_LINKS; do
     if (( _dry )); then
-        print "  [dry-run] would link $HOME/.ssh/${_link:t} -> $_link"
+        printf '%s\n' "  [dry-run] would link $HOME/.ssh/${_link:t} -> $_link"
     else
         [[ -d $HOME/.ssh ]] || install -m 700 -d $HOME/.ssh
         ln -sfn $_link $HOME/.ssh/${_link:t}
@@ -382,11 +382,11 @@ done
 
 # ── Summary + marker ───────────────────────────────────────────────────────
 
-print "  rendered ${N_RENDERED}, quarantined ${N_QUARANTINED}, backed-up ${N_BACKED_UP}, unmapped ${#UNMAPPED}, gated-out ${N_SKIPPED}, failed ${N_FAILED}"
-(( ${#UNMAPPED} )) && print "  UNMAPPED (in secrets repo, never rendered): ${(j:, :)UNMAPPED}"
-(( ${#FAILED_NAMES} )) && print "  FAILED: ${(j:, :)FAILED_NAMES}" >&2
+printf '%s\n' "  rendered ${N_RENDERED}, quarantined ${N_QUARANTINED}, backed-up ${N_BACKED_UP}, unmapped ${#UNMAPPED}, gated-out ${N_SKIPPED}, failed ${N_FAILED}"
+(( ${#UNMAPPED} )) && printf '%s\n' "  UNMAPPED (in secrets repo, never rendered): ${(j:, :)UNMAPPED}"
+(( ${#FAILED_NAMES} )) && printf '%s\n' "  FAILED: ${(j:, :)FAILED_NAMES}" >&2
 if (( ${#STILL_SHADOWING} )); then
-    print "  WARNING: stale legacy plaintexts still in zsh/env.d/ and will shadow rendered values until a full render succeeds: ${(j:, :)STILL_SHADOWING}" >&2
+    printf '%s\n' "  WARNING: stale legacy plaintexts still in zsh/env.d/ and will shadow rendered values until a full render succeeds: ${(j:, :)STILL_SHADOWING}" >&2
 fi
 
 if (( N_FAILED > 0 )); then
@@ -395,14 +395,14 @@ fi
 
 if (( ! _dry )); then
     local dot_head sec_head
-    dot_head=$(git -C $DOTFILES_DIR rev-parse HEAD 2>/dev/null || print unknown)
-    sec_head=$(git -C $SECRETS_REPO rev-parse HEAD 2>/dev/null || print unknown)
+    dot_head=$(git -C $DOTFILES_DIR rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
+    sec_head=$(git -C $SECRETS_REPO rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
     [[ -d ${MARKER:h} ]] || mkdir -p ${MARKER:h}
     {
-        print -r -- "rendered_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-        print -r -- "dotfiles_head=$dot_head"
-        print -r -- "secrets_head=$sec_head"
-        print -r -- "host=$(hostname -s 2>/dev/null || print unknown)"
+        printf '%s\n' "rendered_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        printf '%s\n' "dotfiles_head=$dot_head"
+        printf '%s\n' "secrets_head=$sec_head"
+        printf '%s\n' "host=$(hostname -s 2>/dev/null || printf '%s\n' unknown)"
     } > $MARKER
     chmod 644 $MARKER
 fi

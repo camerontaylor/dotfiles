@@ -7,7 +7,7 @@
 # `err_exit`, but every check here is guarded by `if`). Failures are surfaced
 # as a final warning block with actionable next steps.
 
-print "Verifying deployed CLI tools respond..."
+printf '%s\n' "Verifying deployed CLI tools respond..."
 
 ensure_homebrew_path 2>/dev/null || true
 rehash
@@ -61,20 +61,20 @@ for entry in $tool_checks; do
 done
 
 if (( ${#failed} == 0 )); then
-    print "  ...all ${#tool_checks} checked tools respond"
+    printf '%s\n' "  ...all ${#tool_checks} checked tools respond"
     return 0
 fi
 
-print ""
-print "⚠ ${#failed} tool(s) failed smoke test:"
+printf '%s\n' ""
+printf '%s\n' "⚠ ${#failed} tool(s) failed smoke test:"
 local line
 for line in $failed; do
-    print "    - $line"
+    printf '%s\n' "    - $line"
 done
-print ""
-print "Hints:"
-print "  - re-run with --upgrade to refresh mise installs:  ./deploy.zsh --upgrade"
-print "  - inspect the deploy log:                          $XDG_STATE_HOME/dotfiles-deploy.log"
-print "  - check mise health:                               mise doctor"
-print "  - if a binary is on PATH but doesn't launch, the install is corrupt — try:"
-print "      mise uninstall <tool> && mise install"
+printf '%s\n' ""
+printf '%s\n' "Hints:"
+printf '%s\n' "  - re-run with --upgrade to refresh mise installs:  ./deploy.zsh --upgrade"
+printf '%s\n' "  - inspect the deploy log:                          $XDG_STATE_HOME/dotfiles-deploy.log"
+printf '%s\n' "  - check mise health:                               mise doctor"
+printf '%s\n' "  - if a binary is on PATH but doesn't launch, the install is corrupt — try:"
+printf '%s\n' "      mise uninstall <tool> && mise install"

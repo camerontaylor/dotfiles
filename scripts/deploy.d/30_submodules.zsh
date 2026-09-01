@@ -1,6 +1,6 @@
 # Sync git submodules + compile zsh plugin .zwc files.
 
-print "Syncing submodules..."
+printf '%s\n' "Syncing submodules..."
 git submodule sync > /dev/null
 # Update only paths that are BOTH declared in .gitmodules AND gitlinks in the
 # index: a declaration without a gitlink (or a legacy gitlink without a URL)
@@ -11,7 +11,7 @@ submodule_paths=()
 while IFS= read -r _sm_path; do
     git ls-files --stage -- $_sm_path 2> /dev/null | grep -q '^160000' || continue
     if [[ -e $_sm_path/.git ]] && ! git -C $_sm_path rev-parse --git-dir > /dev/null 2>&1; then
-        print "  ...repairing broken submodule checkout: $_sm_path"
+        printf '%s\n' "  ...repairing broken submodule checkout: $_sm_path"
         rm -rf $_sm_path
     fi
     submodule_paths+=($_sm_path)
@@ -26,15 +26,15 @@ if $upgrade_mode; then
 else
     pending=$(git submodule foreach --recursive --quiet 'git clean -n -d' 2>&1 | grep -v '^$' || true)
     if [[ -n $pending ]]; then
-        print "  ...untracked files in submodules (would be removed with --upgrade):"
-        print -- "$pending" | sed 's/^/    /'
+        printf '%s\n' "  ...untracked files in submodules (would be removed with --upgrade):"
+        printf '%s\n' "$pending" | sed 's/^/    /'
     fi
 fi
-print "  ...done"
+printf '%s\n' "  ...done"
 
-print "Compiling zsh plugins..."
+printf '%s\n' "Compiling zsh plugins..."
 autoload -Uz zrecompile
 for zsh_plugin_file in $SCRIPT_DIR/zsh/plugins/**/*.zsh{-theme,}(#q.); do
     zrecompile -pq $zsh_plugin_file
 done
-print "  ...done"
+printf '%s\n' "  ...done"

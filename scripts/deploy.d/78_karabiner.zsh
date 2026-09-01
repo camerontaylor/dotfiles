@@ -25,11 +25,11 @@ local kb_target=$XDG_CONFIG_HOME/karabiner/karabiner.json
 zf_mkdir -p $XDG_CONFIG_HOME/karabiner
 
 if [[ -e $kb_target && ! $kb_src -nt $kb_target ]]; then
-    print "Karabiner config up to date (karabiner.ts not newer); skipping"
+    printf '%s\n' "Karabiner config up to date (karabiner.ts not newer); skipping"
     return 0
 fi
 
-print "Generating Karabiner config from karabiner.ts..."
+printf '%s\n' "Generating Karabiner config from karabiner.ts..."
 
 # bun executes TypeScript directly and is installed by mise (50_mise.zsh, which
 # runs before this fragment); tsx / `npx tsx` cover any host without it.
@@ -46,15 +46,15 @@ if [[ -z $kb_runner ]] && have npx; then
 fi
 
 if [[ -z $kb_runner ]]; then
-    print "  ...no TypeScript runtime (bun/tsx/npx) on PATH; install one, then"
-    print "     re-run: bun ${(D)kb_src}"
+    printf '%s\n' "  ...no TypeScript runtime (bun/tsx/npx) on PATH; install one, then"
+    printf '%s\n' "     re-run: bun ${(D)kb_src}"
     return 0
 fi
 
 # The generator writes $XDG_CONFIG_HOME/karabiner/karabiner.json and creates its
 # own .bak, so a successful run leaves the target in place; Karabiner hot-reloads.
 if eval "$kb_runner ${(q)kb_src}" > /dev/null 2>&1; then
-    print "  ...generated via $kb_runner"
+    printf '%s\n' "  ...generated via $kb_runner"
 else
-    print "  ...failed to generate Karabiner config (run 'bun ${(D)kb_src}' to see the error)"
+    printf '%s\n' "  ...failed to generate Karabiner config (run 'bun ${(D)kb_src}' to see the error)"
 fi

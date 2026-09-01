@@ -31,11 +31,11 @@ if [[ ! -f $HOME/.paseo/config.json ]]; then
 fi
 
 if ! have python3; then
-    print "paseo providers: no python3 on PATH (mise.toml pins python 3); skipping"
+    printf '%s\n' "paseo providers: no python3 on PATH (mise.toml pins python 3); skipping"
     return 0
 fi
 
-print "Merging paseo agent providers (gjc, claude-zai)..."
+printf '%s\n' "Merging paseo agent providers (gjc, claude-zai)..."
 
 local paseo_result
 if (( DEPLOY_DRY_RUN )); then
@@ -47,26 +47,26 @@ fi
 case $paseo_result in
     changed)
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would update ~/.paseo/config.json and reload the daemon"
+            printf '%s\n' "  [dry-run] would update ~/.paseo/config.json and reload the daemon"
         else
-            print "  ...updated ~/.paseo/config.json"
+            printf '%s\n' "  ...updated ~/.paseo/config.json"
             # agents.providers and daemon.agentProfiles are both in paseo's
             # RELOADABLE_PATHS, so this applies without restarting the daemon
             # and without interrupting any running agent.
             if have paseo && paseo daemon reload > /dev/null 2>&1; then
-                print "  ...daemon reloaded"
+                printf '%s\n' "  ...daemon reloaded"
             else
-                print "  ...could not reload the daemon; run 'paseo daemon reload' when it is up"
+                printf '%s\n' "  ...could not reload the daemon; run 'paseo daemon reload' when it is up"
             fi
         fi
         ;;
     unchanged)
-        print "  ...already current"
+        printf '%s\n' "  ...already current"
         ;;
     skip:*)
-        print "  ...${paseo_result#skip: }"
+        printf '%s\n' "  ...${paseo_result#skip: }"
         ;;
     *)
-        print "  ...merge failed: $paseo_result"
+        printf '%s\n' "  ...merge failed: $paseo_result"
         ;;
 esac

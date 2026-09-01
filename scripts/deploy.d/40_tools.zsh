@@ -33,11 +33,11 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
         bin_name=${brew_tool#*:}
         brew list --formula $formula > /dev/null 2>&1 && continue
         have "$bin_name" && continue
-        print "Installing $formula via brew..."
+        printf '%s\n' "Installing $formula via brew..."
         if brew install $formula > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed, install manually: brew install $formula"
+            printf '%s\n' "  ...failed, install manually: brew install $formula"
         fi
     done
 elif [[ $DOTFILES_OS == Linux ]]; then
@@ -45,8 +45,8 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     # leak. Absent file / missing keys => empty, which falls through to "unknown".
     local distro_id="" distro_like=""
     if [[ -r /etc/os-release ]]; then
-        distro_id=$(. /etc/os-release 2>/dev/null && print -r -- "${ID:-}")
-        distro_like=$(. /etc/os-release 2>/dev/null && print -r -- "${ID_LIKE:-}")
+        distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
+        distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")
     fi
 
     # Build a list of "<probe names>|<install command>" for the missing tools on
@@ -86,11 +86,11 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     if (( ${#recipes} == 0 )); then
         # Unknown distro or no package manager detected — hint with the generic names.
         have git-extras \
-            || print "  hint: git-extras not installed — install via your package manager"
+            || printf '%s\n' "  hint: git-extras not installed — install via your package manager"
         have git-restore-mtime \
-            || print "  hint: git-restore-mtime not installed — install git-tools/git-restore-mtime via your package manager"
+            || printf '%s\n' "  hint: git-restore-mtime not installed — install git-tools/git-restore-mtime via your package manager"
         have testssl || have testssl.sh \
-            || print "  hint: testssl not installed — install via your package manager"
+            || printf '%s\n' "  hint: testssl not installed — install via your package manager"
     else
         local recipe probe_str cmd label present p
         for recipe in $recipes; do
@@ -103,19 +103,19 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             done
             (( present )) && continue
             if [[ -z $cmd ]]; then
-                print "  hint: $label not installed (AUR only) — e.g. paru -S $label"
+                printf '%s\n' "  hint: $label not installed (AUR only) — e.g. paru -S $label"
             elif (( DEPLOY_DRY_RUN )); then
-                print "  [dry-run] would: $cmd"
+                printf '%s\n' "  [dry-run] would: $cmd"
             elif sudo -n true 2>/dev/null || [[ -t 0 ]]; then
-                print "Installing $label..."
+                printf '%s\n' "Installing $label..."
                 if eval "$cmd" > /dev/null 2>&1; then
                     rehash
-                    print "  ...done"
+                    printf '%s\n' "  ...done"
                 else
-                    print "  ...failed, install manually: $cmd"
+                    printf '%s\n' "  ...failed, install manually: $cmd"
                 fi
             else
-                print "  hint: $label not installed — run: $cmd"
+                printf '%s\n' "  hint: $label not installed — run: $cmd"
             fi
         done
     fi
@@ -132,10 +132,10 @@ if have gh; then
 fi
 
 if ! have moor; then
-    print "Installing moor..."
+    printf '%s\n' "Installing moor..."
     if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to install moor, skipping"
+        printf '%s\n' "  ...failed to install moor, skipping"
     fi
 fi

@@ -4,7 +4,7 @@ if [[ $DOTFILES_OS == Darwin ]]; then
     ensure_homebrew_path || true
 fi
 
-print "Creating required directory tree..."
+printf '%s\n' "Creating required directory tree..."
 zf_mkdir -p $XDG_CONFIG_HOME/{ghostty,cmux,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi,bat}
 zf_mkdir -p $XDG_CACHE_HOME/{zsh,tig}
 zf_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv}/plugins,zsh,man/man1,nvim/site/pack/plugins}
@@ -19,12 +19,12 @@ zf_chmod 700 $HOME/.ssh
 # back to a fresh (unshared) connection.
 zf_mkdir -p $HOME/.ssh/sockets
 zf_chmod 700 $HOME/.ssh/sockets
-print "  ...done"
+printf '%s\n' "  ...done"
 
-print "Checking for ZDOTDIR env variable..."
+printf '%s\n' "Checking for ZDOTDIR env variable..."
 if [[ $ZDOTDIR == $SCRIPT_DIR/zsh ]]; then
-    print "  ...present and valid, skipping .zshenv symlink"
+    printf '%s\n' "  ...present and valid, skipping .zshenv symlink"
 else
-    print "  ...failed to match this script dir. ZDOTDIR is \"$ZDOTDIR\", which doesn't match expected value \"$SCRIPT_DIR/zsh\". Symlinking .zshenv"
+    printf '%s\n' "  ...failed to match this script dir. ZDOTDIR is \"$ZDOTDIR\", which doesn't match expected value \"$SCRIPT_DIR/zsh\". Symlinking .zshenv"
     zf_ln -sfn $SCRIPT_DIR/zsh/.zshenv ${ZDOTDIR:-$HOME}/.zshenv
 fi

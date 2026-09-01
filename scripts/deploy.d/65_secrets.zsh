@@ -21,42 +21,42 @@ local age_key_dir=$XDG_CONFIG_HOME/sops/age
 local age_public_key
 
 secrets_bootstrap_help() {
-    print ""
-    print "  Secrets are not available on this machine yet. Two credentials are needed:"
-    print ""
-    print "    1. An age private key at $age_key_dir/keys.txt"
-    print "       - restore it from your password manager, OR"
-    print "       - let this deploy generate one, then register it from an"
-    print "         already-registered box:"
-    print "           ~/.local/secrets/scripts/sops-add-recipient.zsh <this box's public key>"
-    print "         (print it here with: age-keygen -y $age_key_dir/keys.txt)"
-    print ""
-    print "    2. Read access to the private repo $secrets_slug — either"
-    print "         gh auth login          # device flow; the ssh key lives INSIDE"
-    print "                                # the secrets, so this breaks the"
-    print "                                # chicken-and-egg on a fresh box"
-    print "       or an ssh key on this box that GitHub already accepts."
-    print ""
-    print "  Then re-run:  ./deploy.zsh --only 65_secrets"
-    print ""
+    printf '%s\n' ""
+    printf '%s\n' "  Secrets are not available on this machine yet. Two credentials are needed:"
+    printf '%s\n' ""
+    printf '%s\n' "    1. An age private key at $age_key_dir/keys.txt"
+    printf '%s\n' "       - restore it from your password manager, OR"
+    printf '%s\n' "       - let this deploy generate one, then register it from an"
+    printf '%s\n' "         already-registered box:"
+    printf '%s\n' "           ~/.local/secrets/scripts/sops-add-recipient.zsh <this box's public key>"
+    printf '%s\n' "         (print it here with: age-keygen -y $age_key_dir/keys.txt)"
+    printf '%s\n' ""
+    printf '%s\n' "    2. Read access to the private repo $secrets_slug — either"
+    printf '%s\n' "         gh auth login          # device flow; the ssh key lives INSIDE"
+    printf '%s\n' "                                # the secrets, so this breaks the"
+    printf '%s\n' "                                # chicken-and-egg on a fresh box"
+    printf '%s\n' "       or an ssh key on this box that GitHub already accepts."
+    printf '%s\n' ""
+    printf '%s\n' "  Then re-run:  ./deploy.zsh --only 65_secrets"
+    printf '%s\n' ""
 }
 
 # ── age key bootstrap ──────────────────────────────────────────────────────
 
 if [[ ! -f $age_key_dir/keys.txt ]]; then
     if have age-keygen; then
-        print "Generating age key for secrets..."
+        printf '%s\n' "Generating age key for secrets..."
         zf_mkdir -p $age_key_dir
         age-keygen -o $age_key_dir/keys.txt 2>/dev/null
         chmod 600 $age_key_dir/keys.txt
-        print "  ...done"
-        print "  IMPORTANT: Back up $age_key_dir/keys.txt to your password manager!"
-        print "  This key is NOT yet registered — no secret can be decrypted until it is."
+        printf '%s\n' "  ...done"
+        printf '%s\n' "  IMPORTANT: Back up $age_key_dir/keys.txt to your password manager!"
+        printf '%s\n' "  This key is NOT yet registered — no secret can be decrypted until it is."
     else
-        print ""
-        print "WARNING: age key not found and age-keygen not available."
-        print "  Install age (mise install) and re-run deploy.zsh."
-        print ""
+        printf '%s\n' ""
+        printf '%s\n' "WARNING: age key not found and age-keygen not available."
+        printf '%s\n' "  Install age (mise install) and re-run deploy.zsh."
+        printf '%s\n' ""
     fi
 fi
 
@@ -71,17 +71,17 @@ fi
 if have age-keygen && [[ -f $secrets_repo/.sops.yaml ]]; then
     age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
     if [[ -n $age_public_key ]] && ! grep -Fq "$age_public_key" $secrets_repo/.sops.yaml; then
-        print ""
-        print "WARNING: this machine's age key is not registered for sops decryption."
-        print "  Nothing in ~/.local/secrets can be decrypted here."
-        print ""
-        print "  This machine's public key:"
-        print "    $age_public_key"
-        print ""
-        print "  To register, on an already-registered machine run:"
-        print "    ~/.local/secrets/scripts/sops-add-recipient.zsh $age_public_key"
-        print "  then commit and push there, and re-run deploy here."
-        print ""
+        printf '%s\n' ""
+        printf '%s\n' "WARNING: this machine's age key is not registered for sops decryption."
+        printf '%s\n' "  Nothing in ~/.local/secrets can be decrypted here."
+        printf '%s\n' ""
+        printf '%s\n' "  This machine's public key:"
+        printf '%s\n' "    $age_public_key"
+        printf '%s\n' ""
+        printf '%s\n' "  To register, on an already-registered machine run:"
+        printf '%s\n' "    ~/.local/secrets/scripts/sops-add-recipient.zsh $age_public_key"
+        printf '%s\n' "  then commit and push there, and re-run deploy here."
+        printf '%s\n' ""
     fi
 fi
 
@@ -89,7 +89,7 @@ fi
 
 if [[ ! -d $secrets_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would clone $secrets_slug -> $secrets_repo"
+        printf '%s\n' "  [dry-run] would clone $secrets_slug -> $secrets_repo"
     else
         # Probe BOTH capabilities, no short-circuit, so the deploy log records
         # what this box can actually do. `gh auth status` is not enough: it
@@ -104,7 +104,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         if git ls-remote $secrets_remote HEAD > /dev/null 2>&1; then
             ssh_ok=1
         fi
-        print "Secrets repo not present. GitHub read capability: gh=$gh_ok ssh=$ssh_ok"
+        printf '%s\n' "Secrets repo not present. GitHub read capability: gh=$gh_ok ssh=$ssh_ok"
 
         if (( gh_ok == 0 && ssh_ok == 0 )); then
             secrets_bootstrap_help
@@ -117,21 +117,21 @@ if [[ ! -d $secrets_repo/.git ]]; then
         # helper vs API token are separate paths), so never trust the probe.
         local -i cloned=0
         if (( gh_ok )); then
-            print "Cloning $secrets_slug via gh..."
+            printf '%s\n' "Cloning $secrets_slug via gh..."
             if gh repo clone $secrets_slug $secrets_repo -- -q > /dev/null 2>&1; then
                 cloned=1
-                print "  ...done"
+                printf '%s\n' "  ...done"
             else
-                print "  gh clone failed; falling back to ssh"
+                printf '%s\n' "  gh clone failed; falling back to ssh"
             fi
         fi
         if (( cloned == 0 )); then
-            print "Cloning $secrets_slug via ssh..."
+            printf '%s\n' "Cloning $secrets_slug via ssh..."
             if git clone -q $secrets_remote $secrets_repo > /dev/null 2>&1; then
                 cloned=1
-                print "  ...done"
+                printf '%s\n' "  ...done"
             else
-                print "  ssh clone failed"
+                printf '%s\n' "  ssh clone failed"
             fi
         fi
         if (( cloned == 0 )); then
@@ -142,18 +142,18 @@ if [[ ! -d $secrets_repo/.git ]]; then
     fi
 else
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would: git -C $secrets_repo pull --ff-only"
+        printf '%s\n' "  [dry-run] would: git -C $secrets_repo pull --ff-only"
     else
-        print "Updating secrets repo..."
+        printf '%s\n' "Updating secrets repo..."
         if git -C $secrets_repo pull --ff-only -q > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
             # Never merge or reset here — a wrong resolution in this repo means
             # wrong credentials fleet-wide. Render from the stale-but-valid
             # checkout and make the divergence loud.
-            print "  WARNING: $secrets_repo diverged from origin (or is unreachable)." >&2
-            print "           Resolve manually in $secrets_repo; rendering from the" >&2
-            print "           existing checkout, which may be stale." >&2
+            printf '%s\n' "  WARNING: $secrets_repo diverged from origin (or is unreachable)." >&2
+            printf '%s\n' "           Resolve manually in $secrets_repo; rendering from the" >&2
+            printf '%s\n' "           existing checkout, which may be stale." >&2
         fi
     fi
 fi
@@ -162,12 +162,12 @@ fi
 
 if [[ -d $secrets_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] git -C $secrets_repo config diff.sops.textconv 'sops -d'"
+        printf '%s\n' "  [dry-run] git -C $secrets_repo config diff.sops.textconv 'sops -d'"
     else
         # Per-clone config is not tracked, so it has to be re-asserted here
         # (same pattern as the codex-clean filter in 60_git_hooks.zsh).
         git -C $secrets_repo config diff.sops.textconv "sops -d" \
-            || print "  WARNING: could not set diff.sops.textconv in $secrets_repo" >&2
+            || printf '%s\n' "  WARNING: could not set diff.sops.textconv in $secrets_repo" >&2
 
         # Re-render after a manual `git pull` in the secrets repo, closing the
         # "pulled by hand, forgot to render" gap. The renderer is
@@ -176,7 +176,7 @@ if [[ -d $secrets_repo/.git ]]; then
             zf_mkdir -p $secrets_repo/.git/hooks
             zf_ln -sfn ../../scripts/post-merge $secrets_repo/.git/hooks/post-merge
         else
-            print "  note: $secrets_repo/scripts/post-merge missing; no re-render hook installed"
+            printf '%s\n' "  note: $secrets_repo/scripts/post-merge missing; no re-render hook installed"
         fi
     fi
 fi
@@ -184,17 +184,17 @@ fi
 # ── render ─────────────────────────────────────────────────────────────────
 
 if [[ -r $SCRIPT_DIR/scripts/secrets-render.zsh ]]; then
-    print "Rendering secrets..."
+    printf '%s\n' "Rendering secrets..."
     # DEPLOY_DRY_RUN is exported by deploy.zsh, so --dry-run needs no plumbing.
     # A render failure warns but does NOT fail the deploy: the fleet pulls
     # unattended, and a transient sops/network problem must not leave every box
     # aborting mid-deploy. Staleness is caught by the render marker instead.
     if ! zsh $SCRIPT_DIR/scripts/secrets-render.zsh; then
-        print "  WARNING: secrets render reported failures (named above)." >&2
-        print "           Rendered targets already on disk are untouched." >&2
+        printf '%s\n' "  WARNING: secrets render reported failures (named above)." >&2
+        printf '%s\n' "           Rendered targets already on disk are untouched." >&2
     fi
 else
-    print "  WARNING: scripts/secrets-render.zsh missing; nothing rendered." >&2
+    printf '%s\n' "  WARNING: scripts/secrets-render.zsh missing; nothing rendered." >&2
 fi
 
 unfunction secrets_bootstrap_help 2>/dev/null || true

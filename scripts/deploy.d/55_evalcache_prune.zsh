@@ -20,20 +20,20 @@ if [[ ! -d $cache_dir ]]; then
     return 0
 fi
 
-print "Pruning empty evalcache entries..."
+printf '%s\n' "Pruning empty evalcache entries..."
 
 # Glob qualifiers: N=nullglob, .=regular file, L0=size exactly 0 bytes
 local -a empty_caches=($cache_dir/*.zsh(N.L0))
 
 if (( ${#empty_caches} == 0 )); then
-    print "  ...none found"
+    printf '%s\n' "  ...none found"
     return 0
 fi
 
 if (( DEPLOY_DRY_RUN )); then
     local f
     for f in $empty_caches; do
-        print "  [dry-run] would remove $f (and $f.zwc if present)"
+        printf '%s\n' "  [dry-run] would remove $f (and $f.zwc if present)"
     done
     return 0
 fi
@@ -42,4 +42,4 @@ local f
 for f in $empty_caches; do
     zf_rm -f $f $f.zwc
 done
-print "  ...removed ${#empty_caches} empty cache file(s)"
+printf '%s\n' "  ...removed ${#empty_caches} empty cache file(s)"

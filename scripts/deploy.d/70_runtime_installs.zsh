@@ -4,18 +4,18 @@
 # bun global (bun-only package; see its block below).
 
 if ! have claude; then
-    print "Installing Claude Code..."
+    printf '%s\n' "Installing Claude Code..."
     if curl -fsSL https://claude.ai/install.sh | bash > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to install Claude Code"
+        printf '%s\n' "  ...failed to install Claude Code"
     fi
 fi
 
 local npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] would install npm globals through mise node's npm"
+    printf '%s\n' "  [dry-run] would install npm globals through mise node's npm"
 elif have mise; then
     # Drop mise installs that other installers own now. NOTE: node/npm and the
     # npm: backend tools that systemd units resolve through mise (npm:t3 for
@@ -46,9 +46,9 @@ elif have mise; then
         github:usewhale/DeepSeek-Code-Whale
     )
 
-    print "Removing stale mise installs..."
+    printf '%s\n' "Removing stale mise installs..."
     mise uninstall -y --all $obsolete_mise_tools > /dev/null 2>&1 || true
-    print "  ...done"
+    printf '%s\n' "  ...done"
 
     # npm globals install into the active mise node's prefix through its own
     # npm; `mise reshim` then exposes them via ~/.local/share/mise/shims to
@@ -59,7 +59,7 @@ elif have mise; then
     if mise exec node -- node --version > /dev/null 2>&1; then
         mise_node_ok=true
     else
-        print "  ...mise node unavailable (mise install node); skipping npm globals"
+        printf '%s\n' "  ...mise node unavailable (mise install node); skipping npm globals"
     fi
 
     if [[ $mise_node_ok == true && -f $npm_packages_file ]]; then
@@ -71,11 +71,11 @@ elif have mise; then
         done < $npm_packages_file
 
         if (( ${#npm_packages} > 0 )); then
-            print "Installing npm globals through mise node's npm..."
+            printf '%s\n' "Installing npm globals through mise node's npm..."
             if mise exec node -- npm install -g $npm_packages > /dev/null 2>&1; then
-                print "  ...done"
+                printf '%s\n' "  ...done"
             else
-                print "  ...failed to install npm globals"
+                printf '%s\n' "  ...failed to install npm globals"
             fi
         fi
 
@@ -86,11 +86,11 @@ elif have mise; then
         # updates `pn` while `pnpm` silently stays pinned to whatever corepack
         # last cached (it sat on 11.5.1 for months this way). Point corepack at
         # the current pnpm too so both names agree.
-        print "Pointing corepack's pnpm shim at the current release..."
+        printf '%s\n' "Pointing corepack's pnpm shim at the current release..."
         if mise exec node -- corepack install -g pnpm@latest > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to refresh corepack pnpm (non-fatal)"
+            printf '%s\n' "  ...failed to refresh corepack pnpm (non-fatal)"
         fi
     fi
 
@@ -104,9 +104,9 @@ elif have mise; then
     # terminal. Only remove once the mise node demonstrably works, so a
     # botched deploy can't leave the machine with no node at all.
     if [[ $mise_node_ok == true && -d $HOME/.vite-plus ]]; then
-        print "Removing Vite+ (node/npm are mise-managed; see configs/mise.toml)..."
+        printf '%s\n' "Removing Vite+ (node/npm are mise-managed; see configs/mise.toml)..."
         rm -rf -- $HOME/.vite-plus
-        print "  ...done"
+        printf '%s\n' "  ...done"
     fi
 fi
 
@@ -128,17 +128,17 @@ if have bun; then
     gjc_bun_version=$(bun --version 2>/dev/null)
 
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] would install/upgrade gajae-code (gjc) as a bun global"
+        printf '%s\n' "  [dry-run] would install/upgrade gajae-code (gjc) as a bun global"
     elif ! is-at-least 1.4.0 ${gjc_bun_version:-0}; then
         # 50_mise.zsh runs `mise upgrade` on every deploy, so bun should already
         # be current (configs/mise.toml pins the major, `bun = "1"`). If a box is
         # still behind, say so rather than planting a gjc its runtime can't run.
-        print "gjc needs bun >= 1.4.0; this box has ${gjc_bun_version:-none}, skipping"
-        print "  ...run 'mise upgrade bun', then ./deploy.zsh"
+        printf '%s\n' "gjc needs bun >= 1.4.0; this box has ${gjc_bun_version:-none}, skipping"
+        printf '%s\n' "  ...run 'mise upgrade bun', then ./deploy.zsh"
     else
-        print "Installing/upgrading gjc (gajae-code) as a bun global..."
+        printf '%s\n' "Installing/upgrading gjc (gajae-code) as a bun global..."
         if bun install -g gajae-code@latest > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
             # `bun install -g` rewrites node_modules/@gajae-code/coding-agent in
             # place, under anything already running out of it. Deliberately NOT a
             # reason to skip the upgrade: gjc's broker and daemon are long-lived
@@ -149,11 +149,11 @@ if have bun; then
             # Two cmdline shapes to catch: `bun ~/.local/bin/gjc <cmd>` and the
             # broker/daemon forms that exec straight out of node_modules.
             if pgrep -u "$USER" -f 'gajae-code|bin/gjc' > /dev/null 2>&1; then
-                print "  ...note: gjc processes are running on the old build;"
-                print "     restart them ('gjc daemon' / open sessions) to pick this up"
+                printf '%s\n' "  ...note: gjc processes are running on the old build;"
+                printf '%s\n' "     restart them ('gjc daemon' / open sessions) to pick this up"
             fi
         else
-            print "  ...failed to install gjc"
+            printf '%s\n' "  ...failed to install gjc"
         fi
     fi
 
@@ -170,30 +170,30 @@ if have bun; then
 fi
 
 if ! have cargo; then
-    print "Installing rustup and cargo..."
+    printf '%s\n' "Installing rustup and cargo..."
     if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path > /dev/null 2>&1; then
         export PATH=$HOME/.cargo/bin:$PATH
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to install rustup, skipping"
+        printf '%s\n' "  ...failed to install rustup, skipping"
     fi
 fi
 
 # linear-cli: git-only upstream, no mise/aqua backend exists.
 if have cargo; then
     if ! have linear-cli; then
-        print "Installing linear-cli via cargo..."
+        printf '%s\n' "Installing linear-cli via cargo..."
         if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to install linear-cli"
+            printf '%s\n' "  ...failed to install linear-cli"
         fi
     elif $upgrade_mode; then
-        print "Upgrading linear-cli via cargo..."
+        printf '%s\n' "Upgrading linear-cli via cargo..."
         if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked --force > /dev/null 2>&1; then
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to upgrade linear-cli"
+            printf '%s\n' "  ...failed to upgrade linear-cli"
         fi
     fi
 fi
@@ -219,15 +219,15 @@ if have cargo; then
         fi
 
         if [[ $codewhale_action == install ]]; then
-            print "Installing $codewhale_package via cargo..."
+            printf '%s\n' "Installing $codewhale_package via cargo..."
         else
-            print "Upgrading $codewhale_package via cargo..."
+            printf '%s\n' "Upgrading $codewhale_package via cargo..."
         fi
         if cargo install "$codewhale_package" --locked --force > /dev/null 2>&1; then
             rehash
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
-            print "  ...failed to $codewhale_action $codewhale_package"
+            printf '%s\n' "  ...failed to $codewhale_action $codewhale_package"
         fi
     done
 fi
@@ -240,7 +240,7 @@ fi
 # ~/.ghx holds the cache and ghx's auto-managed gh binary. Brew hosts get the
 # equivalent cleanup in 75_brew_setup.zsh.
 if [[ -e $HOME/.local/bin/ghx || -d $HOME/.ghx ]]; then
-    print "Removing ghx (gh is mise-managed again)..."
+    printf '%s\n' "Removing ghx (gh is mise-managed again)..."
     # ghxd self-daemonizes (reparents to PID 1) and ignores SIGTERM; KILL it.
     pkill -9 -u "$USER" -x ghxd 2>/dev/null || true
     rm -f "$HOME/.local/bin/ghx" "$HOME/.local/bin/ghxd"
@@ -249,5 +249,5 @@ if [[ -e $HOME/.local/bin/ghx || -d $HOME/.ghx ]]; then
     fi
     rm -rf "$HOME/.ghx"
     rehash
-    print "  ...done"
+    printf '%s\n' "  ...done"
 fi

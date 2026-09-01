@@ -15,8 +15,8 @@
 local cache_fpath="$XDG_CACHE_HOME/zsh/fpath"
 
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] would: mkdir -p $cache_fpath"
-    print "  [dry-run] would: generate _bun, _uv, _sops, _codex, _opencode, _sg"
+    printf '%s\n' "  [dry-run] would: mkdir -p $cache_fpath"
+    printf '%s\n' "  [dry-run] would: generate _bun, _uv, _sops, _codex, _opencode, _sg"
     return 0
 fi
 
@@ -32,7 +32,7 @@ local -a generators=(
     "opencode:completion zsh:_opencode"
 )
 
-print "Generating zsh completion files into $cache_fpath..."
+printf '%s\n' "Generating zsh completion files into $cache_fpath..."
 
 local entry tool subcmd dest_name dest_path generated_count=0 skipped_count=0
 for entry in $generators; do
@@ -43,7 +43,7 @@ for entry in $generators; do
     dest_path="$cache_fpath/$dest_name"
 
     if ! have "$tool"; then
-        print "  ...skip $tool (not installed)"
+        printf '%s\n' "  ...skip $tool (not installed)"
         (( skipped_count++ ))
         continue
     fi
@@ -64,11 +64,11 @@ for entry in $generators; do
         && [[ -s $tmp ]] \
         && head -1 $tmp | grep -q "^#compdef\b"; then
         mv $tmp $dest_path
-        print "  ...wrote $dest_name"
+        printf '%s\n' "  ...wrote $dest_name"
         (( generated_count++ ))
     else
         rm -f $tmp
-        print "  ...failed to generate $dest_name from \`$tool $subcmd\`"
+        printf '%s\n' "  ...failed to generate $dest_name from \`$tool $subcmd\`"
     fi
 done
 
@@ -81,7 +81,7 @@ if have sg; then
 (( $+functions[_ast-grep] )) || autoload -Uz _ast-grep
 _ast-grep "$@"
 COMPDEF
-    print "  ...wrote _sg (shim -> _ast-grep)"
+    printf '%s\n' "  ...wrote _sg (shim -> _ast-grep)"
     (( generated_count++ ))
 fi
 
@@ -92,7 +92,7 @@ fi
 local compdump="$XDG_CACHE_HOME/zsh/compdump"
 if [[ -f $compdump ]]; then
     rm -f $compdump $compdump.zwc
-    print "  ...invalidated compdump (next shell will regenerate)"
+    printf '%s\n' "  ...invalidated compdump (next shell will regenerate)"
 fi
 
-print "  ...$generated_count generated, $skipped_count skipped"
+printf '%s\n' "  ...$generated_count generated, $skipped_count skipped"

@@ -3,13 +3,13 @@
 set -euo pipefail
 
 log() {
-    print -r -- ""
-    print -r -- "==> $*"
+    printf '%s\n' ""
+    printf '%s\n' "==> $*"
 }
 
 warn() {
-    print -r -- ""
-    print -r -- "!! $*" >&2
+    printf '%s\n' ""
+    printf '%s\n' "!! $*" >&2
 }
 
 have() {
@@ -115,9 +115,9 @@ fi
 touch "$HOME/.zprofile"
 if ! grep -Fq 'brew shellenv' "$HOME/.zprofile"; then
     {
-        print -r -- ""
-        print -r -- "# Homebrew"
-        print -r -- "$BREW_SHELLENV"
+        printf '%s\n' ""
+        printf '%s\n' "# Homebrew"
+        printf '%s\n' "$BREW_SHELLENV"
     } >> "$HOME/.zprofile"
 fi
 

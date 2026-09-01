@@ -14,18 +14,18 @@
 local pruner=$SCRIPT_DIR/scripts/prune-tmpdir
 
 if [[ ! -x $pruner ]]; then
-    print "Skipping TMPDIR prune: $pruner not executable"
+    printf '%s\n' "Skipping TMPDIR prune: $pruner not executable"
     return 0
 fi
 
-print "Pruning stale TMPDIR entries..."
+printf '%s\n' "Pruning stale TMPDIR entries..."
 if (( DEPLOY_DRY_RUN )); then
     $pruner --dry-run | tail -1
 else
     $pruner
 fi
 
-print "Installing daily TMPDIR prune task..."
+printf '%s\n' "Installing daily TMPDIR prune task..."
 
 # The job must run through a login shell so env.d sets TMPDIR before the
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
@@ -33,12 +33,12 @@ local zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
 local prune_command="${(q)pruner}"
 
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"
+    printf '%s\n' "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"
     return 0
 fi
 
 if have systemctl; then
-    print "  ...systemd detected, installing timer..."
+    printf '%s\n' "  ...systemd detected, installing timer..."
 
     local systemd_unit_dir systemctl_cmd
     if (( EUID == 0 )); then
@@ -56,7 +56,7 @@ Description=Prune stale TMPDIR entries
 [Service]
 Type=oneshot
 ExecStart=$zsh_bin -lc $prune_command"
-    print -r -- $service_content > $systemd_unit_dir/prune-tmpdir.service
+    printf '%s\n' "$service_content" > $systemd_unit_dir/prune-tmpdir.service
 
     local timer_content="[Unit]
 Description=Prune stale TMPDIR entries daily
@@ -68,15 +68,15 @@ Persistent=true
 
 [Install]
 WantedBy=timers.target"
-    print -r -- $timer_content > $systemd_unit_dir/prune-tmpdir.timer
+    printf '%s\n' "$timer_content" > $systemd_unit_dir/prune-tmpdir.timer
 
     if ${systemctl_cmd[@]} daemon-reload > /dev/null && ${systemctl_cmd[@]} enable --now prune-tmpdir.timer > /dev/null; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "Failed to install prune-tmpdir timer. Check permissions and systemd setup"
+        printf '%s\n' "Failed to install prune-tmpdir timer. Check permissions and systemd setup"
     fi
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
-    print "  ...launchd detected, installing user LaunchAgent..."
+    printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
     local launchd_dir=$HOME/Library/LaunchAgents
     local launchd_label=com.ctaylor.dotfiles.prune-tmpdir
@@ -108,24 +108,24 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <string>$XDG_STATE_HOME/prune-tmpdir.err</string>
 </dict>
 </plist>"
-    print -r -- $launchd_content > $launchd_plist
+    printf '%s\n' "$launchd_content" > $launchd_plist
 
     launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
     if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
         && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "Failed to install launchd task. Check $launchd_plist"
+        printf '%s\n' "Failed to install launchd task. Check $launchd_plist"
     fi
 elif have crontab; then
-    print "  ...cron detected, installing job..."
+    printf '%s\n' "  ...cron detected, installing job..."
     local cron_task="$zsh_bin -lc $prune_command"
     local cron_schedule="30 3 * * * $cron_task"
     if cat <(grep --invert-match --fixed-strings $cron_task <(crontab -l 2>/dev/null)) <(echo $cron_schedule) | crontab -; then
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "Failed to install cron job; run $pruner manually or add it to crontab"
+        printf '%s\n' "Failed to install cron job; run $pruner manually or add it to crontab"
     fi
 else
-    print "  ...no scheduler detected, skipping"
+    printf '%s\n' "  ...no scheduler detected, skipping"
 fi

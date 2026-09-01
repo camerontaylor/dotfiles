@@ -15,7 +15,7 @@ esac
 
 # Opt-out for users mid-debugging; set DOTFILES_SKIP_POSTMERGE=1 to skip.
 if [[ "${DOTFILES_SKIP_POSTMERGE:-0}" = 1 ]]; then
-    print "post-merge: DOTFILES_SKIP_POSTMERGE=1, skipping deploy." >&2
+    printf '%s\n' "post-merge: DOTFILES_SKIP_POSTMERGE=1, skipping deploy." >&2
     exit 0
 fi
 
@@ -23,7 +23,7 @@ repo_root="${0:A:h:h}"
 
 # Syntax precheck: a broken deploy.zsh must not break `git pull` itself.
 if ! zsh -n "$repo_root/deploy.zsh" 2>&1; then
-    print "post-merge: deploy.zsh has syntax errors; skipping." >&2
+    printf '%s\n' "post-merge: deploy.zsh has syntax errors; skipping." >&2
     exit 0
 fi
 

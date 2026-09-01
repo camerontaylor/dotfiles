@@ -9,7 +9,7 @@ for arg in "$@"; do
             force=true
             ;;
         *)
-            print "Usage: $0 [--force]" >&2
+            printf '%s\n' "Usage: $0 [--force]" >&2
             exit 1
             ;;
     esac
@@ -27,19 +27,19 @@ cd $SCRIPT_DIR
 XDG_CONFIG_HOME=$HOME/.config
 
 if ! have sops; then
-    print "sops not found; run 'mise install' first" >&2
+    printf '%s\n' "sops not found; run 'mise install' first" >&2
     exit 1
 fi
 
 if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
-    print "age key not found at $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
-    print "" >&2
-    print "  To decrypt secrets, place your age private key at:" >&2
-    print "    $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
-    print "" >&2
-    print "  If you have a backup, copy it there and run this script again." >&2
-    print "  If setting up fresh, run deploy.zsh first to generate a new key." >&2
-    print "  (A new key cannot decrypt existing .enc files — you must re-encrypt them.)" >&2
+    printf '%s\n' "age key not found at $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
+    printf '%s\n' "" >&2
+    printf '%s\n' "  To decrypt secrets, place your age private key at:" >&2
+    printf '%s\n' "    $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
+    printf '%s\n' "" >&2
+    printf '%s\n' "  If you have a backup, copy it there and run this script again." >&2
+    printf '%s\n' "  If setting up fresh, run deploy.zsh first to generate a new key." >&2
+    printf '%s\n' "  (A new key cannot decrypt existing .enc files — you must re-encrypt them.)" >&2
     exit 1
 fi
 
@@ -47,18 +47,18 @@ local enc_file target temp_file
 for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
     target=${enc_file%.enc}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
-        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
         continue
     fi
-    print "Decrypting ${enc_file}..."
+    printf '%s\n' "Decrypting ${enc_file}..."
     temp_file=$(mktemp)
     if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
         chmod 600 $temp_file
         mv $temp_file $target
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
         rm -f $temp_file
-        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+        printf '%s\n' "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
 
@@ -67,9 +67,9 @@ for enc_file in ssh/*.enc(N); do
     target=ssh/${${enc_file:t}%.enc}
     mkdir -p ssh
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
-        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
     else
-        print "Decrypting ${enc_file}..."
+        printf '%s\n' "Decrypting ${enc_file}..."
         temp_file=$(mktemp)
         if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
             if [[ $target == *.pub ]]; then
@@ -78,10 +78,10 @@ for enc_file in ssh/*.enc(N); do
                 chmod 600 $temp_file
             fi
             mv $temp_file $target
-            print "  ...done"
+            printf '%s\n' "  ...done"
         else
             rm -f $temp_file
-            print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+            printf '%s\n' "  ...failed to decrypt $enc_file (missing or wrong age key?)"
         fi
     fi
 done
@@ -101,18 +101,18 @@ for (( i = 1; i <= ${#portkey_enc_files}; i++ )); do
     target=${portkey_targets[i]}
     [[ -f $enc_file ]] || continue
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
-        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
         continue
     fi
-    print "Decrypting ${enc_file} -> ${target}..."
+    printf '%s\n' "Decrypting ${enc_file} -> ${target}..."
     temp_file=$(mktemp)
     if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
         chmod 600 $temp_file
         mv $temp_file $target
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
         rm -f $temp_file
-        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+        printf '%s\n' "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
 
@@ -129,18 +129,18 @@ for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
     [[ -f $enc_file ]] || continue
     [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
-        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
         continue
     fi
-    print "Decrypting ${enc_file} -> ${target}..."
+    printf '%s\n' "Decrypting ${enc_file} -> ${target}..."
     temp_file=$(mktemp)
     if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
         chmod 600 $temp_file
         mv $temp_file $target
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
         rm -f $temp_file
-        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+        printf '%s\n' "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done
 
@@ -165,17 +165,17 @@ for (( i = 1; i <= ${#openclaw_enc_files}; i++ )); do
     [[ -f $enc_file ]] || continue
     [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
-        print "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
         continue
     fi
-    print "Decrypting ${enc_file} -> ${target}..."
+    printf '%s\n' "Decrypting ${enc_file} -> ${target}..."
     temp_file=$(mktemp)
     if sops --decrypt $enc_file > $temp_file 2>/dev/null; then
         chmod 600 $temp_file
         mv $temp_file $target
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
         rm -f $temp_file
-        print "  ...failed to decrypt $enc_file (missing or wrong age key?)"
+        printf '%s\n' "  ...failed to decrypt $enc_file (missing or wrong age key?)"
     fi
 done

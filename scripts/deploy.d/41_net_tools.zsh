@@ -24,22 +24,22 @@ fi
 # the partial-upgrade caveat of -Sy without -u.
 local distro_id="" distro_like=""
 if [[ -r /etc/os-release ]]; then
-    distro_id=$(. /etc/os-release 2>/dev/null && print -r -- "${ID:-}")
-    distro_like=$(. /etc/os-release 2>/dev/null && print -r -- "${ID_LIKE:-}")
+    distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
+    distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")
 fi
 
 case " $distro_id $distro_like " in
     *" arch "*)
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: sudo pacman -Sy --needed --noconfirm openbsd-netcat socat"
+            printf '%s\n' "  [dry-run] would: sudo pacman -Sy --needed --noconfirm openbsd-netcat socat"
         elif sudo pacman -Sy --needed --noconfirm openbsd-netcat socat; then
             rehash
-            print "  ...net tools (nc, socat) present"
+            printf '%s\n' "  ...net tools (nc, socat) present"
         else
-            print "  ...failed to install net tools (see output above)"
+            printf '%s\n' "  ...failed to install net tools (see output above)"
         fi
         ;;
     *)
-        print "net-tools: non-Arch Linux — install nc + socat via your package manager"
+        printf '%s\n' "net-tools: non-Arch Linux — install nc + socat via your package manager"
         ;;
 esac

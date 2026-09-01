@@ -37,33 +37,33 @@ done
 # Install the client when missing; refresh under --upgrade on macOS.
 if [[ $DOTFILES_OS == Darwin ]]; then
     if ! ensure_homebrew_path; then
-        print "Tailscale: Homebrew not available, skipping"
+        printf '%s\n' "Tailscale: Homebrew not available, skipping"
         return 0
     fi
     if ! brew list --cask tailscale > /dev/null 2>&1; then
-        print "Installing Tailscale..."
+        printf '%s\n' "Installing Tailscale..."
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: brew install --cask tailscale"
+            printf '%s\n' "  [dry-run] would: brew install --cask tailscale"
         else
             if brew_cask_install_or_upgrade tailscale; then
                 rehash
-                print "  ...macOS may prompt to allow the Tailscale system extension"
-                print "     in System Settings -> Privacy & Security, and to open the app once."
+                printf '%s\n' "  ...macOS may prompt to allow the Tailscale system extension"
+                printf '%s\n' "     in System Settings -> Privacy & Security, and to open the app once."
             else
                 return 0
             fi
         fi
     elif $upgrade_mode; then
-        print "Upgrading Tailscale..."
+        printf '%s\n' "Upgrading Tailscale..."
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: brew upgrade --cask tailscale"
+            printf '%s\n' "  [dry-run] would: brew upgrade --cask tailscale"
         else
             brew_cask_install_or_upgrade tailscale || true
         fi
     fi
 else
     if ! have tailscale; then
-        print "Installing Tailscale..."
+        printf '%s\n' "Installing Tailscale..."
         # Distro-aware install. Tailscale's install.sh handles most families
         # (apt/dnf/zypper) well, but on Arch it shells out to `pacman -S` against
         # the LOCAL db, which fails when that db is stale (404 on a dropped
@@ -75,8 +75,8 @@ else
         # the install.sh default (safe).
         local distro_id="" distro_like=""
         if [[ -r /etc/os-release ]]; then
-            distro_id=$(. /etc/os-release 2>/dev/null && print -r -- "${ID:-}")
-            distro_like=$(. /etc/os-release 2>/dev/null && print -r -- "${ID_LIKE:-}")
+            distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
+            distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")
         fi
 
         # Match the token "arch" (Arch + all derivatives set ID or ID_LIKE to it:
@@ -91,7 +91,7 @@ else
                 # upgrade state. Fine for adding this near-static leaf here; on an
                 # existing daily-driver run `sudo pacman -Syu` soon after.
                 if (( DEPLOY_DRY_RUN )); then
-                    print "  [dry-run] would: sudo pacman -Sy --needed --noconfirm tailscale"
+                    printf '%s\n' "  [dry-run] would: sudo pacman -Sy --needed --noconfirm tailscale"
                     install_ok=1
                 elif sudo pacman -Sy --needed --noconfirm tailscale; then
                     install_ok=1
@@ -99,11 +99,11 @@ else
                 ;;
             *)
                 if ! have curl; then
-                    print "Tailscale: curl not available for install.sh, skipping install and join"
+                    printf '%s\n' "Tailscale: curl not available for install.sh, skipping install and join"
                     return 0
                 fi
                 if (( DEPLOY_DRY_RUN )); then
-                    print "  [dry-run] would: curl -fsSL https://tailscale.com/install.sh | sh"
+                    printf '%s\n' "  [dry-run] would: curl -fsSL https://tailscale.com/install.sh | sh"
                     install_ok=1
                 elif curl -fsSL https://tailscale.com/install.sh | sh; then
                     install_ok=1
@@ -112,9 +112,9 @@ else
         esac
 
         if (( install_ok )); then
-            (( DEPLOY_DRY_RUN )) || { rehash; print "  ...done" }
+            (( DEPLOY_DRY_RUN )) || { rehash; printf '%s\n' "  ...done" }
         else
-            print "  ...failed to install Tailscale (see output above)"
+            printf '%s\n' "  ...failed to install Tailscale (see output above)"
             return 0
         fi
     fi
@@ -127,7 +127,7 @@ fi
 if [[ $DOTFILES_OS == Linux ]]; then
     if have systemctl && ! systemctl is-active --quiet tailscaled 2>/dev/null; then
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: sudo systemctl enable --now tailscaled"
+            printf '%s\n' "  [dry-run] would: sudo systemctl enable --now tailscaled"
         else
             sudo systemctl enable --now tailscaled > /dev/null 2>&1 || true
         fi
@@ -154,7 +154,7 @@ else
 fi
 
 if [[ -z $ts_cli ]]; then
-    print "Tailscale: tailscale CLI not found, skipping join"
+    printf '%s\n' "Tailscale: tailscale CLI not found, skipping join"
     return 0
 fi
 
@@ -167,10 +167,10 @@ if [[ $DOTFILES_OS == Darwin ]]; then
     local ts_link=$HOME/.local/bin/tailscale
     if [[ ${ts_link:A} != ${ts_cli:A} ]]; then
         if (( DEPLOY_DRY_RUN )); then
-            print "  [dry-run] would: ln -sfn $ts_cli ~/.local/bin/tailscale"
+            printf '%s\n' "  [dry-run] would: ln -sfn $ts_cli ~/.local/bin/tailscale"
         else
             mkdir -p $HOME/.local/bin
-            ln -sfn $ts_cli $ts_link && print "Tailscale: linked CLI into ~/.local/bin (PATH-visible)"
+            ln -sfn $ts_cli $ts_link && printf '%s\n' "Tailscale: linked CLI into ~/.local/bin (PATH-visible)"
         fi
     fi
 fi
@@ -186,9 +186,9 @@ if "$ts_cli" status 2>/dev/null | grep -q '^100\.'; then
 fi
 
 if [[ -z ${TAILSCALE_AUTHKEY:-} ]]; then
-    print "Tailscale: \$TAILSCALE_AUTHKEY not set; skipping join."
-    print "  Expected at \$XDG_STATE_HOME/secrets/zsh/95_tailscale_secrets.zsh —"
-    print "  run ./deploy.zsh --only 65_secrets to render it (see ~/.local/secrets/README.md)."
+    printf '%s\n' "Tailscale: \$TAILSCALE_AUTHKEY not set; skipping join."
+    printf '%s\n' "  Expected at \$XDG_STATE_HOME/secrets/zsh/95_tailscale_secrets.zsh —"
+    printf '%s\n' "  run ./deploy.zsh --only 65_secrets to render it (see ~/.local/secrets/README.md)."
     return 0
 fi
 
@@ -223,7 +223,7 @@ if [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]]; then
     up_args+=(${(z)TAILSCALE_EXTRA_ARGS})
 fi
 
-print "Tailscale: bringing up tailnet (${ssh_label})..."
+printf '%s\n' "Tailscale: bringing up tailnet (${ssh_label})..."
 if (( DEPLOY_DRY_RUN )); then
     # Show the real non-secret args but NEVER echo the auth key.
     local dry_ssh=""
@@ -231,7 +231,7 @@ if (( DEPLOY_DRY_RUN )); then
     local dry_extra=""
     [[ -n $routes_csv ]] && dry_extra+=" --advertise-routes=$routes_csv"
     [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]] && dry_extra+=" $TAILSCALE_EXTRA_ARGS"
-    print "  [dry-run] would: $ts_cli up${dry_ssh} --accept-routes --authkey=***${dry_extra}"
+    printf '%s\n' "  [dry-run] would: $ts_cli up${dry_ssh} --accept-routes --authkey=***${dry_extra}"
 else
     local -a ts_cmd
     if [[ $DOTFILES_OS == Linux ]]; then
@@ -240,9 +240,9 @@ else
         ts_cmd=("$ts_cli" up $up_args)
     fi
     if "${ts_cmd[@]}" > /dev/null 2>&1; then
-        print "  ...connected"
+        printf '%s\n' "  ...connected"
     else
-        print "  ...tailscale up failed (key expired/invalid, or daemon not ready)"
-        print "     check the admin console and docs/tailscale-migration-runbook.md"
+        printf '%s\n' "  ...tailscale up failed (key expired/invalid, or daemon not ready)"
+        printf '%s\n' "     check the admin console and docs/tailscale-migration-runbook.md"
     fi
 fi

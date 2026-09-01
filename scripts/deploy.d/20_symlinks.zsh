@@ -1,6 +1,6 @@
 # Symlink every dotfile/config into its XDG home.
 
-print "Linking config files..."
+printf '%s\n' "Linking config files..."
 deploy_ln -sfn $SCRIPT_DIR/configs/bat/config $XDG_CONFIG_HOME/bat/config
 deploy_ln -sfn $SCRIPT_DIR/nvim/init.lua $XDG_CONFIG_HOME/nvim/init.lua
 deploy_ln -sfn $SCRIPT_DIR/nvim/init $XDG_CONFIG_HOME/nvim/plugin/init
@@ -56,11 +56,11 @@ deploy_ln -sfn $SCRIPT_DIR/gpg/gpg.conf $XDG_CONFIG_HOME/gnupg/gpg.conf
 # direct `>` would follow it and clobber the base file.
 deploy_ln -sfn $SCRIPT_DIR/scripts/pinentry-auto $HOME/.local/bin/pinentry-auto
 if (( DEPLOY_DRY_RUN )); then
-    print "  [dry-run] generate $XDG_CONFIG_HOME/gnupg/gpg-agent.conf"
+    printf '%s\n' "  [dry-run] generate $XDG_CONFIG_HOME/gnupg/gpg-agent.conf"
 else
     {
         cat $SCRIPT_DIR/gpg/gpg-agent.conf
-        print "pinentry-program $HOME/.local/bin/pinentry-auto"
+        printf '%s\n' "pinentry-program $HOME/.local/bin/pinentry-auto"
     } > $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp
     mv -f $XDG_CONFIG_HOME/gnupg/gpg-agent.conf.tmp $XDG_CONFIG_HOME/gnupg/gpg-agent.conf
     # Pick the change up without killing cached passphrases / SSH keys.
@@ -76,9 +76,9 @@ deploy_ln -sfn $claude_code_config_dir/CLAUDE.md $HOME/.claude/CLAUDE.md
 # removal propagates to every machine on its next deploy (idempotent no-op once gone).
 if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
     if (( DEPLOY_DRY_RUN )); then
-        print "  [dry-run] rm -f $HOME/.claude/RTK.md (stale RTK link)"
+        printf '%s\n' "  [dry-run] rm -f $HOME/.claude/RTK.md (stale RTK link)"
     else
-        rm -f $HOME/.claude/RTK.md && print "  removed stale ~/.claude/RTK.md"
+        rm -f $HOME/.claude/RTK.md && printf '%s\n' "  removed stale ~/.claude/RTK.md"
     fi
 fi
 deploy_ln -sfn $claude_code_config_dir/settings.json $HOME/.claude/settings.json
@@ -166,4 +166,4 @@ if [[ $DOTFILES_OS == Linux ]]; then
     deploy_mkdir -p $XDG_CONFIG_HOME/wpaperd
     deploy_ln -sfn $SCRIPT_DIR/configs/wpaperd/config.toml $XDG_CONFIG_HOME/wpaperd/config.toml
 fi
-print "  ...done"
+printf '%s\n' "  ...done"

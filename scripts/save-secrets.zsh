@@ -13,7 +13,7 @@ for arg in "$@"; do
             git_add=true
             ;;
         *)
-            print "Usage: $0 [--force] [--git-add]" >&2
+            printf '%s\n' "Usage: $0 [--force] [--git-add]" >&2
             exit 1
             ;;
     esac
@@ -31,12 +31,12 @@ cd $SCRIPT_DIR
 XDG_CONFIG_HOME=$HOME/.config
 
 if ! have sops; then
-    print "sops not found; run 'mise install' first" >&2
+    printf '%s\n' "sops not found; run 'mise install' first" >&2
     exit 1
 fi
 
 if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
-    print "age key not found at $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
+    printf '%s\n' "age key not found at $XDG_CONFIG_HOME/sops/age/keys.txt" >&2
     exit 1
 fi
 
@@ -76,31 +76,31 @@ encrypt_if_changed() {
     # drop that change. Skip-only — it never *forces* a re-encrypt, so the
     # content check below still suppresses SOPS nonce churn. --force overrides.
     if [[ -f $enc_file && $force == false && $enc_file -nt $plaintext ]]; then
-        print "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
+        printf '%s\n' "Skipping ${plaintext}: encrypted ${enc_file} is newer (use --force to overwrite)"
         return 0
     fi
 
     if [[ -f $enc_file && $force == false ]]; then
         if encrypted_matches_plaintext "$plaintext" "$enc_file"; then
-            print "Skipping ${plaintext}: encrypted ${enc_file} already matches plaintext"
+            printf '%s\n' "Skipping ${plaintext}: encrypted ${enc_file} already matches plaintext"
             return 0
         else
             compare_status=$?
             if (( compare_status != 1 )); then
-                print "Failed to decrypt ${enc_file}; use --force to overwrite" >&2
+                printf '%s\n' "Failed to decrypt ${enc_file}; use --force to overwrite" >&2
                 return 1
             fi
         fi
     fi
 
-    print "Encrypting ${plaintext} -> ${enc_file}..."
+    printf '%s\n' "Encrypting ${plaintext} -> ${enc_file}..."
     if sops --encrypt --input-type binary --output-type binary --output "$enc_file" "$plaintext" 2>/dev/null; then
         if $git_add; then
             git add "$enc_file"
         fi
-        print "  ...done"
+        printf '%s\n' "  ...done"
     else
-        print "  ...failed to encrypt $plaintext" >&2
+        printf '%s\n' "  ...failed to encrypt $plaintext" >&2
         return 1
     fi
 }
