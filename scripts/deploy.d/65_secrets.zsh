@@ -46,7 +46,7 @@ secrets_bootstrap_help() {
 if [[ ! -f $age_key_dir/keys.txt ]]; then
     if have age-keygen; then
         printf '%s\n' "Generating age key for secrets..."
-        zf_mkdir -p $age_key_dir
+        deploy_mkdir -p $age_key_dir
         age-keygen -o $age_key_dir/keys.txt 2>/dev/null
         chmod 600 $age_key_dir/keys.txt
         printf '%s\n' "  ...done"
@@ -173,8 +173,8 @@ if [[ -d $secrets_repo/.git ]]; then
         # "pulled by hand, forgot to render" gap. The renderer is
         # standalone-safe precisely so this hook path works.
         if [[ -f $secrets_repo/scripts/post-merge ]]; then
-            zf_mkdir -p $secrets_repo/.git/hooks
-            zf_ln -sfn ../../scripts/post-merge $secrets_repo/.git/hooks/post-merge
+            deploy_mkdir -p $secrets_repo/.git/hooks
+            deploy_ln -sfn ../../scripts/post-merge $secrets_repo/.git/hooks/post-merge
         else
             printf '%s\n' "  note: $secrets_repo/scripts/post-merge missing; no re-render hook installed"
         fi

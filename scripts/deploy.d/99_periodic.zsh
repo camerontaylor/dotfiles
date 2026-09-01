@@ -16,7 +16,7 @@ if have systemctl; then
         systemctl_cmd=(systemctl --user)
         printf '%s\n' "  ...running as regular user, installing user timer..."
     fi
-    zf_mkdir -p $systemd_unit_dir
+    deploy_mkdir -p $systemd_unit_dir
 
     service_name=pull-dotfiles.service
     service_content="[Unit]
@@ -53,7 +53,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.pull
     launchd_plist=$launchd_dir/$launchd_label.plist
-    zf_mkdir -p $launchd_dir
+    deploy_mkdir -p $launchd_dir
 
     launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>

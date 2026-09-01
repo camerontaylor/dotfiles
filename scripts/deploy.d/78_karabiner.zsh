@@ -22,7 +22,7 @@ fi
 kb_src=$SCRIPT_DIR/configs/karabiner/karabiner.ts
 kb_target=$XDG_CONFIG_HOME/karabiner/karabiner.json
 
-zf_mkdir -p $XDG_CONFIG_HOME/karabiner
+deploy_mkdir -p $XDG_CONFIG_HOME/karabiner
 
 if [[ -e $kb_target && ! $kb_src -nt $kb_target ]]; then
     printf '%s\n' "Karabiner config up to date (karabiner.ts not newer); skipping"

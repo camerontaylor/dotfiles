@@ -40,6 +40,6 @@ fi
 
 f=
 for f in $empty_caches; do
-    zf_rm -f $f $f.zwc
+    deploy_rm -f $f $f.zwc
 done
 printf '%s\n' "  ...removed ${#empty_caches} empty cache file(s)"

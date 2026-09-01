@@ -9,7 +9,7 @@
 # git-quick-stats must be on PATH so `git quick-stats` subcommand dispatch finds
 # it. httpstat/spark/spectre are reached via aliases in zsh/rc.d, so they need no
 # symlink. Vendored scripts have no build step and behave identically on both OSes.
-zf_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-stats
+deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-stats
 
 # git-extras (80+ git subcommands + completion), git-restore-mtime, and testssl
 # (TLS scanner) have no mise/aqua backend, so they come from the system package

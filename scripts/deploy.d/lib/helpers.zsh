@@ -7,15 +7,17 @@
 have() { command -v -- "$1" >/dev/null 2>&1; }
 isfunc() { typeset -f -- "$1" >/dev/null 2>&1; }
 
-# Dry-run-aware wrappers over the zf_ln / zf_mkdir builtins loaded by
-# deploy.zsh. A real run passes straight through to the builtin (preserving
-# its exit status, and so err_exit behavior); under --dry-run
-# (DEPLOY_DRY_RUN=1) they print the intended command instead of mutating.
+# Dry-run-aware wrappers over the mutating coreutils. A real run passes
+# straight through to the command (preserving its exit status, and so
+# err_exit behavior); under --dry-run (DEPLOY_DRY_RUN=1) they print the
+# intended command instead of mutating. Plain ln/mkdir/chmod/rm — not the
+# zsh/files zf_* builtins — so fragments stay shell-agnostic (bash has no
+# zmodload; deploy.zsh's own zmodload covers only its internal use).
 deploy_ln() {
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would ln $*"
     else
-        zf_ln "$@"
+        ln "$@"
     fi
 }
 
@@ -23,7 +25,23 @@ deploy_mkdir() {
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would mkdir $*"
     else
-        zf_mkdir "$@"
+        mkdir "$@"
+    fi
+}
+
+deploy_chmod() {
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would chmod $*"
+    else
+        chmod "$@"
+    fi
+}
+
+deploy_rm() {
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would rm $*"
+    else
+        rm "$@"
     fi
 }
 

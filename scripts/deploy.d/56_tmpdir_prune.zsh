@@ -48,7 +48,7 @@ if have systemctl; then
         systemd_unit_dir=$XDG_CONFIG_HOME/systemd/user
         systemctl_cmd=(systemctl --user)
     fi
-    zf_mkdir -p $systemd_unit_dir
+    deploy_mkdir -p $systemd_unit_dir
 
     service_content="[Unit]
 Description=Prune stale TMPDIR entries
@@ -81,7 +81,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.prune-tmpdir
     launchd_plist=$launchd_dir/$launchd_label.plist
-    zf_mkdir -p $launchd_dir
+    deploy_mkdir -p $launchd_dir
 
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
