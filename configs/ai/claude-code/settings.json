@@ -112,6 +112,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/repos/hart-agent-homes/tools/distiller/hooks/navigation-read.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionEnd": [
