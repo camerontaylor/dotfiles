@@ -19,4 +19,48 @@ while [[ -L $_self ]]; do
     [[ $_self != /* ]] && _self=$_self_dir/$_self
 done
 SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
-exec $SCRIPT_DIR/enforce-codex-defaults.zsh --git-add
+
+# ── Dual-shell syntax gate for scripts/ ──────────────────────────────────
+# The bootstrap layer must run under both zsh (deploy.zsh today) and bash
+# 3.2 (the driver floor; see docs/bash-compatibility.md). Every staged
+# shell file under scripts/ has to parse under BOTH shells — a file only
+# zsh -n accepts would break the bash driver silently at runtime.
+#
+# Shell file = .zsh/.sh extension (deploy.d fragments carry no shebang) or
+# a shell shebang on line 1. Checked with /bin/bash to pin the macOS 3.2
+# floor (a brew bash 5 first on PATH would accept more syntax than the
+# fleet's oldest shell; on Linux /bin/bash is the real target) and plain
+# `zsh` (any 5.x parses identically).
+#
+# Skip-list (file: reason) — intentionally empty:
+#   (none)
+_gate_fail=0
+while IFS= read -r _gate_f; do
+    [[ -n $_gate_f ]] || continue
+    case $_gate_f in
+        *.zsh|*.sh) _gate_shell=1 ;;
+        *)
+            if head -n 1 "$_gate_f" 2>/dev/null | grep -qE '^#!.*(bash|zsh|sh)([[:space:]]|$)'; then
+                _gate_shell=1
+            else
+                _gate_shell=0
+            fi
+            ;;
+    esac
+    (( _gate_shell )) || continue
+    if ! zsh -n "$_gate_f" 2>/dev/null; then
+        printf '%s\n' "pre-commit: zsh -n failed: $_gate_f" >&2
+        _gate_fail=1
+    fi
+    if ! /bin/bash -n "$_gate_f" 2>/dev/null; then
+        printf '%s\n' "pre-commit: /bin/bash -n failed: $_gate_f" >&2
+        _gate_fail=1
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -- scripts)
+
+if (( _gate_fail )); then
+    printf '%s\n' "pre-commit: shell syntax gate failed — fix before committing" >&2
+    exit 1
+fi
+
+exec "$SCRIPT_DIR/enforce-codex-defaults.zsh" --git-add
