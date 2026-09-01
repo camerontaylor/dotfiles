@@ -98,7 +98,9 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             cmd=${recipe#*|}
             label=${probe_str%% *}        # first probe name = display label
             present=0
-            for p in ${=probe_str}; do
+            # ${=var} forced word-split is zsh-only; unquoted $(…) splits in
+            # both shells.
+            for p in $(printf '%s\n' "$probe_str"); do
                 have "$p" && { present=1; break; }
             done
             (( present )) && continue

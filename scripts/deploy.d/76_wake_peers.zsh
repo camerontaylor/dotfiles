@@ -25,9 +25,13 @@ if [[ -z $self ]]; then
     return 0
 fi
 
-# Strip comments/blank lines from peers.conf into an array.
+# Strip comments/blank lines from peers.conf into an array. The while-read
+# replaces zsh's ${(@f)…} line-split; awk's NF>0 already guarantees no empty
+# lines, so the -n guard only fends off a trailing blank.
 peers=()
-peers=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $peers_conf)}")
+while IFS= read -r _peer; do
+    [[ -n $_peer ]] && peers+=("$_peer")
+done < <(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $peers_conf)
 
 host= self_in_list=0
 for host in "${peers[@]}"; do

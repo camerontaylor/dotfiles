@@ -22,6 +22,34 @@ abspath() {
     printf '%s\n' "$(cd -P -- "$(dirname -- "$p")" && pwd)/$(basename -- "$p")"
 }
 
+# POSIX single-quote a value so it re-parses as exactly one shell word
+# ('it'\''s') — zsh's ${(qq)} in portable form; byte-identical output from
+# both shells, safe inside eval/sh -c/unit files/plists. Built from
+# ${var%%pat}/${var#pat} only: the ${var//pat/rep} replacement has
+# shell-specific backslash rules and mis-quotes the '\'' splice.
+sh_quote() {
+    local s=$1 out=\' piece=
+    while :; do
+        piece=${s%%\'*}
+        out=$out$piece
+        [[ $s == "$piece" ]] && break
+        out=$out"'\''"
+        s=${s#*\'}
+    done
+    printf '%s' "$out'"
+}
+
+# Display form of a path with $HOME collapsed to ~ — zsh's ${(D)} in
+# portable form; paths outside $HOME pass through unchanged.
+tilde_collapse() {
+    local p=$1
+    case $p in
+        "$HOME")   printf '~' ;;
+        "$HOME"/*) printf '~%s' "${p#"$HOME"}" ;;
+        *)         printf '%s' "$p" ;;
+    esac
+}
+
 # Dry-run-aware wrappers over the mutating coreutils. A real run passes
 # straight through to the command (preserving its exit status, and so
 # err_exit behavior); under --dry-run (DEPLOY_DRY_RUN=1) they print the

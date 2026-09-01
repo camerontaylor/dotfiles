@@ -40,13 +40,39 @@ setopt extended_glob typeset_silent
 # Reads `KEY=value` lines (sops' dotenv output is verbatim: no quoting, no
 # escaping, values may contain spaces/quotes/$/#/=) and emits `export` lines.
 #
-# Values are machine-quoted with ${(qq)} (single quotes) so nothing in a secret
+# Values are machine-quoted with POSIX single quotes so nothing in a secret
 # is ever re-interpreted by the shell. The one exception is a value that is
 # exactly a reference to another variable — today `PORTKEY_API_KEY` is stored
 # as `$PORTKEY_LOCAL_API_KEY`, an alias whose whole point is to follow the
 # other key. Single-quoting that would turn a live alias into the literal
 # string. Such values are emitted double-quoted so the reference still resolves
 # at source time, preserving today's behaviour exactly.
+
+# POSIX single-quote a value so it re-parses as exactly one word ('it'\''s') —
+# byte-identical to zsh's ${(qq)}, so a file rendered by either shell is
+# unchanged by the other. Loop form: the ${var//pat/rep} replacement has
+# shell-specific backslash rules and mis-quotes the '\'' splice.
+_sh_quote() {
+    local s=$1 out=\' piece=
+    while :; do
+        piece=${s%%\'*}
+        out=$out$piece
+        [[ $s == "$piece" ]] && break
+        out=$out"'\''"
+        s=${s#*\'}
+    done
+    printf '%s' "$out'"
+}
+
+# Join arguments with ", " — zsh's ${(j:, :)arr} join in portable form.
+_join_commas() {
+    local _j= _e
+    for _e in "$@"; do
+        _j="${_j:+$_j, }$_e"
+    done
+    printf '%s' "$_j"
+}
+
 secrets_convert_dotenv() {
     local line key val
     while IFS= read -r line; do
@@ -57,7 +83,7 @@ secrets_convert_dotenv() {
         if [[ $val == \$[A-Za-z_]##[A-Za-z_0-9]# ]]; then
             printf '%s\n' "export ${key}=\"${val}\""
         else
-            printf '%s\n' "export ${key}=${(qq)val}"
+            printf '%s\n' "export ${key}=$(_sh_quote "$val")"
         fi
     done
 }
@@ -428,10 +454,10 @@ done < <(git -C $SECRETS_REPO ls-files 2>/dev/null)
 # ── Summary + marker ───────────────────────────────────────────────────────
 
 printf '%s\n' "  rendered ${N_RENDERED}, quarantined ${N_QUARANTINED}, backed-up ${N_BACKED_UP}, unmapped ${#UNMAPPED[@]}, gated-out ${N_SKIPPED}, failed ${N_FAILED}"
-(( ${#UNMAPPED[@]} )) && printf '%s\n' "  UNMAPPED (in secrets repo, never rendered): ${(j:, :)UNMAPPED}"
-(( ${#FAILED_NAMES[@]} )) && printf '%s\n' "  FAILED: ${(j:, :)FAILED_NAMES}" >&2
+(( ${#UNMAPPED[@]} )) && printf '%s\n' "  UNMAPPED (in secrets repo, never rendered): $(_join_commas "${UNMAPPED[@]}")"
+(( ${#FAILED_NAMES[@]} )) && printf '%s\n' "  FAILED: $(_join_commas "${FAILED_NAMES[@]}")" >&2
 if (( ${#STILL_SHADOWING[@]} )); then
-    printf '%s\n' "  WARNING: stale legacy plaintexts still in zsh/env.d/ and will shadow rendered values until a full render succeeds: ${(j:, :)STILL_SHADOWING}" >&2
+    printf '%s\n' "  WARNING: stale legacy plaintexts still in zsh/env.d/ and will shadow rendered values until a full render succeeds: $(_join_commas "${STILL_SHADOWING[@]}")" >&2
 fi
 
 if (( N_FAILED > 0 )); then

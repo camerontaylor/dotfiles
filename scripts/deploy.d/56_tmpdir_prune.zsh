@@ -30,7 +30,7 @@ printf '%s\n' "Installing daily TMPDIR prune task..."
 # The job must run through a login shell so env.d sets TMPDIR before the
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
 zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
-prune_command="${(q)pruner}"
+prune_command=$(sh_quote "$pruner")
 
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"

@@ -226,16 +226,23 @@ fi
 routes_csv=""
 if [[ -n ${TAILSCALE_ADVERTISE_ROUTES:-} ]]; then
     # tailscale wants comma-separated CIDRs; accept whitespace-separated too.
-    # Split on shell words then rejoin with commas so repeated/leading/trailing
-    # spaces don't produce empty (",,") fields.
-    routes_csv=${(j:,:)${(z)TAILSCALE_ADVERTISE_ROUTES}}
+    # Split on whitespace then rejoin with commas so repeated/leading/trailing
+    # spaces don't produce empty (",,") fields. An unquoted $(…) command
+    # substitution is the one word-splitter both shells perform — it replaces
+    # zsh's ${(z)}+${(j:,)} pair.
+    for _route in $(printf '%s\n' "$TAILSCALE_ADVERTISE_ROUTES"); do
+        routes_csv="${routes_csv:+$routes_csv,}$_route"
+    done
     up_args+=("--advertise-routes=$routes_csv")
 fi
 
 if [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]]; then
-    # (z) splits on shell words; values must be shell-clean (no unbalanced quotes
-    # or shell operators). Use --flag=value form for anything containing spaces.
-    up_args+=(${(z)TAILSCALE_EXTRA_ARGS})
+    # Whitespace word-split (replaces zsh's ${(z)}); values must be shell-clean
+    # (no unbalanced quotes or shell operators). Use --flag=value form for
+    # anything containing spaces.
+    for _extra in $(printf '%s\n' "$TAILSCALE_EXTRA_ARGS"); do
+        up_args+=("$_extra")
+    done
 fi
 
 printf '%s\n' "Tailscale: bringing up tailnet (${ssh_label})..."

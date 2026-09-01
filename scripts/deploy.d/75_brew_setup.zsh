@@ -50,18 +50,33 @@ if have brew && $upgrade_mode; then
     brew_upgrade_skip=( paseo )
     brew_outdated=() brew_upgradable=()
     # `brew outdated --quiet` prints one name per line, formulae and casks
-    # alike; ${(f)...} splits on newlines and ${a:#p} drops matching elements.
-    brew_outdated=( ${(f)"$(brew outdated --quiet 2>/dev/null)"} )
-    brew_upgradable=( ${brew_outdated:|brew_upgrade_skip} )
+    # alike; a while-read replaces ${(f)} splitting and a membership scan
+    # replaces ${a:|b} array subtraction (both zsh-only).
+    while IFS= read -r _out; do
+        [[ -n $_out ]] && brew_outdated+=("$_out")
+    done < <(brew outdated --quiet 2>/dev/null)
+    _skip=0
+    for _out in "${brew_outdated[@]}"; do
+        _skip=0
+        for _held in "${brew_upgrade_skip[@]}"; do
+            [[ $_out == "$_held" ]] && _skip=1
+        done
+        (( _skip )) || brew_upgradable+=("$_out")
+    done
+    # "a, b" display list — the ${(j:, :)arr} join has no bash spelling.
+    _skip_list=
+    for _held in "${brew_upgrade_skip[@]}"; do
+        _skip_list="${_skip_list:+$_skip_list, }$_held"
+    done
     printf '%s\n' "Upgrading Homebrew packages..."
     if (( ${#brew_outdated[@]} == 0 )); then
         printf '%s\n' "  ...nothing outdated"
     elif (( ${#brew_upgradable[@]} == 0 )); then
-        printf '%s\n' "  ...nothing to upgrade (held back: ${(j:, :)brew_upgrade_skip})"
+        printf '%s\n' "  ...nothing to upgrade (held back: $_skip_list)"
     elif brew upgrade "${brew_upgradable[@]}" > /dev/null 2>&1; then
         printf '%s\n' "  ...done (${#brew_upgradable[@]} upgraded)"
         (( ${#brew_outdated[@]} != ${#brew_upgradable[@]} )) \
-            && printf '%s\n' "  ...held back: ${(j:, :)brew_upgrade_skip}"
+            && printf '%s\n' "  ...held back: $_skip_list"
     else
         printf '%s\n' "  ...brew upgrade had issues (may be normal if no updates)"
     fi

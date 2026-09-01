@@ -60,7 +60,13 @@ for entry in "${generators[@]}"; do
     # which puts `#compdef sops` on line 2 — but compinit's autoload-on-tag
     # mechanism requires `#compdef NAME` on line 1.
     tmp=$(mktemp "${TMPDIR:-/tmp}/zsh-comp-${tool}.XXXXXX")
-    if ${=tool} ${=subcmd} 2>/dev/null | sed '/./,$!d' > $tmp \
+    # ${=var} forced word-split is zsh-only; an unquoted $(…) command
+    # substitution splits in both shells.
+    subcmd_words=()
+    for _w in $(printf '%s\n' "$subcmd"); do
+        subcmd_words+=("$_w")
+    done
+    if "$tool" "${subcmd_words[@]}" 2>/dev/null | sed '/./,$!d' > $tmp \
         && [[ -s $tmp ]] \
         && head -1 $tmp | grep -q "^#compdef\b"; then
         mv $tmp $dest_path

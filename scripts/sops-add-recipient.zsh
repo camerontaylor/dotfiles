@@ -21,6 +21,9 @@ done
 SCRIPT_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
 sops_yaml=$SCRIPT_DIR/.sops.yaml
 
+# Deploy fragments get this from deploy.d/lib/helpers.zsh; standalone copy.
+have() { command -v -- "$1" >/dev/null 2>&1; }
+
 if [[ $# -ne 1 ]]; then
     printf '%s\n' "Usage: $0 age1<pubkey>" >&2
     exit 1

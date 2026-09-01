@@ -39,7 +39,7 @@ if sudo cmp -s "$keyd_src" "$keyd_target" 2>/dev/null; then
 fi
 
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "  [dry-run] would: sudo install -Dm644 ${(D)keyd_src} $keyd_target (backing up any existing)"
+    printf '%s\n' "  [dry-run] would: sudo install -Dm644 $(tilde_collapse "$keyd_src") $keyd_target (backing up any existing)"
     printf '%s\n' "  [dry-run] would: sudo systemctl enable --now keyd && sudo keyd reload"
     return 0
 fi

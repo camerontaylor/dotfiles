@@ -55,7 +55,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     launchd_plist=$launchd_dir/$launchd_label.plist
     deploy_mkdir -p $launchd_dir
 
-    launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    launchd_command="cd $(sh_quote "$SCRIPT_DIR") && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\">

@@ -29,8 +29,12 @@ if [[ -z $self ]]; then
 fi
 
 # Strip comments/blank lines from hosts.conf into an array (BSD awk clean).
+# while-read replaces zsh's ${(@f)…} line-split; awk's NF>0 already
+# guarantees no empty lines.
 obs_enabled=()
-obs_enabled=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $obs_hosts)}")
+while IFS= read -r _host; do
+    [[ -n $_host ]] && obs_enabled+=("$_host")
+done < <(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $obs_hosts)
 
 host= self_enabled=0
 for host in "${obs_enabled[@]}"; do

@@ -47,14 +47,14 @@ fi
 
 if [[ -z $kb_runner ]]; then
     printf '%s\n' "  ...no TypeScript runtime (bun/tsx/npx) on PATH; install one, then"
-    printf '%s\n' "     re-run: bun ${(D)kb_src}"
+    printf '%s\n' "     re-run: bun $(tilde_collapse "$kb_src")"
     return 0
 fi
 
 # The generator writes $XDG_CONFIG_HOME/karabiner/karabiner.json and creates its
 # own .bak, so a successful run leaves the target in place; Karabiner hot-reloads.
-if eval "$kb_runner ${(q)kb_src}" > /dev/null 2>&1; then
+if eval "$kb_runner $(sh_quote "$kb_src")" > /dev/null 2>&1; then
     printf '%s\n' "  ...generated via $kb_runner"
 else
-    printf '%s\n' "  ...failed to generate Karabiner config (run 'bun ${(D)kb_src}' to see the error)"
+    printf '%s\n' "  ...failed to generate Karabiner config (run 'bun $(tilde_collapse "$kb_src")' to see the error)"
 fi

@@ -44,6 +44,9 @@ if [[ $SCRIPT_DIR == $HOME.homedir* ]]; then
     SCRIPT_DIR=${SCRIPT_DIR/.homedir/}
 fi
 
+# Deploy fragments get this from deploy.d/lib/helpers.zsh; standalone copy.
+have() { command -v -- "$1" >/dev/null 2>&1; }
+
 config_file=$SCRIPT_DIR/configs/ai/codex/config.toml
 
 while (( $# )); do
