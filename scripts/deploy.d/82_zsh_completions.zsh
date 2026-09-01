@@ -44,7 +44,7 @@ for entry in "${generators[@]}"; do
 
     if ! have "$tool"; then
         printf '%s\n' "  ...skip $tool (not installed)"
-        (( skipped_count++ ))
+        skipped_count=$((skipped_count+1))
         continue
     fi
 
@@ -71,7 +71,7 @@ for entry in "${generators[@]}"; do
         && head -1 $tmp | grep -q "^#compdef\b"; then
         mv $tmp $dest_path
         printf '%s\n' "  ...wrote $dest_name"
-        (( generated_count++ ))
+        generated_count=$((generated_count+1))
     else
         rm -f $tmp
         printf '%s\n' "  ...failed to generate $dest_name from \`$tool $subcmd\`"
@@ -88,7 +88,7 @@ if have sg; then
 _ast-grep "$@"
 COMPDEF
     printf '%s\n' "  ...wrote _sg (shim -> _ast-grep)"
-    (( generated_count++ ))
+    generated_count=$((generated_count+1))
 fi
 
 # Invalidate the compinit cache so the next interactive shell picks up the

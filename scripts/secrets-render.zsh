@@ -291,20 +291,20 @@ for _row_rec in "${MAP_ROWS[@]}"; do
     post=${_rest#*|}
 
     if ! _gate_open $gate; then
-        (( N_SKIPPED++ ))
+        N_SKIPPED=$((N_SKIPPED+1))
         continue
     fi
 
     if [[ ! -f $src ]]; then
         printf '%s\n' "  FAILED $src_name: missing from $SECRETS_REPO" >&2
         FAILED_NAMES+=("$src_name")
-        (( N_FAILED++ ))
+        N_FAILED=$((N_FAILED+1))
         continue
     fi
 
     if (( _dry )); then
         printf '%s\n' "  [dry-run] would render $src_name -> $dst (mode $mode)"
-        (( N_RENDERED++ ))
+        N_RENDERED=$((N_RENDERED+1))
         [[ $post == sshlink ]] && SSH_LINKS+=("$dst")
         continue
     fi
@@ -328,7 +328,7 @@ for _row_rec in "${MAP_ROWS[@]}"; do
     tmp=
     tmp=$(mktemp "${dst}.render.XXXXXX") || {
         printf '%s\n' "  FAILED $src_name: mktemp in $dstdir" >&2
-        FAILED_NAMES+=("$src_name"); (( N_FAILED++ )); continue
+        FAILED_NAMES+=("$src_name"); N_FAILED=$((N_FAILED+1)); continue
     }
     chmod 600 $tmp
 
@@ -361,7 +361,7 @@ for _row_rec in "${MAP_ROWS[@]}"; do
         rm -f $tmp
         printf '%s\n' "  FAILED $src_name: decrypt/render error (age key registered?)" >&2
         FAILED_NAMES+=("$src_name")
-        (( N_FAILED++ ))
+        N_FAILED=$((N_FAILED+1))
         continue
     fi
 
@@ -373,14 +373,14 @@ for _row_rec in "${MAP_ROWS[@]}"; do
         [[ -d $LEGACY_DIR ]] || install -m 700 -d $LEGACY_DIR
         backup="$LEGACY_DIR/$(_backup_name "$dst")"
         if [[ ! -e $backup ]]; then
-            cp $dst $backup && (( N_BACKED_UP++ ))
+            cp $dst $backup && N_BACKED_UP=$((N_BACKED_UP+1))
             printf '%s\n' "  backed up pre-existing $dst -> legacy-removed/${backup##*/}"
         fi
     fi
 
     chmod $mode $tmp
     mv -f $tmp $dst
-    (( N_RENDERED++ ))
+    N_RENDERED=$((N_RENDERED+1))
     [[ $post == sshlink ]] && SSH_LINKS+=("$dst")
 done
 
@@ -410,7 +410,7 @@ if (( N_FAILED == 0 && ! _dry )); then
             # and park this one beside it rather than losing either.
             q=$q.$(date -u '+%Y%m%dT%H%M%SZ')
         fi
-        mv -f $_legacy $q && (( N_QUARANTINED++ ))
+        mv -f $_legacy $q && N_QUARANTINED=$((N_QUARANTINED+1))
     done
 elif (( N_FAILED > 0 )); then
     # A failed render skips the quarantine entirely, so say plainly which
