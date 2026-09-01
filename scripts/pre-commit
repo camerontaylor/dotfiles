@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/bin/sh
 # Enforce stable generated config defaults before commit.
 # Runs on: git commit (pre-commit hook)
 #
@@ -7,16 +7,24 @@
 # even when plaintext hadn't changed — folding noise into unrelated commits
 # and producing routine ssh/config.enc conflicts on stash/rebase. Run
 # `./scripts/save-secrets.zsh` manually after editing a secret.
+#
+# POSIX sh (docs/bash-compatibility.md §D): a zsh-shebang hook would block
+# every commit on a host without zsh. The staged file list moves through a
+# temp file because POSIX sh has no <(...) process substitution, and a
+# `while` fed from a pipeline would lose _gate_fail to its subshell.
 
 set -e
 
 # Hand-rolled symlink walk (the repo's canonical pattern, see
-# scripts/generate-commit-msg) — zsh's ${0:A:h} has no bash spelling.
+# scripts/generate-commit-msg) — zsh's ${0:A:h} has no POSIX spelling.
 _self=$0
-while [[ -L $_self ]]; do
+while [ -L "$_self" ]; do
     _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
     _self=$(readlink "$_self")
-    [[ $_self != /* ]] && _self=$_self_dir/$_self
+    case $_self in
+        /*) ;;
+        *) _self=$_self_dir/$_self ;;
+    esac
 done
 SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
 
@@ -35,8 +43,19 @@ SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
 # Skip-list (file: reason) — intentionally empty:
 #   (none)
 _gate_fail=0
+_gate_tmp=$(mktemp "${TMPDIR:-/tmp}/pre-commit.XXXXXX") || {
+    printf '%s\n' "pre-commit: mktemp failed" >&2
+    exit 1
+}
+# A failing `git diff --cached` aborts loud rather than letting the gate
+# pass vacuously on an empty list (the old <(...) form failed silently).
+if ! git diff --cached --name-only --diff-filter=ACMR -- scripts > "$_gate_tmp"; then
+    rm -f "$_gate_tmp"
+    printf '%s\n' "pre-commit: git diff --cached failed; refusing to pass the gate on an empty list" >&2
+    exit 1
+fi
 while IFS= read -r _gate_f; do
-    [[ -n $_gate_f ]] || continue
+    [ -n "$_gate_f" ] || continue
     case $_gate_f in
         *.zsh|*.sh) _gate_shell=1 ;;
         *)
@@ -47,7 +66,7 @@ while IFS= read -r _gate_f; do
             fi
             ;;
     esac
-    (( _gate_shell )) || continue
+    [ "$_gate_shell" = 1 ] || continue
     if ! zsh -n "$_gate_f" 2>/dev/null; then
         printf '%s\n' "pre-commit: zsh -n failed: $_gate_f" >&2
         _gate_fail=1
@@ -56,9 +75,10 @@ while IFS= read -r _gate_f; do
         printf '%s\n' "pre-commit: /bin/bash -n failed: $_gate_f" >&2
         _gate_fail=1
     fi
-done < <(git diff --cached --name-only --diff-filter=ACMR -- scripts)
+done < "$_gate_tmp"
+rm -f "$_gate_tmp"
 
-if (( _gate_fail )); then
+if [ "$_gate_fail" = 1 ]; then
     printf '%s\n' "pre-commit: shell syntax gate failed — fix before committing" >&2
     exit 1
 fi
