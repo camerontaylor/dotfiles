@@ -1,16 +1,16 @@
 configSchemaVersion: 1
-modelProfile:
+modelProfile: 
   {}
-compaction:
+compaction: 
   enabled: true
   strategy: context-full
-skills:
-  customDirectories:
+skills: 
+  customDirectories: 
     - ~/.agents/skills
-modelRoles:
-  default: zai/glm-5.3
-task:
-  agentModelOverrides:
+modelRoles: 
+  default: zai/glm-5.3-flash
+task: 
+  agentModelOverrides: 
     executor: zai/glm-5.3-flash
     architect: zai/glm-5.3:max
     planner: zai/glm-5.3:high
