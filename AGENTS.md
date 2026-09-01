@@ -9,10 +9,11 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
   - `--upgrade` / `-u` — also run brew/mise/cargo upgrades
   - `--dry-run` / `-n` — fragments print intentions without mutating
   - `--only NAME` — run only fragments whose basename matches NAME (repeatable)
+- `./deploy.bash` — bash twin of the driver: same CLI, same fragments (fragment bodies are dual-shell by contract); both drivers assert `/bin/bash` ≥ 3.2 at startup
 - `scripts/eris-macos-bootstrap.zsh` — Day-0 macOS bootstrap (run BEFORE clone via `curl | zsh`); installs Homebrew + baseline, then clones and runs deploy
 - `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
 - `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
-- Deploy runs automatically on `git pull` via `scripts/post-merge` (guards: `zsh -n` precheck, `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
+- Deploy runs automatically on `git pull` via `scripts/post-merge` (prefers `deploy.zsh`, falls back to `deploy.bash` — each `-n`-checked before running, loud failure when neither is runnable; `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
 - CI: `.github/workflows/shells.yml` — macOS + Ubuntu matrix running the tree-wide dual `-n` sweep (`scripts/tests/shell-syntax-gate.sh`, the same gate `scripts/pre-commit` runs over staged files), and both drivers' `--dry-run` with `DOTFILES_SKIP_BREW=1` (no brew installs on hosted runners; macOS `/bin/bash` 3.2 is the floor leg)
 - `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function; honors `.sops.yaml` recipients)
 
@@ -71,8 +72,8 @@ crash-looped three services for a week in 2026-07.
 - **New zsh env var**: `zsh/env.d/NN_name.zsh` (runs for ALL shells, keep fast)
 - **New zsh rc config**: `zsh/rc.d/NN_name.zsh` (interactive only)
 - **New zsh function**: create file in `zsh/fpath/`, add `autoload -Uz name` in `rc.d/04_autoload.zsh`
-- **New cargo tool**: add to `rust_tools` array in `deploy.zsh` (~line 276); if pkg name ≠ binary name, add `case` mapping
-- **New submodule tool**: `git submodule add <url> tools/<name>`, add install logic to `deploy.zsh`
+- **New cargo tool**: add to the cargo block in `scripts/deploy.d/70_runtime_installs.zsh` (no mise backend? same place; if pkg name ≠ binary name, add a `case` mapping)
+- **New submodule tool**: `git submodule add <url> tools/<name>`, add install logic to the matching `scripts/deploy.d/` fragment (e.g. `40_tools.zsh`)
 - **New nvim plugin**: submodule in `nvim/plugins/`, config in `nvim/init/NN_name.lua`
 - **Local overrides**: 90-99 prefix files are gitignored (zsh/env.d/, zsh/rc.d/, nvim/init/)
 - **New secret**: create `90_*.zsh`, run `dotfiles-encrypt zsh/env.d/90_name.zsh`, commit only the `.enc` file
@@ -88,7 +89,7 @@ crash-looped three services for a week in 2026-07.
 | zz_*  | Runs last (path sanitization) |
 
 ## Conventions
-- Feature detection: `(( ${+commands[tool]} ))` with modern-first fallbacks (eza>ls, zoxide>z, bat>cat, delta>diff-so-fancy, fd>find, nvim>vim)
+- Feature detection: `have tool` (the `command -v` wrapper in `scripts/deploy.d/lib/helpers.zsh` — parses AND runs in both shells, unlike `${+commands[tool]}` which is always-false under bash) with modern-first fallbacks (eza>ls, zoxide>z, bat>cat, delta>diff-so-fancy, fd>find, nvim>vim)
 - Non-critical zsh plugins deferred via `zsh-defer` (rc.d/24-27)
 - Slow inits cached via `evalcache` (20h TTL, see `zsh/fpath/evalcache`)
 - All configs symlinked to XDG locations by `deploy.zsh`; never place files directly in `~/.config/`

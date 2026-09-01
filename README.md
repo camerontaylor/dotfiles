@@ -4,7 +4,7 @@ XDG-first dotfiles for a small fleet of machines — two Macs and a couple of
 graphical Linux boxes (CachyOS desktop + laptop), plus headless servers. One
 repo drives the shell, editor, terminal, **graphical desktop** (tiling WM +
 keyboard remapping), and an extensive **AI/LLM tooling** layer, kept in sync
-across every host by a single `deploy.zsh`.
+across every host by a single `deploy.zsh` (or its bash twin, `deploy.bash`).
 
 Battle-tested on macOS and Linux (Debian/Ubuntu, Arch/CachyOS). On a headless
 server the graphical bits are simply inert, so the same checkout works on a Mac
