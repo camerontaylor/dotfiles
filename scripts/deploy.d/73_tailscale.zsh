@@ -112,7 +112,7 @@ else
         esac
 
         if (( install_ok )); then
-            (( DEPLOY_DRY_RUN )) || { rehash; printf '%s\n' "  ...done" }
+            (( DEPLOY_DRY_RUN )) || { rehash; printf '%s\n' "  ...done"; }
         else
             printf '%s\n' "  ...failed to install Tailscale (see output above)"
             return 0

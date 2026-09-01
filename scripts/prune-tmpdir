@@ -37,12 +37,12 @@ while (( $# )); do
         -n|--dry-run) dry_run=1 ;;
         -d|--days)
             shift
-            (( $# )) || { printf '%s\n' "prune-tmpdir: --days needs a value" >&2; exit 2 }
+            (( $# )) || { printf '%s\n' "prune-tmpdir: --days needs a value" >&2; exit 2; }
             days=$1
             ;;
         -p|--path)
             shift
-            (( $# )) || { printf '%s\n' "prune-tmpdir: --path needs a value" >&2; exit 2 }
+            (( $# )) || { printf '%s\n' "prune-tmpdir: --path needs a value" >&2; exit 2; }
             explicit_path=$1
             ;;
         -h|--help)

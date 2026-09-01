@@ -99,7 +99,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             label=${probe_str%% *}        # first probe name = display label
             present=0
             for p in ${=probe_str}; do
-                have "$p" && { present=1; break }
+                have "$p" && { present=1; break; }
             done
             (( present )) && continue
             if [[ -z $cmd ]]; then
