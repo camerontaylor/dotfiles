@@ -10,7 +10,7 @@ if [[ $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
-local macos_script=$SCRIPT_DIR/scripts/macos/macos-defaults.sh
+macos_script=$SCRIPT_DIR/scripts/macos/macos-defaults.sh
 if [[ ! -x $macos_script ]]; then
     printf '%s\n' "macos-defaults.sh missing or not executable; skipping"
     return 0

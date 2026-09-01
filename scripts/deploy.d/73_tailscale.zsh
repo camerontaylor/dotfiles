@@ -28,7 +28,7 @@ fi
 # both a deliberate per-box 96_local_tailscale.zsh (which therefore wins) and,
 # on a box that has not completed the secrets bootstrap, the legacy
 # 95_tailscale_secrets.zsh plaintext, so degraded boxes keep today's behaviour.
-local secret_file
+secret_file=
 for secret_file in ${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/9[0-9]_tailscale_secrets.zsh(N) \
                    $SCRIPT_DIR/zsh/env.d/9[0-9]_*tailscale*.zsh(N); do
     source $secret_file
@@ -73,7 +73,7 @@ else
         # os-release is designed to be sourced; do it in a subshell so its vars
         # don't leak. Absent file / missing keys => empty, which falls through to
         # the install.sh default (safe).
-        local distro_id="" distro_like=""
+        distro_id="" distro_like=""
         if [[ -r /etc/os-release ]]; then
             distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
             distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")
@@ -82,7 +82,7 @@ else
         # Match the token "arch" (Arch + all derivatives set ID or ID_LIKE to it:
         # cachyos, manjaro, endeavouros, garuda, artix, ...). Surrounding spaces
         # anchor on whole words so we don't match "monarch"/"starch".
-        local install_ok=0
+        install_ok=0
         case " $distro_id $distro_like " in
             *" arch "*)
                 # -Sy refreshes the sync db so a stale entry doesn't 404; --needed
@@ -137,11 +137,11 @@ fi
 # Locate the tailscale CLI. On macOS the cask drops the binary inside the app
 # bundle (and may symlink to the legacy Intel prefix /usr/local/bin), neither of
 # which is guaranteed on deploy.zsh's PATH. Probe known locations.
-local ts_cli=""
+ts_cli=""
 if have tailscale; then
     ts_cli=$(command -v tailscale)
 else
-    local candidate
+    candidate=
     for candidate in \
         /Applications/Tailscale.app/Contents/MacOS/Tailscale \
         /usr/local/bin/tailscale \
@@ -164,7 +164,7 @@ fi
 # ~/.local/bin (already on PATH, user-owned) so bare `tailscale` resolves in a
 # shell, without exposing all of /usr/local/bin. Idempotent.
 if [[ $DOTFILES_OS == Darwin ]]; then
-    local ts_link=$HOME/.local/bin/tailscale
+    ts_link=$HOME/.local/bin/tailscale
     if [[ ${ts_link:A} != ${ts_cli:A} ]]; then
         if (( DEPLOY_DRY_RUN )); then
             printf '%s\n' "  [dry-run] would: ln -sfn $ts_cli ~/.local/bin/tailscale"
@@ -194,7 +194,7 @@ fi
 
 # Assemble `tailscale up` arguments. The auth key is kept in its own array
 # element so it is never word-split and never printed.
-local -a up_args
+up_args=()
 up_args=(--accept-routes "--authkey=$TAILSCALE_AUTHKEY")
 
 # Tailscale SSH server runs on Linux tailscaled but NOT on the sandboxed macOS
@@ -202,13 +202,13 @@ up_args=(--accept-routes "--authkey=$TAILSCALE_AUTHKEY")
 # Tailscale GUI builds". Enable it on Linux only; reach macOS fleet nodes via
 # regular SSH over the tailnet. (A Mac running the open-source tailscaled can
 # opt in with TAILSCALE_EXTRA_ARGS="--ssh".)
-local ssh_label="accept-routes"
+ssh_label="accept-routes"
 if [[ $DOTFILES_OS == Linux ]]; then
     up_args=(--ssh $up_args)
     ssh_label="ssh, accept-routes"
 fi
 
-local routes_csv=""
+routes_csv=""
 if [[ -n ${TAILSCALE_ADVERTISE_ROUTES:-} ]]; then
     # tailscale wants comma-separated CIDRs; accept whitespace-separated too.
     # Split on shell words then rejoin with commas so repeated/leading/trailing
@@ -226,14 +226,14 @@ fi
 printf '%s\n' "Tailscale: bringing up tailnet (${ssh_label})..."
 if (( DEPLOY_DRY_RUN )); then
     # Show the real non-secret args but NEVER echo the auth key.
-    local dry_ssh=""
+    dry_ssh=""
     [[ $DOTFILES_OS == Linux ]] && dry_ssh=" --ssh"
-    local dry_extra=""
+    dry_extra=""
     [[ -n $routes_csv ]] && dry_extra+=" --advertise-routes=$routes_csv"
     [[ -n ${TAILSCALE_EXTRA_ARGS:-} ]] && dry_extra+=" $TAILSCALE_EXTRA_ARGS"
     printf '%s\n' "  [dry-run] would: $ts_cli up${dry_ssh} --accept-routes --authkey=***${dry_extra}"
 else
-    local -a ts_cmd
+    ts_cmd=()
     if [[ $DOTFILES_OS == Linux ]]; then
         ts_cmd=(sudo "$ts_cli" up $up_args)
     else

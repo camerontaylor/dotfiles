@@ -10,15 +10,15 @@
 
 setopt extended_glob err_exit
 
-local SCRIPT_DIR=${0:A:h:h}
-local sops_yaml=$SCRIPT_DIR/.sops.yaml
+SCRIPT_DIR=${0:A:h:h}
+sops_yaml=$SCRIPT_DIR/.sops.yaml
 
 if [[ $# -ne 1 ]]; then
     printf '%s\n' "Usage: $0 age1<pubkey>" >&2
     exit 1
 fi
 
-local new_key=$1
+new_key=$1
 
 # Bech32 age public key: starts with "age1", 62 chars total.
 if [[ ! $new_key =~ '^age1[0-9a-z]{58}$' ]]; then
@@ -37,7 +37,7 @@ if [[ ! -f $sops_yaml ]]; then
 fi
 
 # Collect existing recipients from .sops.yaml (any age1... token).
-local -a existing_keys
+existing_keys=()
 existing_keys=(${(f)"$(grep -oE 'age1[0-9a-z]{58}' $sops_yaml | sort -u)"})
 
 # Idempotency: bail early if already present.
@@ -47,14 +47,14 @@ if (( ${existing_keys[(I)$new_key]} )); then
 fi
 
 # Build merged, sorted, de-duped list.
-local -a all_keys=(${existing_keys[@]} $new_key)
+all_keys=(${existing_keys[@]} $new_key)
 all_keys=(${(uo)all_keys})
 
 # Rewrite only the age block; preserve everything else (path_regex, comments,
 # additional creation_rules) by splicing around the existing `age:` field.
 printf '%s\n' "Updating .sops.yaml with ${#all_keys} recipients..."
-local age_block="    age: >-"
-local i
+age_block="    age: >-"
+i=
 for (( i=1; i <= ${#all_keys}; i++ )); do
     if (( i < ${#all_keys} )); then
         age_block+=$'\n'"      ${all_keys[i]},"
@@ -73,9 +73,9 @@ awk -v block="$age_block" '
 
 # Re-encrypt every .enc file to the new recipient set.
 printf '%s\n' "Re-encrypting .enc files..."
-local -a enc_files
+enc_files=()
 enc_files=($SCRIPT_DIR/**/*.enc~$SCRIPT_DIR/(plugins|tools|.git)/**/*(N))
-local f
+f=
 for f in $enc_files; do
     printf '%s\n' "  ${f#$SCRIPT_DIR/}"
     sops updatekeys -y $f >/dev/null

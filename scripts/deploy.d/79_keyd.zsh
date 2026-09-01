@@ -12,14 +12,14 @@ if [[ $DOTFILES_OS != Linux ]]; then
     return 0
 fi
 
-local keyd_src=$SCRIPT_DIR/configs/keyd/default.conf
-local keyd_target=/etc/keyd/default.conf
+keyd_src=$SCRIPT_DIR/configs/keyd/default.conf
+keyd_target=/etc/keyd/default.conf
 
 # keyd is not in every distro's default repos (often AUR on Arch). Don't try to
 # install it blindly — if it's absent, tell the user how and bail without
 # touching /etc. Re-running deploy after installing it wires everything up.
 if ! have keyd; then
-    local distro_like=""
+    distro_like=""
     if [[ -r /etc/os-release ]]; then
         distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-} ${ID_LIKE:-}")
     fi

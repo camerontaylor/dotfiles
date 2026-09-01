@@ -16,8 +16,8 @@
 # The script prints changed/unchanged/skip and never prints the token; reload
 # only on an actual change, so a routine deploy does not churn a live daemon.
 
-local paseo_tmpl=$SCRIPT_DIR/configs/ai/paseo/providers.json
-local paseo_merge=$SCRIPT_DIR/scripts/paseo-providers.py
+paseo_tmpl=$SCRIPT_DIR/configs/ai/paseo/providers.json
+paseo_merge=$SCRIPT_DIR/scripts/paseo-providers.py
 
 if [[ ! -f $paseo_tmpl || ! -f $paseo_merge ]]; then
     return 0
@@ -37,7 +37,7 @@ fi
 
 printf '%s\n' "Merging paseo agent providers (gjc, claude-zai)..."
 
-local paseo_result
+paseo_result=
 if (( DEPLOY_DRY_RUN )); then
     paseo_result=$(python3 $paseo_merge $paseo_tmpl --dry-run 2>&1)
 else

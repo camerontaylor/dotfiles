@@ -2,7 +2,7 @@
 
 setopt extended_glob err_exit pipefail
 
-local force=false
+force=false
 for arg in "$@"; do
     case $arg in
         --force|-f)
@@ -23,8 +23,8 @@ if [[ $SCRIPT_DIR == $HOME.homedir* ]]; then
 fi
 cd $SCRIPT_DIR
 
-local install_dir=$HOME/.local/bin
-local target=$install_dir/wtp
+install_dir=$HOME/.local/bin
+target=$install_dir/wtp
 
 if have wtp && ! $force; then
     printf '%s\n' "wtp already installed, skipping"
@@ -37,8 +37,8 @@ else
     printf '%s\n' "Installing wtp..."
 fi
 
-local wtp_arch=$(uname -m)
-local wtp_os=$(uname -s)
+wtp_arch=$(uname -m)
+wtp_os=$(uname -s)
 
 ensure_homebrew_path() {
     if have brew; then
@@ -64,7 +64,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
     if brew trust --help > /dev/null 2>&1; then
         brew trust --formula satococoa/tap/wtp > /dev/null 2>&1 || true
     fi
-    local brew_output
+    brew_output=
     if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
         rehash
         if have wtp; then
@@ -76,7 +76,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
         # is owned by another user and brew aborts the entire link when any
         # single symlink fails. Bypass the link step by pointing ~/.local/bin/wtp
         # at the keg directly; that's all we actually need.
-        local wtp_prefix=
+        wtp_prefix=
         wtp_prefix=$(brew --prefix satococoa/tap/wtp 2>/dev/null) || wtp_prefix=
         if [[ -n $wtp_prefix && -x $wtp_prefix/bin/wtp ]]; then
             mkdir -p $install_dir
@@ -99,9 +99,9 @@ fi
 
 if [[ $wtp_os == Linux && ($wtp_arch == x86_64 || $wtp_arch == aarch64) ]] || [[ $wtp_os == Darwin && $wtp_arch == arm64 ]]; then
     [[ $wtp_arch == aarch64 ]] && wtp_arch=arm64
-    local wtp_version
+    wtp_version=
     wtp_version=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/satococoa/wtp/releases/latest | sed 's|.*/tag/v||')
-    local wtp_tmp=$(mktemp -d)
+    wtp_tmp=$(mktemp -d)
     trap 'rm -rf "$wtp_tmp"' EXIT
     if [[ -n $wtp_version ]] && curl -fsSL "https://github.com/satococoa/wtp/releases/download/v${wtp_version}/wtp_${wtp_version}_${wtp_os}_${wtp_arch}.tar.gz" | tar xz -C $wtp_tmp; then
         mkdir -p $install_dir

@@ -14,7 +14,7 @@ rehash
 
 # Pairs: <display name> <binary on PATH>
 # Listed roughly in order of "user-visible breakage if missing".
-local -a tool_checks=(
+tool_checks=(
     zoxide:zoxide
     eza:eza
     bat:bat
@@ -41,8 +41,8 @@ local -a tool_checks=(
     psql:psql
 )
 
-typeset -a failed=()
-local entry tool bin_name
+failed=()
+entry= tool= bin_name=
 
 for entry in $tool_checks; do
     tool=${entry%%:*}
@@ -67,7 +67,7 @@ fi
 
 printf '%s\n' ""
 printf '%s\n' "⚠ ${#failed} tool(s) failed smoke test:"
-local line
+line=
 for line in $failed; do
     printf '%s\n' "    - $line"
 done

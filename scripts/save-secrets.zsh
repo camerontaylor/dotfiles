@@ -2,8 +2,8 @@
 
 setopt extended_glob err_exit
 
-local force=false
-local git_add=false
+force=false
+git_add=false
 for arg in "$@"; do
     case $arg in
         --force|-f)
@@ -105,7 +105,7 @@ encrypt_if_changed() {
     fi
 }
 
-local plaintext enc_file
+plaintext= enc_file=
 for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
     [[ $plaintext == *.enc ]] && continue
 
@@ -114,10 +114,10 @@ for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
 done
 
 # SSH config and managed keys
-local -a ssh_plaintexts ssh_enc_files
+ssh_plaintexts=() ssh_enc_files=()
 ssh_plaintexts=($HOME/.ssh/config ssh/webfront_claw ssh/webfront_claw.pub $HOME/.ssh/id_ed25519 $HOME/.ssh/id_ed25519.pub)
 ssh_enc_files=(ssh/config.enc ssh/webfront_claw.enc ssh/webfront_claw.pub.enc ssh/id_ed25519.enc ssh/id_ed25519.pub.enc)
-local i
+i=
 for (( i = 1; i <= ${#ssh_plaintexts}; i++ )); do
     plaintext=${ssh_plaintexts[i]}
     enc_file=${ssh_enc_files[i]}
@@ -132,7 +132,7 @@ done
 # The systemd unit reads these directly via EnvironmentFile / a PORTKEY_LOCAL_API_KEY
 # path, so encrypted siblings ship via this repo and restore-secrets.zsh writes them
 # back to ~/.local/state/portkey with mode 0600.
-local -a portkey_plaintexts portkey_enc_files
+portkey_plaintexts=() portkey_enc_files=()
 portkey_plaintexts=($HOME/.local/state/portkey/env $HOME/.local/state/portkey/local-api-key)
 portkey_enc_files=(configs/ai/portkey/state/env.enc configs/ai/portkey/state/local-api-key.enc)
 for (( i = 1; i <= ${#portkey_plaintexts}; i++ )); do
@@ -150,7 +150,7 @@ done
 # encrypted, so losing this password makes the backup unrecoverable — there is
 # no reset path. It must survive the loss of the machine it protects, hence
 # shipping it here alongside the password manager copy.
-local -a restic_plaintexts restic_enc_files
+restic_plaintexts=() restic_enc_files=()
 restic_plaintexts=($HOME/repos/deploy/immich/.restic-password $HOME/repos/deploy/immich/.b2-env)
 restic_enc_files=(configs/immich/restic-password.enc configs/immich/b2-env.enc)
 for (( i = 1; i <= ${#restic_plaintexts}; i++ )); do
@@ -167,7 +167,7 @@ done
 # The .enc has been tracked since it was first encrypted by hand; wiring it
 # through here means it now refreshes on save like every other secret instead of
 # silently drifting from the plaintext.
-local -a openclaw_plaintexts openclaw_enc_files
+openclaw_plaintexts=() openclaw_enc_files=()
 openclaw_plaintexts=($XDG_CONFIG_HOME/openclaw-mcp/env)
 openclaw_enc_files=(configs/openclaw-mcp/env.enc)
 for (( i = 1; i <= ${#openclaw_plaintexts}; i++ )); do

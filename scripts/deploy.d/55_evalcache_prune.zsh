@@ -14,7 +14,7 @@
 #
 # This fragment is fast (just a glob + rm) and is safe to run on every deploy.
 
-local cache_dir=$XDG_CACHE_HOME/zsh/eval
+cache_dir=$XDG_CACHE_HOME/zsh/eval
 
 if [[ ! -d $cache_dir ]]; then
     return 0
@@ -23,7 +23,7 @@ fi
 printf '%s\n' "Pruning empty evalcache entries..."
 
 # Glob qualifiers: N=nullglob, .=regular file, L0=size exactly 0 bytes
-local -a empty_caches=($cache_dir/*.zsh(N.L0))
+empty_caches=($cache_dir/*.zsh(N.L0))
 
 if (( ${#empty_caches} == 0 )); then
     printf '%s\n' "  ...none found"
@@ -31,14 +31,14 @@ if (( ${#empty_caches} == 0 )); then
 fi
 
 if (( DEPLOY_DRY_RUN )); then
-    local f
+    f=
     for f in $empty_caches; do
         printf '%s\n' "  [dry-run] would remove $f (and $f.zwc if present)"
     done
     return 0
 fi
 
-local f
+f=
 for f in $empty_caches; do
     zf_rm -f $f $f.zwc
 done

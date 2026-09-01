@@ -25,8 +25,8 @@ if [[ -n ${SKIP_CODEX_ENFORCE:-} ]]; then
     exit 0
 fi
 
-local git_add=false
-local config_file
+git_add=false
+config_file=
 
 SCRIPT_DIR=${0:A:h:h}
 # with systemd-homed `a`/`A` expands to storage location `/home/username.homedir` instead of mounted location `/home/username`
@@ -64,15 +64,15 @@ if [[ ! -f $config_file ]]; then
 fi
 
 # Hardcoded hard-enforced lines (verbatim TOML).
-local desired_sandbox='sandbox_mode = "danger-full-access"'
-local desired_approval='approval_policy = "never"'
+desired_sandbox='sandbox_mode = "danger-full-access"'
+desired_approval='approval_policy = "never"'
 
 # Pull HEAD's model and effort lines for transient-revert baseline. Empty
 # strings = "leave these keys alone" (e.g., file not in HEAD yet, or those
 # keys missing from HEAD).
-local head_model=""
-local head_effort=""
-local relpath=${config_file#$SCRIPT_DIR/}
+head_model=""
+head_effort=""
+relpath=${config_file#$SCRIPT_DIR/}
 if [[ $relpath != /* ]] && have git \
     && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
@@ -193,7 +193,7 @@ if [[ $git_add == true ]] && have git; then
     if [[ $relpath != /* ]] \
         && git -C "$SCRIPT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
         && git -C "$SCRIPT_DIR" ls-files --error-unmatch -- "$relpath" >/dev/null 2>&1; then
-        local index_tmp normalized_tmp mode blob
+        index_tmp= normalized_tmp= mode= blob=
 
         index_tmp=$(mktemp "${TMPDIR:-/tmp}/codex-config-index.XXXXXX")
         normalized_tmp=$(mktemp "${TMPDIR:-/tmp}/codex-config-index-normalized.XXXXXX")

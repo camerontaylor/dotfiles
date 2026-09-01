@@ -12,7 +12,7 @@ if ! have claude; then
     fi
 fi
 
-local npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
+npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would install npm globals through mise node's npm"
@@ -23,7 +23,7 @@ elif have mise; then
     # mise.toml) must NEVER be listed here — a previous version of this list
     # uninstalled node itself on every deploy, which severed every unit that
     # execs through mise and crash-looped them for a week (2026-07).
-    local -a obsolete_mise_tools=(
+    obsolete_mise_tools=(
         # Old npm: backend installs replaced by the npm globals below.
         npm:happy
         npm:@biomejs/biome
@@ -55,7 +55,7 @@ elif have mise; then
     # every shell AND to systemd units. (mise also auto-installs this list
     # when it installs a new node version, via the ~/.default-npm-packages
     # symlink planted by 20_symlinks.zsh.)
-    local mise_node_ok=false
+    mise_node_ok=false
     if mise exec node -- node --version > /dev/null 2>&1; then
         mise_node_ok=true
     else
@@ -63,8 +63,8 @@ elif have mise; then
     fi
 
     if [[ $mise_node_ok == true && -f $npm_packages_file ]]; then
-        local -a npm_packages=()
-        local npm_package
+        npm_packages=()
+        npm_package=
         while IFS= read -r npm_package || [[ -n $npm_package ]]; do
             [[ -z $npm_package || $npm_package == \#* ]] && continue
             npm_packages+=("$npm_package")
@@ -124,7 +124,7 @@ fi
 if have bun; then
     autoload -Uz is-at-least
 
-    local gjc_bun_version gjc_bun_bin
+    gjc_bun_version= gjc_bun_bin=
     gjc_bun_version=$(bun --version 2>/dev/null)
 
     if (( DEPLOY_DRY_RUN )); then
@@ -200,8 +200,8 @@ fi
 
 # CodeWhale: crates.io is the most direct update source for both the CLI and TUI.
 if have cargo; then
-    local codewhale_spec codewhale_package codewhale_binary codewhale_action
-    local -a codewhale_cargo_packages=(
+    codewhale_spec= codewhale_package= codewhale_binary= codewhale_action=
+    codewhale_cargo_packages=(
         codewhale-cli:codewhale
         codewhale-tui:codewhale-tui
     )

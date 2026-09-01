@@ -12,7 +12,7 @@
 #   engram, oxlint, biome, happy, gemini — no upstream completion
 #   moreutils binaries (sponge/ts/chronic/vipe), flock — trivial CLI surface
 
-local cache_fpath="$XDG_CACHE_HOME/zsh/fpath"
+cache_fpath="$XDG_CACHE_HOME/zsh/fpath"
 
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would: mkdir -p $cache_fpath"
@@ -24,7 +24,7 @@ mkdir -p $cache_fpath
 
 # Each entry: <binary>:<subcommand-and-args producing #compdef output>:<dest filename>
 # Subcommand string is split on whitespace at invocation time.
-local -a generators=(
+generators=(
     "bun:completions:_bun"
     "uv:generate-shell-completion zsh:_uv"
     "sops:completion zsh:_sops"
@@ -34,10 +34,10 @@ local -a generators=(
 
 printf '%s\n' "Generating zsh completion files into $cache_fpath..."
 
-local entry tool subcmd dest_name dest_path generated_count=0 skipped_count=0
+entry= tool= subcmd= dest_name= dest_path= generated_count=0 skipped_count=0
 for entry in $generators; do
     tool=${entry%%:*}
-    local rest=${entry#*:}
+    rest=${entry#*:}
     subcmd=${rest%:*}
     dest_name=${rest##*:}
     dest_path="$cache_fpath/$dest_name"
@@ -59,7 +59,7 @@ for entry in $generators; do
     # some generators (notably `sops completion zsh`) emit a leading blank,
     # which puts `#compdef sops` on line 2 — but compinit's autoload-on-tag
     # mechanism requires `#compdef NAME` on line 1.
-    local tmp=$(mktemp "${TMPDIR:-/tmp}/zsh-comp-${tool}.XXXXXX")
+    tmp=$(mktemp "${TMPDIR:-/tmp}/zsh-comp-${tool}.XXXXXX")
     if ${=tool} ${=subcmd} 2>/dev/null | sed '/./,$!d' > $tmp \
         && [[ -s $tmp ]] \
         && head -1 $tmp | grep -q "^#compdef\b"; then
@@ -89,7 +89,7 @@ fi
 # newly-written completions. The compdump regen path in 15_completion.zsh
 # triggers when compdump is older than 20 hours, so without this the new
 # files would sit unused until the cache naturally aged out.
-local compdump="$XDG_CACHE_HOME/zsh/compdump"
+compdump="$XDG_CACHE_HOME/zsh/compdump"
 if [[ -f $compdump ]]; then
     rm -f $compdump $compdump.zwc
     printf '%s\n' "  ...invalidated compdump (next shell will regenerate)"

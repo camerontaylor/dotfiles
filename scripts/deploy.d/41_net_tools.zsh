@@ -22,7 +22,7 @@ fi
 # to "arch"). Mirror 73_tailscale.zsh: source os-release in a subshell, -Sy so a
 # stale db entry doesn't 404, --needed for idempotency. See that file's note on
 # the partial-upgrade caveat of -Sy without -u.
-local distro_id="" distro_like=""
+distro_id="" distro_like=""
 if [[ -r /etc/os-release ]]; then
     distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
     distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")

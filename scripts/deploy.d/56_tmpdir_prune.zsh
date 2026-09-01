@@ -11,7 +11,7 @@
 # Scheduling mirrors 99_periodic.zsh: systemd timer (user or system), macOS
 # launchd LaunchAgent, then crontab. Each branch is idempotent.
 
-local pruner=$SCRIPT_DIR/scripts/prune-tmpdir
+pruner=$SCRIPT_DIR/scripts/prune-tmpdir
 
 if [[ ! -x $pruner ]]; then
     printf '%s\n' "Skipping TMPDIR prune: $pruner not executable"
@@ -29,8 +29,8 @@ printf '%s\n' "Installing daily TMPDIR prune task..."
 
 # The job must run through a login shell so env.d sets TMPDIR before the
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
-local zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
-local prune_command="${(q)pruner}"
+zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
+prune_command="${(q)pruner}"
 
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"
@@ -40,7 +40,7 @@ fi
 if have systemctl; then
     printf '%s\n' "  ...systemd detected, installing timer..."
 
-    local systemd_unit_dir systemctl_cmd
+    systemd_unit_dir= systemctl_cmd=
     if (( EUID == 0 )); then
         systemd_unit_dir=/etc/systemd/system
         systemctl_cmd=(systemctl)
@@ -50,7 +50,7 @@ if have systemctl; then
     fi
     zf_mkdir -p $systemd_unit_dir
 
-    local service_content="[Unit]
+    service_content="[Unit]
 Description=Prune stale TMPDIR entries
 
 [Service]
@@ -58,7 +58,7 @@ Type=oneshot
 ExecStart=$zsh_bin -lc $prune_command"
     printf '%s\n' "$service_content" > $systemd_unit_dir/prune-tmpdir.service
 
-    local timer_content="[Unit]
+    timer_content="[Unit]
 Description=Prune stale TMPDIR entries daily
 
 [Timer]
@@ -78,12 +78,12 @@ WantedBy=timers.target"
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
-    local launchd_dir=$HOME/Library/LaunchAgents
-    local launchd_label=com.ctaylor.dotfiles.prune-tmpdir
-    local launchd_plist=$launchd_dir/$launchd_label.plist
+    launchd_dir=$HOME/Library/LaunchAgents
+    launchd_label=com.ctaylor.dotfiles.prune-tmpdir
+    launchd_plist=$launchd_dir/$launchd_label.plist
     zf_mkdir -p $launchd_dir
 
-    local launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\">
 <dict>
@@ -119,8 +119,8 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job..."
-    local cron_task="$zsh_bin -lc $prune_command"
-    local cron_schedule="30 3 * * * $cron_task"
+    cron_task="$zsh_bin -lc $prune_command"
+    cron_schedule="30 3 * * * $cron_task"
     if cat <(grep --invert-match --fixed-strings $cron_task <(crontab -l 2>/dev/null)) <(echo $cron_schedule) | crontab -; then
         printf '%s\n' "  ...done"
     else

@@ -2,7 +2,7 @@
 
 setopt extended_glob err_exit
 
-local force=false
+force=false
 for arg in "$@"; do
     case $arg in
         --force|-f)
@@ -43,7 +43,7 @@ if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
     exit 1
 fi
 
-local enc_file target temp_file
+enc_file= target= temp_file=
 for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
     target=${enc_file%.enc}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
@@ -89,8 +89,8 @@ done
 # Portkey gateway runtime state. Targets live outside this repo at
 # ~/.local/state/portkey/ — the systemd unit's EnvironmentFile and the
 # PORTKEY_LOCAL_API_KEY path both reference them by absolute path.
-local portkey_state_dir=$HOME/.local/state/portkey
-local -a portkey_enc_files portkey_targets
+portkey_state_dir=$HOME/.local/state/portkey
+portkey_enc_files=() portkey_targets=()
 portkey_enc_files=(configs/ai/portkey/state/env.enc configs/ai/portkey/state/local-api-key.enc)
 portkey_targets=($portkey_state_dir/env $portkey_state_dir/local-api-key)
 if (( ${#portkey_enc_files} > 0 )); then
@@ -119,8 +119,8 @@ done
 # restic repository password for the Immich backup. Target lives outside this
 # repo at ~/repos/deploy/immich/ because the backup systemd unit references it
 # by absolute path via RESTIC_PASSWORD_FILE.
-local restic_dir=$HOME/repos/deploy/immich
-local -a restic_enc_files restic_targets
+restic_dir=$HOME/repos/deploy/immich
+restic_enc_files=() restic_targets=()
 restic_enc_files=(configs/immich/restic-password.enc configs/immich/b2-env.enc)
 restic_targets=($restic_dir/.restic-password $restic_dir/.b2-env)
 for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
@@ -151,7 +151,7 @@ done
 # box (see the matching gate in scripts/deploy.d/20_symlinks.zsh): a gateway
 # token and an MCP OAuth client secret. Restoring it on saturn/neptune/quaoar
 # would spread live credentials to machines that have no use for them.
-local -a openclaw_enc_files openclaw_targets
+openclaw_enc_files=() openclaw_targets=()
 if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
     openclaw_enc_files=(configs/openclaw-mcp/env.enc)
     openclaw_targets=($HOME/.config/openclaw-mcp/env)

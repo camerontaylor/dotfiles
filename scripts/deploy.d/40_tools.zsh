@@ -27,7 +27,7 @@ zf_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-quick-s
 # Otherwise we print a copy-paste hint instead of hanging — same guard as
 # 75_brew_setup.zsh's htop, honouring the no-sudo-in-hook rule.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
-    local brew_tool formula bin_name
+    brew_tool= formula= bin_name=
     for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl; do
         formula=${brew_tool%%:*}
         bin_name=${brew_tool#*:}
@@ -43,7 +43,7 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
 elif [[ $DOTFILES_OS == Linux ]]; then
     # os-release is designed to be sourced; do it in a subshell so its vars don't
     # leak. Absent file / missing keys => empty, which falls through to "unknown".
-    local distro_id="" distro_like=""
+    distro_id="" distro_like=""
     if [[ -r /etc/os-release ]]; then
         distro_id=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID:-}")
         distro_like=$(. /etc/os-release 2>/dev/null && printf '%s\n' "${ID_LIKE:-}")
@@ -53,7 +53,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     # this distro. <probe names> is a space-separated set of command names whose
     # presence means "already installed" (skip). An empty command means "no known
     # automatic recipe here" -> hint only.
-    local -a recipes=()
+    recipes=()
     case " $distro_id $distro_like " in
         *" debian "*|*" ubuntu "*)
             if have apt-get; then
@@ -70,7 +70,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 && recipes+=( "testssl testssl.sh|sudo pacman -Sy --needed --noconfirm testssl.sh" )
             # git-extras: AUR -> first available helper (run WITHOUT a sudo prefix;
             # helpers call sudo internally and refuse to run as root).
-            local aur=""
+            aur=""
             have paru && aur=paru
             [[ -z $aur ]] && have yay && aur=yay
             if [[ -n $aur ]]; then
@@ -92,7 +92,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
         have testssl || have testssl.sh \
             || printf '%s\n' "  hint: testssl not installed — install via your package manager"
     else
-        local recipe probe_str cmd label present p
+        recipe= probe_str= cmd= label= present= p=
         for recipe in $recipes; do
             probe_str=${recipe%%|*}
             cmd=${recipe#*|}

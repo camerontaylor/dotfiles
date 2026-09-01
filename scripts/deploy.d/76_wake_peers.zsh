@@ -11,14 +11,14 @@ if [[ $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
-local peers_conf=$SCRIPT_DIR/configs/wake-peers/peers.conf
+peers_conf=$SCRIPT_DIR/configs/wake-peers/peers.conf
 if [[ ! -r $peers_conf ]]; then
     printf '%s\n' "wake-peers: $peers_conf not found, skipping"
     return 0
 fi
 
 # Canonical short hostname; falls back to BSD hostname -s.
-local self
+self=
 self=$(scutil --get LocalHostName 2>/dev/null) || self=$(hostname -s 2>/dev/null) || self=""
 if [[ -z $self ]]; then
     printf '%s\n' "wake-peers: could not determine local hostname, skipping"
@@ -26,10 +26,10 @@ if [[ -z $self ]]; then
 fi
 
 # Strip comments/blank lines from peers.conf into an array.
-local -a peers
+peers=()
 peers=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $peers_conf)}")
 
-local host self_in_list=0
+host= self_in_list=0
 for host in $peers; do
     [[ $host == $self ]] && self_in_list=1
 done
@@ -54,8 +54,8 @@ fi
 
 # 2. Resolve sleepwatcher path (brew puts it in sbin/, which is not always on
 #    interactive PATH but is fine in launchd ProgramArguments as an absolute).
-local sw_path=""
-local candidate
+sw_path=""
+candidate=
 for candidate in /opt/homebrew/sbin/sleepwatcher /usr/local/sbin/sleepwatcher; do
     if [[ -x $candidate ]]; then
         sw_path=$candidate
@@ -70,19 +70,19 @@ fi
 
 # 3. Render the LaunchAgent plist. Substituting @HOME@ and @SLEEPWATCHER_PATH@
 #    lets a single tracked template serve both Apple Silicon and Intel Macs.
-local plist_template=$SCRIPT_DIR/configs/wake-peers/com.github.ctaylor.wake-peers.plist
-local plist_target=$HOME/Library/LaunchAgents/com.github.ctaylor.wake-peers.plist
+plist_template=$SCRIPT_DIR/configs/wake-peers/com.github.ctaylor.wake-peers.plist
+plist_target=$HOME/Library/LaunchAgents/com.github.ctaylor.wake-peers.plist
 if [[ ! -f $plist_template ]]; then
     printf '%s\n' "  ...plist template $plist_template missing, skipping"
     return 0
 fi
 
-local plist_rendered
+plist_rendered=
 plist_rendered=$(awk -v home="$HOME" -v sw="$sw_path" '
     { gsub(/@HOME@/, home); gsub(/@SLEEPWATCHER_PATH@/, sw); print }
 ' $plist_template)
 
-local needs_write=1
+needs_write=1
 if [[ -f $plist_target ]]; then
     if [[ "$plist_rendered" == "$(cat $plist_target)" ]]; then
         needs_write=0
@@ -102,11 +102,11 @@ fi
 # 4. Bootstrap (or reload on upgrade / plist change) the LaunchAgent. Use
 #    bootstrap/bootout for the modern domain-style API; fall back nowhere
 #    (launchctl load is deprecated on macOS 11+).
-local agent_label=com.github.ctaylor.wake-peers
-local domain=gui/$(id -u)
+agent_label=com.github.ctaylor.wake-peers
+domain=gui/$(id -u)
 
 # Probe whether the agent is currently loaded.
-local already_loaded=0
+already_loaded=0
 if launchctl print "$domain/$agent_label" > /dev/null 2>&1; then
     already_loaded=1
 fi

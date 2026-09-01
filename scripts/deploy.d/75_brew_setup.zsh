@@ -47,8 +47,8 @@ if have brew && $upgrade_mode; then
     # procedure — neither of which deploy can second-guess from a Caskroom
     # receipt. Anything added here needs the same justification: a channel brew
     # cannot express.
-    local -a brew_upgrade_skip=( paseo )
-    local -a brew_outdated brew_upgradable
+    brew_upgrade_skip=( paseo )
+    brew_outdated=() brew_upgradable=()
     # `brew outdated --quiet` prints one name per line, formulae and casks
     # alike; ${(f)...} splits on newlines and ${a:#p} drops matching elements.
     brew_outdated=( ${(f)"$(brew outdated --quiet 2>/dev/null)"} )
@@ -89,7 +89,7 @@ elif [[ $(uname -s) == Darwin ]] && have brew; then
         printf '%s\n' "  ...failed to install zsh"
     fi
 
-    local brew_zsh="$(brew --prefix)/bin/zsh"
+    brew_zsh="$(brew --prefix)/bin/zsh"
     if [[ -x $brew_zsh ]]; then
         if ! grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null; then
             if (( EUID == 0 )); then
@@ -104,7 +104,7 @@ elif [[ $(uname -s) == Darwin ]] && have brew; then
             fi
         fi
 
-        local current_shell
+        current_shell=
         current_shell=$(dscl . -read /Users/$USER UserShell 2>/dev/null | awk '{print $2}')
         [[ -z $current_shell ]] && current_shell=$SHELL
         if [[ $current_shell != $brew_zsh ]]; then

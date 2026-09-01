@@ -6,7 +6,7 @@ printf '%s\n' "Installing periodic update task..."
 if have systemctl; then
     printf '%s\n' "  ...systemd detected, installing timer for periodic updates..."
 
-    local systemd_unit_dir systemctl_cmd
+    systemd_unit_dir= systemctl_cmd=
     if (( EUID == 0 )); then
         systemd_unit_dir=/etc/systemd/system
         systemctl_cmd=(systemctl)
@@ -18,8 +18,8 @@ if have systemctl; then
     fi
     zf_mkdir -p $systemd_unit_dir
 
-    local service_name=pull-dotfiles.service
-    local service_content="[Unit]
+    service_name=pull-dotfiles.service
+    service_content="[Unit]
 Description=Pull dotfiles update
 After=network-online.target
 
@@ -29,8 +29,8 @@ ExecStart=/usr/bin/git -c user.name=systemd.update -c user.email=systemd@localho
 WorkingDirectory=$SCRIPT_DIR"
     printf '%s\n' "$service_content" > $systemd_unit_dir/$service_name
 
-    local timer_name=pull-dotfiles.timer
-    local timer_content="[Unit]
+    timer_name=pull-dotfiles.timer
+    timer_content="[Unit]
 Description=Pull dotfiles update daily
 
 [Timer]
@@ -50,13 +50,13 @@ WantedBy=timers.target"
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
-    local launchd_dir=$HOME/Library/LaunchAgents
-    local launchd_label=com.ctaylor.dotfiles.pull
-    local launchd_plist=$launchd_dir/$launchd_label.plist
+    launchd_dir=$HOME/Library/LaunchAgents
+    launchd_label=com.ctaylor.dotfiles.pull
+    launchd_plist=$launchd_dir/$launchd_label.plist
     zf_mkdir -p $launchd_dir
 
-    local launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
-    local launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+    launchd_command="cd ${(q)SCRIPT_DIR} && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\">
 <dict>
@@ -92,8 +92,8 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job for periodic updates..."
-    local cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
-    local cron_schedule="0 0 * * * $cron_task"
+    cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    cron_schedule="0 0 * * * $cron_task"
     if cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
         printf '%s\n' "  ...done"
     else

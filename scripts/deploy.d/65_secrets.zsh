@@ -14,11 +14,11 @@
 # MUTATES NOTHING — no clone, no render, no quarantine, no backup. deploy.zsh
 # stays green, because the fleet auto-deploys unattended on every `git pull`.
 
-local secrets_repo=$HOME/.local/secrets
-local secrets_slug=camerontaylor/dotfiles-secrets
-local secrets_remote=git@github.com:camerontaylor/dotfiles-secrets.git
-local age_key_dir=$XDG_CONFIG_HOME/sops/age
-local age_public_key
+secrets_repo=$HOME/.local/secrets
+secrets_slug=camerontaylor/dotfiles-secrets
+secrets_remote=git@github.com:camerontaylor/dotfiles-secrets.git
+age_key_dir=$XDG_CONFIG_HOME/sops/age
+age_public_key=
 
 secrets_bootstrap_help() {
     printf '%s\n' ""
@@ -95,7 +95,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         # what this box can actually do. `gh auth status` is not enough: it
         # reports login state, which diverges from repo-read capability when a
         # token's scopes are wrong or a macOS keychain is locked.
-        local -i gh_ok=0 ssh_ok=0
+        gh_ok=0 ssh_ok=0
         if have gh; then
             if gh api repos/$secrets_slug --silent > /dev/null 2>&1; then
                 gh_ok=1
@@ -115,7 +115,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         # Clone with a re-test at clone time and a gh -> ssh fallback. A `gh
         # api` pass does not guarantee `gh repo clone` works (git credential
         # helper vs API token are separate paths), so never trust the probe.
-        local -i cloned=0
+        cloned=0
         if (( gh_ok )); then
             printf '%s\n' "Cloning $secrets_slug via gh..."
             if gh repo clone $secrets_slug $secrets_repo -- -q > /dev/null 2>&1; then

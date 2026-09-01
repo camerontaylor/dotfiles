@@ -64,7 +64,7 @@ secrets_convert_dotenv() {
 
 # ── Argument parsing ───────────────────────────────────────────────────────
 
-typeset _dry=${DEPLOY_DRY_RUN:-0}
+_dry=${DEPLOY_DRY_RUN:-0}
 while (( $# > 0 )); do
     case $1 in
         --convert-dotenv)
@@ -88,19 +88,19 @@ done
 
 # ── Self-location and environment defaults ─────────────────────────────────
 
-typeset DOTFILES_DIR=${0:A:h:h}
+DOTFILES_DIR=${0:A:h:h}
 # With systemd-homed, :A expands to the storage location /home/user.homedir
 # rather than the mounted /home/user — massage it back (as save-secrets.zsh).
 if [[ $DOTFILES_DIR == $HOME.homedir* ]]; then
     DOTFILES_DIR=${DOTFILES_DIR/.homedir/}
 fi
 
-typeset SECRETS_REPO=${SECRETS_DIR:-$HOME/.local/secrets}
-typeset STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
-typeset CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
-typeset RENDER_STATE=$STATE_HOME/secrets
-typeset LEGACY_DIR=$RENDER_STATE/legacy-removed
-typeset MARKER=$STATE_HOME/secrets-render-ok
+SECRETS_REPO=${SECRETS_DIR:-$HOME/.local/secrets}
+STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+RENDER_STATE=$STATE_HOME/secrets
+LEGACY_DIR=$RENDER_STATE/legacy-removed
+MARKER=$STATE_HOME/secrets-render-ok
 
 # sops looks for the age key at $XDG_CONFIG_HOME/sops/age/keys.txt, but cron
 # and git hooks may run without XDG_CONFIG_HOME exported. Point sops at it.
@@ -122,7 +122,7 @@ fi
 # A box that has never completed a render gets its pre-existing targets backed
 # up before they are first overwritten (see _render_row). Captured up front so
 # writing the marker at the end cannot change the answer mid-run.
-typeset -i FIRST_RENDER=0
+FIRST_RENDER=0
 [[ -f $MARKER ]] || FIRST_RENDER=1
 
 # ── Mapping table ──────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ typeset -i FIRST_RENDER=0
 #   gate  all | ceres | immich
 #   post  (empty) | sshlink
 
-typeset -a MAP_SRC MAP_KIND MAP_DST MAP_MODE MAP_GATE MAP_POST
+MAP_SRC=() MAP_KIND=() MAP_DST=() MAP_MODE=() MAP_GATE=() MAP_POST=()
 
 _row() {
     MAP_SRC+=("$1"); MAP_KIND+=("$2"); MAP_DST+=("$3")
@@ -149,7 +149,7 @@ _row() {
 # Shell environment. Rendered out of every git worktree, into
 # $XDG_STATE_HOME/secrets/zsh/, and sourced by zsh/env.d/89_secrets_loader.zsh.
 # Basenames are preserved so local 90-99 overrides still win by load order.
-local _shell_file
+_shell_file=
 for _shell_file in 90_secrets 91_cloudflare_secrets 92_telemetry_secrets \
                    93_google_oauth_secrets 94_search_secrets \
                    94_zerotier_secrets 95_tailscale_secrets; do
@@ -194,7 +194,7 @@ _row portless/server-key.pem.enc  blob "$DOTFILES_DIR/configs/portless/server-ke
 # leave zsh/env.d/ or they shadow rendered (and rotated) values: .zshenv
 # sources env.d/* lexically and 9x sorts after the 89_ loader. Moved, never
 # deleted — a box's hand-edit is triaged from legacy-removed/, not destroyed.
-typeset -a LEGACY_PLAINTEXTS
+LEGACY_PLAINTEXTS=()
 LEGACY_PLAINTEXTS=(
     "$DOTFILES_DIR/zsh/env.d/90_secrets.zsh"
     "$DOTFILES_DIR/zsh/env.d/91_cloudflare_secrets.zsh"
@@ -206,7 +206,7 @@ LEGACY_PLAINTEXTS=(
 )
 
 # Tracked files that are deliberately not render sources.
-typeset -a UNMAPPED_ALLOW
+UNMAPPED_ALLOW=()
 UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -229,14 +229,14 @@ _backup_name() {
 
 # ── Render ─────────────────────────────────────────────────────────────────
 
-typeset -i N_RENDERED=0 N_SKIPPED=0 N_FAILED=0 N_BACKED_UP=0
-typeset -a FAILED_NAMES SSH_LINKS
+N_RENDERED=0 N_SKIPPED=0 N_FAILED=0 N_BACKED_UP=0
+FAILED_NAMES=() SSH_LINKS=()
 
-typeset -i i
+i=
 for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
-    local src=$SECRETS_REPO/${MAP_SRC[i]}
-    local kind=${MAP_KIND[i]} dst=${MAP_DST[i]} mode=${MAP_MODE[i]}
-    local gate=${MAP_GATE[i]} post=${MAP_POST[i]}
+    src=$SECRETS_REPO/${MAP_SRC[i]}
+    kind=${MAP_KIND[i]} dst=${MAP_DST[i]} mode=${MAP_MODE[i]}
+    gate=${MAP_GATE[i]} post=${MAP_POST[i]}
 
     if ! _gate_open $gate; then
         (( N_SKIPPED++ ))
@@ -262,7 +262,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     # filesystem, and $TMPDIR is routinely a different one (tmpfs). A
     # cross-device `mv` degrades to copy-then-unlink, which can leave a
     # half-written private key if the box dies mid-render.
-    local dstdir=${dst:h}
+    dstdir=${dst:h}
     if [[ ! -d $dstdir ]]; then
         if [[ $mode == 600 ]]; then
             install -m 700 -d $dstdir
@@ -273,14 +273,14 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
 
     # Every write is mktemp -> chmod -> mv, so a mid-render failure leaves the
     # existing target byte-for-byte untouched.
-    local tmp
+    tmp=
     tmp=$(mktemp "${dst}.render.XXXXXX") || {
         printf '%s\n' "  FAILED ${MAP_SRC[i]}: mktemp in $dstdir" >&2
         FAILED_NAMES+=("${MAP_SRC[i]}"); (( N_FAILED++ )); continue
     }
     chmod 600 $tmp
 
-    local ok=1
+    ok=1
     case $kind in
         shellenv)
             {
@@ -319,7 +319,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     # can never overwrite a genuine pre-cutover backup with rendered bytes.
     if (( FIRST_RENDER )) && [[ -f $dst ]] && ! cmp -s $tmp $dst; then
         [[ -d $LEGACY_DIR ]] || install -m 700 -d $LEGACY_DIR
-        local backup="$LEGACY_DIR/$(_backup_name "$dst")"
+        backup="$LEGACY_DIR/$(_backup_name "$dst")"
         if [[ ! -e $backup ]]; then
             cp $dst $backup && (( N_BACKED_UP++ ))
             printf '%s\n' "  backed up pre-existing $dst -> legacy-removed/${backup:t}"
@@ -333,7 +333,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
 done
 
 # ~/.ssh symlinks into the rendered dotfiles copies.
-local _link
+_link=
 for _link in $SSH_LINKS; do
     if (( _dry )); then
         printf '%s\n' "  [dry-run] would link $HOME/.ssh/${_link:t} -> $_link"
@@ -345,14 +345,14 @@ done
 
 # ── Legacy-plaintext quarantine ────────────────────────────────────────────
 
-typeset -i N_QUARANTINED=0
-typeset -a STILL_SHADOWING
-local _legacy
+N_QUARANTINED=0
+STILL_SHADOWING=()
+_legacy=
 if (( N_FAILED == 0 && ! _dry )); then
     for _legacy in $LEGACY_PLAINTEXTS; do
         [[ -f $_legacy ]] || continue
         [[ -d $LEGACY_DIR ]] || install -m 700 -d $LEGACY_DIR
-        local q="$LEGACY_DIR/$(_backup_name "$_legacy")"
+        q="$LEGACY_DIR/$(_backup_name "$_legacy")"
         if [[ -e $q ]]; then
             # A previous run already banked these bytes; keep the older copy
             # and park this one beside it rather than losing either.
@@ -370,8 +370,8 @@ fi
 
 # ── Unmapped-file detection ────────────────────────────────────────────────
 
-typeset -a UNMAPPED
-local _tracked
+UNMAPPED=()
+_tracked=
 for _tracked in ${(f)"$(git -C $SECRETS_REPO ls-files 2>/dev/null)"}; do
     [[ -z $_tracked ]] && continue
     [[ $_tracked == scripts/* ]] && continue
@@ -394,7 +394,7 @@ if (( N_FAILED > 0 )); then
 fi
 
 if (( ! _dry )); then
-    local dot_head sec_head
+    dot_head= sec_head=
     dot_head=$(git -C $DOTFILES_DIR rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
     sec_head=$(git -C $SECRETS_REPO rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
     [[ -d ${MARKER:h} ]] || mkdir -p ${MARKER:h}

@@ -14,14 +14,14 @@ if [[ $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
-local obs_hosts=$SCRIPT_DIR/configs/obs/hosts.conf
+obs_hosts=$SCRIPT_DIR/configs/obs/hosts.conf
 if [[ ! -r $obs_hosts ]]; then
     printf '%s\n' "obs: $obs_hosts not found, skipping"
     return 0
 fi
 
 # Canonical short hostname; falls back to BSD hostname -s.
-local self
+self=
 self=$(scutil --get LocalHostName 2>/dev/null) || self=$(hostname -s 2>/dev/null) || self=""
 if [[ -z $self ]]; then
     printf '%s\n' "obs: could not determine local hostname, skipping"
@@ -29,10 +29,10 @@ if [[ -z $self ]]; then
 fi
 
 # Strip comments/blank lines from hosts.conf into an array (BSD awk clean).
-local -a obs_enabled
+obs_enabled=()
 obs_enabled=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $obs_hosts)}")
 
-local host self_enabled=0
+host= self_enabled=0
 for host in $obs_enabled; do
     [[ $host == $self ]] && self_enabled=1
 done
@@ -57,7 +57,7 @@ fi
 # 2. Seed the tracked two-track config (non-destructive; honors DEPLOY_DRY_RUN
 #    itself). Use /usr/bin/python3 (stable path, no mise dependency) like
 #    configure_iterm2_profile does.
-local obs_dir="$HOME/Library/Application Support/obs-studio"
+obs_dir="$HOME/Library/Application Support/obs-studio"
 if [[ ! -x /usr/bin/python3 ]]; then
     printf '%s\n' "  ...python3 unavailable, skipping OBS config seed"
     return 0

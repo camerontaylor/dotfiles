@@ -19,8 +19,8 @@ if [[ $DOTFILES_OS != Darwin ]]; then
     return 0
 fi
 
-local kb_src=$SCRIPT_DIR/configs/karabiner/karabiner.ts
-local kb_target=$XDG_CONFIG_HOME/karabiner/karabiner.json
+kb_src=$SCRIPT_DIR/configs/karabiner/karabiner.ts
+kb_target=$XDG_CONFIG_HOME/karabiner/karabiner.json
 
 zf_mkdir -p $XDG_CONFIG_HOME/karabiner
 
@@ -33,8 +33,8 @@ printf '%s\n' "Generating Karabiner config from karabiner.ts..."
 
 # bun executes TypeScript directly and is installed by mise (50_mise.zsh, which
 # runs before this fragment); tsx / `npx tsx` cover any host without it.
-local kb_runner=
-local r
+kb_runner=
+r=
 for r in bun tsx; do
     if have "$r"; then
         kb_runner=$r

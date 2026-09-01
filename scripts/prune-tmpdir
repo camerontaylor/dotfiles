@@ -27,9 +27,9 @@
 emulate -L zsh
 setopt no_unset pipe_fail
 
-typeset dry_run=0
-typeset days=${TMPDIR_PRUNE_DAYS:-7}
-typeset explicit_path=
+dry_run=0
+days=${TMPDIR_PRUNE_DAYS:-7}
+explicit_path=
 
 # Hand-rolled parser: BSD getopt has no long-option support (see CLAUDE.md).
 while (( $# )); do
@@ -59,7 +59,7 @@ if [[ $days != <-> ]]; then
     exit 2
 fi
 
-typeset target=${explicit_path:-${TMPDIR:-}}
+target=${explicit_path:-${TMPDIR:-}}
 [[ $target == / ]] || target=${target%/}
 
 if [[ -z $target || ! -d $target ]]; then
@@ -79,7 +79,7 @@ esac
 
 # -print0 + (0) split so entries containing spaces or newlines survive intact.
 # BSD find (macOS) and GNU find both support -mindepth/-maxdepth/-print0.
-typeset -a stale
+stale=()
 stale=( ${(0)"$(find $target -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)"} )
 
 if (( ${#stale} == 0 )); then
@@ -88,15 +88,15 @@ if (( ${#stale} == 0 )); then
 fi
 
 # du -sk over just the doomed entries: cheap, and makes the log useful.
-typeset freed_kb
+freed_kb=
 freed_kb=$(du -sck ${stale} 2>/dev/null | tail -1 | awk '{print $1}') || freed_kb=0
 [[ $freed_kb == <-> ]] || freed_kb=0
 
-typeset noun
+noun=
 if (( ${#stale} == 1 )); then noun=entry; else noun=entries; fi
 
 if (( dry_run )); then
-    typeset e
+    e=
     for e in $stale; do
         printf '%s\n' "  [dry-run] would remove $e"
     done
