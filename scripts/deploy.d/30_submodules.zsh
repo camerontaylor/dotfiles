@@ -33,8 +33,14 @@ fi
 printf '%s\n' "  ...done"
 
 printf '%s\n' "Compiling zsh plugins..."
-autoload -Uz zrecompile
-for zsh_plugin_file in $SCRIPT_DIR/zsh/plugins/**/*.zsh{-theme,}(#q.); do
-    zrecompile -pq $zsh_plugin_file
-done
+# zrecompile is an autoloadable zsh function (bash has neither autoload nor
+# zsh bytecode), and `**` recursive globbing does not exist on bash 3.2 — so
+# walk with find and compile in a zsh child under either driver. Output .zwc
+# files are identical to compiling in-process. BSD xargs skips the command on
+# empty input, so an empty plugins tree is a clean no-op.
+if have zsh; then
+    find "$SCRIPT_DIR/zsh/plugins" -type f \
+        \( -name '*.zsh' -o -name '*.zsh-theme' \) -print0 \
+        | xargs -0 zsh -c 'autoload -Uz zrecompile; for f; do zrecompile -pq "$f"; done' zsh
+fi
 printf '%s\n' "  ...done"

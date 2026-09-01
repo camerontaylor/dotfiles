@@ -28,10 +28,22 @@ fi
 # both a deliberate per-box 96_local_tailscale.zsh (which therefore wins) and,
 # on a box that has not completed the secrets bootstrap, the legacy
 # 95_tailscale_secrets.zsh plaintext, so degraded boxes keep today's behaviour.
+# Collect candidates with find (the (N) glob qualifiers were zsh-only; the
+# zsh driver runs err_exit without null_glob, where a missed glob aborts the
+# deploy). Rendered state dir first, in-tree env.d second — per-dir sort keeps
+# the load order byte-identical to the old brace-glob concatenation, so a
+# deliberate 96_local override still wins over the rendered 95 file.
+secret_files=()
+while IFS= read -r secret_file; do
+    [[ -f $secret_file ]] || continue
+    secret_files+=("$secret_file")
+done < <(
+    find "${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh" -maxdepth 1 -name '9[0-9]_tailscale_secrets.zsh' 2>/dev/null | sort
+    find "$SCRIPT_DIR/zsh/env.d" -maxdepth 1 -name '9[0-9]_*tailscale*.zsh' 2>/dev/null | sort
+)
 secret_file=
-for secret_file in ${XDG_STATE_HOME:-$HOME/.local/state}/secrets/zsh/9[0-9]_tailscale_secrets.zsh(N) \
-                   $SCRIPT_DIR/zsh/env.d/9[0-9]_*tailscale*.zsh(N); do
-    source $secret_file
+for secret_file in "${secret_files[@]}"; do
+    source "$secret_file"
 done
 
 # Install the client when missing; refresh under --upgrade on macOS.

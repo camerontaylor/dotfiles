@@ -30,6 +30,10 @@ setopt no_unset pipe_fail
 dry_run=0
 days=${TMPDIR_PRUNE_DAYS:-7}
 explicit_path=
+# zsh's `<->` "any number" glob pattern has no bash spelling; an ERE in a
+# variable is the one form `=~` accepts in both bash 3.2 and zsh (bash 3.2
+# treats a quoted regex as a literal string).
+_num_re='^[0-9]+$'
 
 # Hand-rolled parser: BSD getopt has no long-option support (see CLAUDE.md).
 while (( $# )); do
@@ -54,7 +58,7 @@ while (( $# )); do
     shift
 done
 
-if [[ $days != <-> ]]; then
+if [[ ! $days =~ $_num_re ]]; then
     printf '%s\n' "prune-tmpdir: --days must be a non-negative integer, got: $days" >&2
     exit 2
 fi
@@ -77,10 +81,14 @@ case $target in
         ;;
 esac
 
-# -print0 + (0) split so entries containing spaces or newlines survive intact.
+# -print0 + NUL-delimited read so entries containing spaces or newlines
+# survive intact. `read -r -d ''` is the rare NUL-delimiter spelling both
+# zsh and bash agree on; it replaces zsh's ${(0)} flag split.
 # BSD find (macOS) and GNU find both support -mindepth/-maxdepth/-print0.
 stale=()
-stale=( ${(0)"$(find $target -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)"} )
+while IFS= read -r -d '' _entry; do
+    stale+=("$_entry")
+done < <(find "$target" -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)
 
 if (( ${#stale} == 0 )); then
     printf '%s\n' "prune-tmpdir: $target has no entries older than ${days}d"
@@ -89,8 +97,8 @@ fi
 
 # du -sk over just the doomed entries: cheap, and makes the log useful.
 freed_kb=
-freed_kb=$(du -sck ${stale} 2>/dev/null | tail -1 | awk '{print $1}') || freed_kb=0
-[[ $freed_kb == <-> ]] || freed_kb=0
+freed_kb=$(du -sck "${stale[@]}" 2>/dev/null | tail -1 | awk '{print $1}') || freed_kb=0
+[[ $freed_kb =~ $_num_re ]] || freed_kb=0
 
 noun=
 if (( ${#stale} == 1 )); then noun=entry; else noun=entries; fi

@@ -71,12 +71,20 @@ awk -v block="$age_block" '
     { in_age=0; print }
 ' $sops_yaml > ${sops_yaml}.tmp && mv ${sops_yaml}.tmp $sops_yaml
 
-# Re-encrypt every .enc file to the new recipient set.
+# Re-encrypt every .enc file to the new recipient set. The old
+# `**.enc~(plugins|tools|.git)/**(N)` recursive exclusion glob was zsh-only;
+# find -prune skips exactly the three top-level trees in both shells.
 printf '%s\n' "Re-encrypting .enc files..."
 enc_files=()
-enc_files=($SCRIPT_DIR/**/*.enc~$SCRIPT_DIR/(plugins|tools|.git)/**/*(N))
+while IFS= read -r f; do
+    enc_files+=("$f")
+done < <(
+    find "$SCRIPT_DIR" \
+        \( -path "$SCRIPT_DIR/.git" -o -path "$SCRIPT_DIR/plugins" -o -path "$SCRIPT_DIR/tools" \) -prune \
+        -o -type f -name '*.enc' -print 2>/dev/null | sort
+)
 f=
-for f in $enc_files; do
+for f in "${enc_files[@]}"; do
     printf '%s\n' "  ${f#$SCRIPT_DIR/}"
     sops updatekeys -y $f >/dev/null
 done

@@ -105,8 +105,19 @@ encrypt_if_changed() {
     fi
 }
 
+# Plaintext sources. The old `{dir1,dir2,dir3}/9[0-9]_*(N)` brace-glob was
+# zsh-only; find walks the same three directories (per-dir sort, dir order
+# preserved) and stays silent on zero matches in both shells.
 plaintext= enc_file=
-for plaintext in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*(N); do
+plaintexts=()
+while IFS= read -r plaintext; do
+    plaintexts+=("$plaintext")
+done < <(
+    for _pt_dir in zsh/env.d zsh/rc.d nvim/init; do
+        find $_pt_dir -maxdepth 1 -name '9[0-9]_*' 2>/dev/null | sort
+    done
+)
+for plaintext in "${plaintexts[@]}"; do
     [[ $plaintext == *.enc ]] && continue
 
     enc_file="${plaintext}.enc"

@@ -146,9 +146,14 @@ deploy_mkdir -p $XDG_CONFIG_HOME/wake-peers
 deploy_ln -sfn $SCRIPT_DIR/configs/wake-peers/peers.conf $XDG_CONFIG_HOME/wake-peers/peers.conf
 deploy_ln -sfn $SCRIPT_DIR/scripts/wake-peers $HOME/.local/bin/wake-peers
 deploy_ln -sfn $SCRIPT_DIR/configs/wake-peers/displaywakeup $HOME/.displaywakeup
-for _ssh_file in $SCRIPT_DIR/ssh/*~$SCRIPT_DIR/ssh/*.enc(N.); do
-    deploy_ln -sfn $_ssh_file $HOME/.ssh/${_ssh_file:t}
-done
+# Link every plaintext ssh file (not the *.enc ciphertexts). The old
+# `*~*.enc(N.)` exclusion glob was zsh-only; find does the same walk in both
+# shells and stays silent when the directory has no matches (the zsh driver
+# runs err_exit without null_glob, where a missed glob is a hard error).
+# `! -name '.*'` mirrors the glob's dotfile skip.
+while IFS= read -r _ssh_file; do
+    deploy_ln -sfn "$_ssh_file" "$HOME/.ssh/${_ssh_file##*/}"
+done < <(find "$SCRIPT_DIR/ssh" -maxdepth 1 -type f ! -name '*.enc' ! -name '.*' 2>/dev/null | sort)
 # niri Wayland desktop stack (Linux only)
 if [[ $DOTFILES_OS == Linux ]]; then
     deploy_mkdir -p $XDG_CONFIG_HOME/niri

@@ -43,8 +43,20 @@ if [[ ! -f $XDG_CONFIG_HOME/sops/age/keys.txt ]]; then
     exit 1
 fi
 
+# Decrypt targets. The old `{dir1,dir2,dir3}/9[0-9]_*.enc(N)` brace-glob was
+# zsh-only; find walks the same three directories (per-dir sort, dir order
+# preserved — identical iteration order to the glob concatenation) and stays
+# silent on zero matches in both shells.
 enc_file= target= temp_file=
-for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
+enc_files=()
+while IFS= read -r enc_file; do
+    enc_files+=("$enc_file")
+done < <(
+    for _enc_dir in zsh/env.d zsh/rc.d nvim/init; do
+        find $_enc_dir -maxdepth 1 -name '9[0-9]_*.enc' 2>/dev/null | sort
+    done
+)
+for enc_file in "${enc_files[@]}"; do
     target=${enc_file%.enc}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
         printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
@@ -63,8 +75,13 @@ for enc_file in {zsh/env.d,zsh/rc.d,nvim/init}/9[0-9]_*.enc(N); do
 done
 
 # SSH config and managed keys
-for enc_file in ssh/*.enc(N); do
-    target=ssh/${${enc_file:t}%.enc}
+enc_files=()
+while IFS= read -r enc_file; do
+    enc_files+=("$enc_file")
+done < <(find ssh -maxdepth 1 -name '*.enc' 2>/dev/null | sort)
+for enc_file in "${enc_files[@]}"; do
+    _enc_base=${enc_file##*/}
+    target=ssh/${_enc_base%.enc}
     mkdir -p ssh
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
         printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"

@@ -22,8 +22,13 @@ fi
 
 printf '%s\n' "Pruning empty evalcache entries..."
 
-# Glob qualifiers: N=nullglob, .=regular file, L0=size exactly 0 bytes
-empty_caches=($cache_dir/*.zsh(N.L0))
+# Zero-byte regular *.zsh files. The old `*.zsh(N.L0)` glob qualifiers were
+# zsh-only; find expresses N (silent empty result), . (regular file) and L0
+# (exactly 0 bytes) as `-type f -size 0c` in both shells.
+empty_caches=()
+while IFS= read -r _cache_file; do
+    empty_caches+=("$_cache_file")
+done < <(find "$cache_dir" -maxdepth 1 -type f -name '*.zsh' -size 0c 2>/dev/null | sort)
 
 if (( ${#empty_caches} == 0 )); then
     printf '%s\n' "  ...none found"
