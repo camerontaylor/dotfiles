@@ -8,7 +8,7 @@
 # and producing routine ssh/config.enc conflicts on stash/rebase. Run
 # `./scripts/save-secrets.zsh` manually after editing a secret.
 
-setopt err_exit
+set -e
 
 # Hand-rolled symlink walk (the repo's canonical pattern, see
 # scripts/generate-commit-msg) — zsh's ${0:A:h} has no bash spelling.

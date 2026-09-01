@@ -50,6 +50,25 @@ tilde_collapse() {
     esac
 }
 
+# version_ge HAVE WANT — 0 when dotted-numeric HAVE >= WANT ("1.4" counts as
+# >= "1.4.0"; missing fields are 0). Replaces zsh's `autoload -Uz is-at-least`
+# (bash has no autoload). A field's leading digits are its value, so a
+# prerelease tail field-truncates ("1.4.1-beta" == "1.4.1") — the call sites
+# only compare clean release versions.
+version_ge() {
+    local have=$1 want=$2 h w
+    while :; do
+        h=${have%%.*}; w=${want%%.*}
+        h=${h%%[!0-9]*}; w=${w%%[!0-9]*}
+        h=${h:-0}; w=${w:-0}
+        (( h > w )) && return 0
+        (( h < w )) && return 1
+        [[ $have == *.* || $want == *.* ]] || return 0
+        case $have in *.*) have=${have#*.} ;; *) have=0 ;; esac
+        case $want in *.*) want=${want#*.} ;; *) want=0 ;; esac
+    done
+}
+
 # Dry-run-aware wrappers over the mutating coreutils. A real run passes
 # straight through to the command (preserving its exit status, and so
 # err_exit behavior); under --dry-run (DEPLOY_DRY_RUN=1) they print the
@@ -97,7 +116,7 @@ ensure_homebrew_path() {
     for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
         if [[ -x $brew_bin ]]; then
             eval "$($brew_bin shellenv zsh)"
-            rehash
+            hash -r
             return 0
         fi
     done
@@ -143,7 +162,7 @@ brew_install_or_upgrade() {
 
     if ! brew list --formula $formula > /dev/null 2>&1; then
         if brew install $formula > /dev/null 2>&1; then
-            rehash
+            hash -r
             printf '%s\n' "  ...done"
             return 0
         fi
@@ -151,7 +170,7 @@ brew_install_or_upgrade() {
         return 1
     elif ! have "$binary"; then
         if brew link $formula > /dev/null 2>&1 || brew link --overwrite $formula > /dev/null 2>&1; then
-            rehash
+            hash -r
             printf '%s\n' "  ...linked"
             return 0
         fi
@@ -202,7 +221,7 @@ brew_formula_install_or_upgrade() {
 
     if ! brew list --formula $formula > /dev/null 2>&1; then
         if brew install $formula > /dev/null 2>&1; then
-            rehash
+            hash -r
             printf '%s\n' "  ...done"
             return 0
         fi

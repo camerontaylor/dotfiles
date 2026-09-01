@@ -253,7 +253,7 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     brew_formula_install_or_upgrade libpq || true
     if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
         PATH="$HOMEBREW_PREFIX/opt/libpq/bin:$PATH"
-        rehash
+        hash -r
     fi
 fi
 
@@ -299,7 +299,7 @@ if have brew && brew list --formula ghx > /dev/null 2>&1; then
     brew uninstall gh > /dev/null 2>&1 || true
     brew untap brunoborges/tap > /dev/null 2>&1 || true
     rm -rf "$HOME/.ghx"
-    rehash
+    hash -r
     printf '%s\n' "  ...done"
 fi
 

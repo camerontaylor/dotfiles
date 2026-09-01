@@ -8,7 +8,7 @@
 # Usage: scripts/sops-add-recipient.zsh age1<pubkey>
 #
 
-setopt extended_glob err_exit
+set -e
 
 # Repo root from this script's real location — hand-rolled symlink walk (the
 # repo's canonical pattern, scripts/generate-commit-msg); ${0:A:h:h} is zsh-only.

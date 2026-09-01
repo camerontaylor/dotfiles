@@ -33,7 +33,7 @@ case " $distro_id $distro_like " in
         if (( DEPLOY_DRY_RUN )); then
             printf '%s\n' "  [dry-run] would: sudo pacman -Sy --needed --noconfirm openbsd-netcat socat"
         elif sudo pacman -Sy --needed --noconfirm openbsd-netcat socat; then
-            rehash
+            hash -r
             printf '%s\n' "  ...net tools (nc, socat) present"
         else
             printf '%s\n' "  ...failed to install net tools (see output above)"

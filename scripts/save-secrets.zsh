@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-setopt extended_glob err_exit
+set -e
 
 force=false
 git_add=false

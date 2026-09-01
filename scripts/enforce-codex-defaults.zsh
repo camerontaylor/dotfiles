@@ -18,7 +18,8 @@
 #
 #   SKIP_CODEX_ENFORCE=1 git commit -m "feat(codex): bump model to gpt-5.6-sol"
 
-setopt err_exit pipefail
+set -e
+set -o pipefail
 
 # Opt-out for intentional model/effort updates.
 if [[ -n ${SKIP_CODEX_ENFORCE:-} ]]; then

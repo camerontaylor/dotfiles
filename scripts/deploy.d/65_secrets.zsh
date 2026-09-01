@@ -62,7 +62,7 @@ fi
 
 if [[ ! -f $age_key_dir/keys.txt ]]; then
     secrets_bootstrap_help
-    unfunction secrets_bootstrap_help 2>/dev/null || true
+    unset -f secrets_bootstrap_help 2>/dev/null || true
     return 0
 fi
 
@@ -108,7 +108,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
 
         if (( gh_ok == 0 && ssh_ok == 0 )); then
             secrets_bootstrap_help
-            unfunction secrets_bootstrap_help 2>/dev/null || true
+            unset -f secrets_bootstrap_help 2>/dev/null || true
             return 0
         fi
 
@@ -136,7 +136,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         fi
         if (( cloned == 0 )); then
             secrets_bootstrap_help
-            unfunction secrets_bootstrap_help 2>/dev/null || true
+            unset -f secrets_bootstrap_help 2>/dev/null || true
             return 0
         fi
     fi
@@ -197,7 +197,7 @@ else
     printf '%s\n' "  WARNING: scripts/secrets-render.zsh missing; nothing rendered." >&2
 fi
 
-unfunction secrets_bootstrap_help 2>/dev/null || true
+unset -f secrets_bootstrap_help 2>/dev/null || true
 
 # Reload systemd to pick up any user units whose EnvironmentFile just changed.
 if have systemctl; then

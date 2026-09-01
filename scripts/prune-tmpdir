@@ -24,8 +24,11 @@
 # Usage: prune-tmpdir [-n|--dry-run] [-d|--days N] [-p|--path DIR]
 #        TMPDIR_PRUNE_DAYS=14 prune-tmpdir
 
-emulate -L zsh
-setopt no_unset pipe_fail
+# set -u / set -o pipefail replace zsh's `setopt no_unset pipe_fail`; the
+# old `emulate -L zsh` guard is dropped — nothing left here is option-
+# sensitive (no globs in [[ ]], no bare locals, all expansions quoted).
+set -u
+set -o pipefail
 
 dry_run=0
 days=${TMPDIR_PRUNE_DAYS:-7}

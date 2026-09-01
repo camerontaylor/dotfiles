@@ -58,7 +58,7 @@ if [[ $DOTFILES_OS == Darwin ]]; then
             printf '%s\n' "  [dry-run] would: brew install --cask tailscale"
         else
             if brew_cask_install_or_upgrade tailscale; then
-                rehash
+                hash -r
                 printf '%s\n' "  ...macOS may prompt to allow the Tailscale system extension"
                 printf '%s\n' "     in System Settings -> Privacy & Security, and to open the app once."
             else
@@ -124,7 +124,7 @@ else
         esac
 
         if (( install_ok )); then
-            (( DEPLOY_DRY_RUN )) || { rehash; printf '%s\n' "  ...done"; }
+            (( DEPLOY_DRY_RUN )) || { hash -r; printf '%s\n' "  ...done"; }
         else
             printf '%s\n' "  ...failed to install Tailscale (see output above)"
             return 0

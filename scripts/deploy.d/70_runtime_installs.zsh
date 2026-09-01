@@ -95,7 +95,7 @@ elif have mise; then
     fi
 
     mise reshim --force -y > /dev/null 2>&1 || true
-    rehash
+    hash -r
 
     # One-shot teardown of the abandoned Vite+ node manager. vp hijacked
     # node/npm/pnpm through ~/.vite-plus/bin shims that only interactive
@@ -122,14 +122,12 @@ fi
 # link the binary there. A symlink beats adding a PATH entry to env.d because
 # ~/.local/bin also reaches non-zsh callers (systemd units, paseo dispatch).
 if have bun; then
-    autoload -Uz is-at-least
-
     gjc_bun_version= gjc_bun_bin=
     gjc_bun_version=$(bun --version 2>/dev/null)
 
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would install/upgrade gajae-code (gjc) as a bun global"
-    elif ! is-at-least 1.4.0 ${gjc_bun_version:-0}; then
+    elif ! version_ge "${gjc_bun_version:-0}" 1.4.0; then
         # 50_mise.zsh runs `mise upgrade` on every deploy, so bun should already
         # be current (configs/mise.toml pins the major, `bun = "1"`). If a box is
         # still behind, say so rather than planting a gjc its runtime can't run.
@@ -165,7 +163,7 @@ if have bun; then
     gjc_bun_bin=$(bun pm bin -g 2>/dev/null)
     if [[ -n $gjc_bun_bin && -x $gjc_bun_bin/gjc ]]; then
         deploy_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
-        (( DEPLOY_DRY_RUN )) || rehash
+        (( DEPLOY_DRY_RUN )) || hash -r
     fi
 fi
 
@@ -224,7 +222,7 @@ if have cargo; then
             printf '%s\n' "Upgrading $codewhale_package via cargo..."
         fi
         if cargo install "$codewhale_package" --locked --force > /dev/null 2>&1; then
-            rehash
+            hash -r
             printf '%s\n' "  ...done"
         else
             printf '%s\n' "  ...failed to $codewhale_action $codewhale_package"
@@ -248,6 +246,6 @@ if [[ -e $HOME/.local/bin/ghx || -d $HOME/.ghx ]]; then
         rm -f "$HOME/.local/bin/gh"
     fi
     rm -rf "$HOME/.ghx"
-    rehash
+    hash -r
     printf '%s\n' "  ...done"
 fi

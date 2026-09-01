@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 
-setopt extended_glob err_exit pipefail
+set -e
+set -o pipefail
 
 force=false
 for arg in "$@"; do
@@ -61,7 +62,7 @@ ensure_homebrew_path() {
     for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
         if [[ -x $brew_bin ]]; then
             eval "$($brew_bin shellenv zsh)"
-            rehash
+            hash -r
             return 0
         fi
     done
@@ -78,7 +79,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
     fi
     brew_output=
     if brew_output=$(brew install satococoa/tap/wtp 2>&1); then
-        rehash
+        hash -r
         if have wtp; then
             printf '%s\n' "  ...done"
             exit 0
@@ -93,7 +94,7 @@ if [[ $wtp_os == Darwin ]] && ensure_homebrew_path; then
         if [[ -n $wtp_prefix && -x $wtp_prefix/bin/wtp ]]; then
             mkdir -p $install_dir
             ln -sf $wtp_prefix/bin/wtp $target
-            rehash
+            hash -r
             printf '%s\n' "  ...brew keg was unlinked; symlinking $wtp_prefix/bin/wtp -> $target"
             printf '%s\n' "  brew said:"
             printf '%s\n' "$brew_output" | sed 's/^/    /'

@@ -111,7 +111,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             elif sudo -n true 2>/dev/null || [[ -t 0 ]]; then
                 printf '%s\n' "Installing $label..."
                 if eval "$cmd" > /dev/null 2>&1; then
-                    rehash
+                    hash -r
                     printf '%s\n' "  ...done"
                 else
                     printf '%s\n' "  ...failed, install manually: $cmd"
