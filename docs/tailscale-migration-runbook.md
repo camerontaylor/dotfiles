@@ -60,7 +60,7 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
 
 5. 📝 **Create the secret ONCE** (on your workstation) and commit the `.enc`:
    ```sh
-   print 'export TAILSCALE_AUTHKEY=tskey-auth-…' > zsh/env.d/95_tailscale_secrets.zsh
+   printf '%s\n' 'export TAILSCALE_AUTHKEY=tskey-auth-…' > zsh/env.d/95_tailscale_secrets.zsh
    chmod 600 zsh/env.d/95_tailscale_secrets.zsh
    ./scripts/save-secrets.zsh        # encrypts 9[0-9]_* plaintext → .enc (commit the .enc)
    git add zsh/env.d/95_tailscale_secrets.zsh.enc && git commit && git push
@@ -86,7 +86,8 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
    ```
    Prereq: the host's age key must be registered in `.sops.yaml` (a fresh
    `deploy.zsh`/`65_sops` run prints a clear WARNING with the key + fix command if
-   not). Verify: `zsh -c 'source zsh/env.d/95_tailscale_secrets.zsh; [[ -n $TAILSCALE_AUTHKEY ]] && echo OK'`.
+   not). Verify: `zsh -c 'source zsh/env.d/95_tailscale_secrets.zsh; [[ -n $TAILSCALE_AUTHKEY ]] && echo OK'`
+   (bash-runnable twin: `bash -c '. zsh/env.d/95_tailscale_secrets.zsh; [[ -n $TAILSCALE_AUTHKEY ]] && echo OK'`).
 6. **Deploy** on the host:
    ```sh
    git -c core.hooksPath=/dev/null pull --ff-only   # get commits w/o full auto-deploy
