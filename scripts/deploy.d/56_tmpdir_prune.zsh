@@ -29,11 +29,13 @@ printf '%s\n' "Installing daily TMPDIR prune task..."
 
 # The job must run through a login shell so env.d sets TMPDIR before the
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
-zsh_bin=$(command -v zsh || printf '%s' /bin/zsh)
+# DOTFILES_UNIT_SHELL overrides the runner for bash-only hosts (99_periodic.zsh
+# honors the same knob); the default resolution is unchanged.
+unit_shell=${DOTFILES_UNIT_SHELL:-$(command -v zsh || printf '%s' /bin/zsh)}
 prune_command=$(sh_quote "$pruner")
 
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "  [dry-run] would schedule: $zsh_bin -lc $prune_command (daily)"
+    printf '%s\n' "  [dry-run] would schedule: $unit_shell -lc $prune_command (daily)"
     return 0
 fi
 
@@ -55,7 +57,7 @@ Description=Prune stale TMPDIR entries
 
 [Service]
 Type=oneshot
-ExecStart=$zsh_bin -lc $prune_command"
+ExecStart=$unit_shell -lc $prune_command"
     printf '%s\n' "$service_content" > $systemd_unit_dir/prune-tmpdir.service
 
     timer_content="[Unit]
@@ -91,7 +93,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <string>$launchd_label</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$zsh_bin</string>
+        <string>$unit_shell</string>
         <string>-lc</string>
         <string>$prune_command</string>
     </array>
@@ -119,7 +121,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job..."
-    cron_task="$zsh_bin -lc $prune_command"
+    cron_task="$unit_shell -lc $prune_command"
     cron_schedule="30 3 * * * $cron_task"
     if cat <(grep --invert-match --fixed-strings $cron_task <(crontab -l 2>/dev/null)) <(echo $cron_schedule) | crontab -; then
         printf '%s\n' "  ...done"

@@ -126,6 +126,15 @@ git clone https://github.com/camerontaylor/dotfiles.git "$HOME/.local/dotfiles"
 command -v brew >/dev/null 2>&1 && chsh -s "$(brew --prefix)/bin/zsh"  # macOS/Homebrew zsh
 ```
 
+Deploy pins brew's zsh as the login shell on macOS. To keep a different
+one, run `DOTFILES_SHELL=/bin/bash "$HOME/.local/dotfiles/deploy.zsh"` (or
+`export DOTFILES_SHELL=…` before the post-merge hook's auto-deploys): with
+the knob set, `chsh` only ever targets that path and only when it exists on
+disk and is listed in `/etc/shells`. Unset — the default — behaves exactly
+as before (opt-in knob, not a silent switch). A bash twin of the driver,
+[`deploy.bash`](deploy.bash), runs the same fragments; both are preceded by
+a `/bin/bash` ≥ 3.2 version assert.
+
 [`deploy.zsh`](deploy.zsh) sets up symlinks, inits submodules, installs git
 hooks, runs `mise install`, wires brew (macOS), and schedules a daily `git
 pull`. It dispatches into [`scripts/deploy.d/NN_*.zsh`](scripts/deploy.d)
@@ -133,8 +142,10 @@ fragments (sourced in numeric order), each handling one install concern; shared
 helpers live in
 [`scripts/deploy.d/lib/helpers.zsh`](scripts/deploy.d/lib/helpers.zsh). The
 [`scripts/post-merge`](scripts/post-merge) hook auto-re-runs deploy after every
-`git pull` (with a `zsh -n` precheck and a 300s `timeout`; opt out per-pull with
-`DOTFILES_SKIP_POSTMERGE=1`).
+`git pull` (it prefers `deploy.zsh` under zsh, falls back to `deploy.bash`
+under bash — syntax-checked before running — wraps the deploy in a 300s
+`timeout`, and fails loud when neither driver is runnable; opt out per-pull
+with `DOTFILES_SKIP_POSTMERGE=1`).
 
 `deploy.zsh` accepts:
 

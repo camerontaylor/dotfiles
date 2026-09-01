@@ -50,6 +50,11 @@ WantedBy=timers.target"
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
+    # Runner for the scheduled unit. Default /bin/zsh preserves the historical
+    # plist; DOTFILES_UNIT_SHELL overrides it for hosts that deploy through
+    # deploy.bash without zsh (56_tmpdir_prune.zsh honors the same knob).
+    unit_shell=${DOTFILES_UNIT_SHELL:-/bin/zsh}
+
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.pull
     launchd_plist=$launchd_dir/$launchd_label.plist
@@ -64,7 +69,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <string>$launchd_label</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/zsh</string>
+        <string>$unit_shell</string>
         <string>-lc</string>
         <string>$launchd_command</string>
     </array>

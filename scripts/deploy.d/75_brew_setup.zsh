@@ -122,7 +122,29 @@ elif [[ $(uname -s) == Darwin ]] && have brew; then
         current_shell=
         current_shell=$(dscl . -read /Users/$USER UserShell 2>/dev/null | awk '{print $2}')
         [[ -z $current_shell ]] && current_shell=$SHELL
-        if [[ $current_shell != $brew_zsh ]]; then
+        # Login-shell target. Unset -> historical behavior: pin brew's zsh.
+        # DOTFILES_SHELL (opt-in, docs/bash-compatibility.md §D) points the
+        # login shell elsewhere (e.g. /bin/bash on a bash-only host) instead of
+        # silently re-pinning every fresh Mac to zsh. chsh only runs when the
+        # value is an executable on disk AND listed in /etc/shells — and never
+        # during --dry-run, so the knob can't mutate a dry run.
+        if [[ -n ${DOTFILES_SHELL:-} ]]; then
+            if (( DEPLOY_DRY_RUN )); then
+                printf '%s\n' "  ...[dry-run] would target login shell $DOTFILES_SHELL (current: $current_shell)"
+            elif [[ ! -x $DOTFILES_SHELL ]]; then
+                printf '%s\n' "  ...DOTFILES_SHELL=$DOTFILES_SHELL is not an executable; login shell unchanged ($current_shell)"
+            elif ! grep -Fxq "$DOTFILES_SHELL" /etc/shells 2>/dev/null; then
+                printf '%s\n' "  ...DOTFILES_SHELL=$DOTFILES_SHELL is not in /etc/shells; login shell unchanged ($current_shell)"
+                printf '%s\n' "     run: echo $DOTFILES_SHELL | sudo tee -a /etc/shells"
+            elif [[ $current_shell == "$DOTFILES_SHELL" ]]; then
+                printf '%s\n' "  ...login shell already uses $DOTFILES_SHELL"
+            elif chsh -s "$DOTFILES_SHELL" "$USER" < /dev/null > /dev/null 2>&1; then
+                printf '%s\n' "  ...login shell changed to $DOTFILES_SHELL"
+            else
+                printf '%s\n' "  ...login shell is still $current_shell"
+                printf '%s\n' "     run: chsh -s $DOTFILES_SHELL"
+            fi
+        elif [[ $current_shell != $brew_zsh ]]; then
             if grep -Fxq "$brew_zsh" /etc/shells 2>/dev/null \
                 && chsh -s "$brew_zsh" "$USER" < /dev/null > /dev/null 2>&1; then
                 printf '%s\n' "  ...login shell changed to $brew_zsh"
