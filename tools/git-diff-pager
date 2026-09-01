@@ -1,6 +1,9 @@
-#!/usr/bin/env zsh
+#!/bin/sh
+# Repo-wide git pager (configs/gitconfig [pager] diff/show/log/blame/stash).
+# POSIX: must run wherever git runs, zsh or not. `exec` so delta/less owns the
+# terminal directly.
 
-if (( ${+commands[delta]} )); then
+if command -v delta >/dev/null 2>&1; then
     exec delta
 else
     exec less --RAW-CONTROL-CHARS --quit-if-one-screen

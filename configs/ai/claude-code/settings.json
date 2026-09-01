@@ -4,7 +4,6 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "90",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0",
     "ENABLE_CLAUDEAI_MCP_SERVERS": "false",
-    "CLAUDE_CODE_SHELL": "zsh",
     "ENABLE_LSP_TOOL": "0",
     "LANGFUSE_HOST": "https://telemetry.webfront.app",
     "LANGFUSE_PUBLIC_KEY": "pk-lf-local-claude-code",
