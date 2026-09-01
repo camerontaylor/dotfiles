@@ -127,23 +127,35 @@ FIRST_RENDER=0
 
 # ── Mapping table ──────────────────────────────────────────────────────────
 #
-# Parallel arrays, hardcoded here rather than in a manifest inside the secrets
-# repo: target paths are machine concerns, and a manifest would need a portable
-# parser in the bootstrap layer. Unknown files in the secrets repo are reported
-# by name at the end instead (see the unmapped scan).
+# One row per target, hardcoded here rather than in a manifest inside the
+# secrets repo: target paths are machine concerns, and a manifest would need a
+# portable parser in the bootstrap layer. Unknown files in the secrets repo are
+# reported by name at the end instead (see the unmapped scan).
 #
-#   src   path inside $SECRETS_REPO
-#   kind  shellenv | dotenv | blob | copy
-#   dst   absolute target path
-#   mode  chmod applied to the rendered file
-#   gate  all | ceres | immich
-#   post  (empty) | sshlink
+# Rows are `|`-delimited records rather than parallel arrays: zsh arrays are
+# 1-based and bash's are 0-based, so an index loop over six aligned arrays has
+# no spelling that is correct in both shells. Records unpack field-by-field
+# with ${rec%%|*}/${rec#*|}, identical in both.
+#
+#   field 1  src   path inside $SECRETS_REPO
+#   field 2  kind  shellenv | dotenv | blob | copy
+#   field 3  dst   absolute target path
+#   field 4  mode  chmod applied to the rendered file
+#   field 5  gate  all | ceres | immich | libris
+#   field 6  post  (empty) | sshlink
 
-MAP_SRC=() MAP_KIND=() MAP_DST=() MAP_MODE=() MAP_GATE=() MAP_POST=()
+MAP_ROWS=()
 
 _row() {
-    MAP_SRC+=("$1"); MAP_KIND+=("$2"); MAP_DST+=("$3")
-    MAP_MODE+=("$4"); MAP_GATE+=("$5"); MAP_POST+=("$6")
+    # The delimiter must never appear in a field; assert that here so a future
+    # row with a `|` in a path fails loudly instead of truncating silently.
+    case "$1$2$3$4$5$6" in
+        *'|'*)
+            printf '%s\n' "secrets-render: MAP row uses the '|' record delimiter in a field: $1" >&2
+            exit 2
+            ;;
+    esac
+    MAP_ROWS+=("$1|$2|$3|$4|$5|$6")
 }
 
 # Shell environment. Rendered out of every git worktree, into
@@ -232,11 +244,16 @@ _backup_name() {
 N_RENDERED=0 N_SKIPPED=0 N_FAILED=0 N_BACKED_UP=0
 FAILED_NAMES=() SSH_LINKS=()
 
-i=
-for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
-    src=$SECRETS_REPO/${MAP_SRC[i]}
-    kind=${MAP_KIND[i]} dst=${MAP_DST[i]} mode=${MAP_MODE[i]}
-    gate=${MAP_GATE[i]} post=${MAP_POST[i]}
+_row_rec=
+for _row_rec in "${MAP_ROWS[@]}"; do
+    src_name=${_row_rec%%|*}
+    _rest=${_row_rec#*|}
+    src=$SECRETS_REPO/$src_name
+    kind=${_rest%%|*}; _rest=${_rest#*|}
+    dst=${_rest%%|*}; _rest=${_rest#*|}
+    mode=${_rest%%|*}; _rest=${_rest#*|}
+    gate=${_rest%%|*}
+    post=${_rest#*|}
 
     if ! _gate_open $gate; then
         (( N_SKIPPED++ ))
@@ -244,14 +261,14 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     fi
 
     if [[ ! -f $src ]]; then
-        printf '%s\n' "  FAILED ${MAP_SRC[i]}: missing from $SECRETS_REPO" >&2
-        FAILED_NAMES+=("${MAP_SRC[i]}")
+        printf '%s\n' "  FAILED $src_name: missing from $SECRETS_REPO" >&2
+        FAILED_NAMES+=("$src_name")
         (( N_FAILED++ ))
         continue
     fi
 
     if (( _dry )); then
-        printf '%s\n' "  [dry-run] would render ${MAP_SRC[i]} -> $dst (mode $mode)"
+        printf '%s\n' "  [dry-run] would render $src_name -> $dst (mode $mode)"
         (( N_RENDERED++ ))
         [[ $post == sshlink ]] && SSH_LINKS+=("$dst")
         continue
@@ -275,8 +292,8 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     # existing target byte-for-byte untouched.
     tmp=
     tmp=$(mktemp "${dst}.render.XXXXXX") || {
-        printf '%s\n' "  FAILED ${MAP_SRC[i]}: mktemp in $dstdir" >&2
-        FAILED_NAMES+=("${MAP_SRC[i]}"); (( N_FAILED++ )); continue
+        printf '%s\n' "  FAILED $src_name: mktemp in $dstdir" >&2
+        FAILED_NAMES+=("$src_name"); (( N_FAILED++ )); continue
     }
     chmod 600 $tmp
 
@@ -284,7 +301,7 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
     case $kind in
         shellenv)
             {
-                printf '%s\n' "# MANAGED BY ~/.local/secrets (${MAP_SRC[i]}) — edit via sops, not here."
+                printf '%s\n' "# MANAGED BY ~/.local/secrets ($src_name) — edit via sops, not here."
                 printf '%s\n' "# Rendered by ~/.local/dotfiles/scripts/secrets-render.zsh; changes here are lost."
                 sops -d --output-type dotenv $src | secrets_convert_dotenv
             } > $tmp 2>/dev/null || ok=0
@@ -307,8 +324,8 @@ for (( i = 1; i <= ${#MAP_SRC}; i++ )); do
 
     if (( ! ok )); then
         rm -f $tmp
-        printf '%s\n' "  FAILED ${MAP_SRC[i]}: decrypt/render error (age key registered?)" >&2
-        FAILED_NAMES+=("${MAP_SRC[i]}")
+        printf '%s\n' "  FAILED $src_name: decrypt/render error (age key registered?)" >&2
+        FAILED_NAMES+=("$src_name")
         (( N_FAILED++ ))
         continue
     fi
@@ -370,22 +387,41 @@ fi
 
 # ── Unmapped-file detection ────────────────────────────────────────────────
 
+# Membership without zsh's [(I)] reverse-index subscripts (which are a bad
+# substitution under bash): a linear scan of tiny arrays is identical in both
+# shells. The needle is quoted on the RHS of == so a `*` in a filename can
+# never glob-match.
+_in_list() {
+    _needle=$1
+    shift
+    for _hay in "$@"; do
+        [[ $_hay == "$_needle" ]] && return 0
+    done
+    return 1
+}
+
+_is_mapped() {
+    for _rec in "${MAP_ROWS[@]}"; do
+        [[ ${_rec%%|*} == "$1" ]] && return 0
+    done
+    return 1
+}
+
 UNMAPPED=()
-_tracked=
-for _tracked in ${(f)"$(git -C $SECRETS_REPO ls-files 2>/dev/null)"}; do
+while IFS= read -r _tracked; do
     [[ -z $_tracked ]] && continue
     [[ $_tracked == scripts/* ]] && continue
-    (( ${UNMAPPED_ALLOW[(I)$_tracked]} )) && continue
-    (( ${MAP_SRC[(I)$_tracked]} )) && continue
+    _in_list "$_tracked" "${UNMAPPED_ALLOW[@]}" && continue
+    _is_mapped "$_tracked" && continue
     UNMAPPED+=("$_tracked")
-done
+done < <(git -C $SECRETS_REPO ls-files 2>/dev/null)
 
 # ── Summary + marker ───────────────────────────────────────────────────────
 
-printf '%s\n' "  rendered ${N_RENDERED}, quarantined ${N_QUARANTINED}, backed-up ${N_BACKED_UP}, unmapped ${#UNMAPPED}, gated-out ${N_SKIPPED}, failed ${N_FAILED}"
-(( ${#UNMAPPED} )) && printf '%s\n' "  UNMAPPED (in secrets repo, never rendered): ${(j:, :)UNMAPPED}"
-(( ${#FAILED_NAMES} )) && printf '%s\n' "  FAILED: ${(j:, :)FAILED_NAMES}" >&2
-if (( ${#STILL_SHADOWING} )); then
+printf '%s\n' "  rendered ${N_RENDERED}, quarantined ${N_QUARANTINED}, backed-up ${N_BACKED_UP}, unmapped ${#UNMAPPED[@]}, gated-out ${N_SKIPPED}, failed ${N_FAILED}"
+(( ${#UNMAPPED[@]} )) && printf '%s\n' "  UNMAPPED (in secrets repo, never rendered): ${(j:, :)UNMAPPED}"
+(( ${#FAILED_NAMES[@]} )) && printf '%s\n' "  FAILED: ${(j:, :)FAILED_NAMES}" >&2
+if (( ${#STILL_SHADOWING[@]} )); then
     printf '%s\n' "  WARNING: stale legacy plaintexts still in zsh/env.d/ and will shadow rendered values until a full render succeeds: ${(j:, :)STILL_SHADOWING}" >&2
 fi
 

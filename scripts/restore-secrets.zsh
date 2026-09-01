@@ -106,16 +106,20 @@ done
 # Portkey gateway runtime state. Targets live outside this repo at
 # ~/.local/state/portkey/ — the systemd unit's EnvironmentFile and the
 # PORTKEY_LOCAL_API_KEY path both reference them by absolute path.
+# src|dst pair records instead of parallel arrays: an index over two aligned
+# arrays cannot be both zsh-1-based and bash-0-based correct.
 portkey_state_dir=$HOME/.local/state/portkey
-portkey_enc_files=() portkey_targets=()
-portkey_enc_files=(configs/ai/portkey/state/env.enc configs/ai/portkey/state/local-api-key.enc)
-portkey_targets=($portkey_state_dir/env $portkey_state_dir/local-api-key)
-if (( ${#portkey_enc_files} > 0 )); then
+portkey_pairs=(
+    "configs/ai/portkey/state/env.enc|$portkey_state_dir/env"
+    "configs/ai/portkey/state/local-api-key.enc|$portkey_state_dir/local-api-key"
+)
+if (( ${#portkey_pairs[@]} > 0 )); then
     install -m 700 -d $portkey_state_dir
 fi
-for (( i = 1; i <= ${#portkey_enc_files}; i++ )); do
-    enc_file=${portkey_enc_files[i]}
-    target=${portkey_targets[i]}
+pair=
+for pair in "${portkey_pairs[@]}"; do
+    enc_file=${pair%%|*}
+    target=${pair#*|}
     [[ -f $enc_file ]] || continue
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
         printf '%s\n' "Skipping ${enc_file}: plaintext ${target} is newer (use --force to overwrite)"
@@ -137,12 +141,14 @@ done
 # repo at ~/repos/deploy/immich/ because the backup systemd unit references it
 # by absolute path via RESTIC_PASSWORD_FILE.
 restic_dir=$HOME/repos/deploy/immich
-restic_enc_files=() restic_targets=()
-restic_enc_files=(configs/immich/restic-password.enc configs/immich/b2-env.enc)
-restic_targets=($restic_dir/.restic-password $restic_dir/.b2-env)
-for (( i = 1; i <= ${#restic_enc_files}; i++ )); do
-    enc_file=${restic_enc_files[i]}
-    target=${restic_targets[i]}
+restic_pairs=(
+    "configs/immich/restic-password.enc|$restic_dir/.restic-password"
+    "configs/immich/b2-env.enc|$restic_dir/.b2-env"
+)
+pair=
+for pair in "${restic_pairs[@]}"; do
+    enc_file=${pair%%|*}
+    target=${pair#*|}
     [[ -f $enc_file ]] || continue
     [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then
@@ -168,17 +174,14 @@ done
 # box (see the matching gate in scripts/deploy.d/20_symlinks.zsh): a gateway
 # token and an MCP OAuth client secret. Restoring it on saturn/neptune/quaoar
 # would spread live credentials to machines that have no use for them.
-openclaw_enc_files=() openclaw_targets=()
+openclaw_pairs=()
 if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
-    openclaw_enc_files=(configs/openclaw-mcp/env.enc)
-    openclaw_targets=($HOME/.config/openclaw-mcp/env)
-else
-    openclaw_enc_files=()
-    openclaw_targets=()
+    openclaw_pairs=("configs/openclaw-mcp/env.enc|$HOME/.config/openclaw-mcp/env")
 fi
-for (( i = 1; i <= ${#openclaw_enc_files}; i++ )); do
-    enc_file=${openclaw_enc_files[i]}
-    target=${openclaw_targets[i]}
+pair=
+for pair in "${openclaw_pairs[@]}"; do
+    enc_file=${pair%%|*}
+    target=${pair#*|}
     [[ -f $enc_file ]] || continue
     [[ -d ${target:h} ]] || install -m 700 -d ${target:h}
     if ! $force && [[ -f $target && $target -nt $enc_file ]]; then

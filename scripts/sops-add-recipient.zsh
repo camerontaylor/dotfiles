@@ -36,30 +36,44 @@ if [[ ! -f $sops_yaml ]]; then
     exit 1
 fi
 
-# Collect existing recipients from .sops.yaml (any age1... token).
+# Collect existing recipients from .sops.yaml (any age1... token). A
+# NUL/newline-clean while-read replaces ${(f)}; zero matches leaves the array
+# empty in both shells.
 existing_keys=()
-existing_keys=(${(f)"$(grep -oE 'age1[0-9a-z]{58}' $sops_yaml | sort -u)"})
+while IFS= read -r _key; do
+    [[ -n $_key ]] && existing_keys+=("$_key")
+done < <(grep -oE 'age1[0-9a-z]{58}' "$sops_yaml" | sort -u)
 
-# Idempotency: bail early if already present.
-if (( ${existing_keys[(I)$new_key]} )); then
+# Idempotency: bail early if already present. Linear membership scan instead
+# of zsh's [(I)] reverse-index subscript (a bad substitution under bash).
+_key_seen=0
+for _key in "${existing_keys[@]}"; do
+    [[ $_key == "$new_key" ]] && _key_seen=1
+done
+if (( _key_seen )); then
     printf '%s\n' "Key already registered in .sops.yaml — nothing to do."
     exit 0
 fi
 
-# Build merged, sorted, de-duped list.
-all_keys=(${existing_keys[@]} $new_key)
-all_keys=(${(uo)all_keys})
+# Build merged, sorted, de-duped list: printf over the elements re-fed to
+# sort -u replaces ${(uo)} (u=unique, o=sorted).
+all_keys=()
+while IFS= read -r _key; do
+    [[ -n $_key ]] && all_keys+=("$_key")
+done < <(printf '%s\n' "${existing_keys[@]}" "$new_key" | sort -u)
 
 # Rewrite only the age block; preserve everything else (path_regex, comments,
 # additional creation_rules) by splicing around the existing `age:` field.
-printf '%s\n' "Updating .sops.yaml with ${#all_keys} recipients..."
+printf '%s\n' "Updating .sops.yaml with ${#all_keys[@]} recipients..."
 age_block="    age: >-"
-i=
-for (( i=1; i <= ${#all_keys}; i++ )); do
-    if (( i < ${#all_keys} )); then
-        age_block+=$'\n'"      ${all_keys[i]},"
+_key_total=${#all_keys[@]}
+_key_pos=0
+for _key in "${all_keys[@]}"; do
+    _key_pos=$((_key_pos+1))
+    if (( _key_pos < _key_total )); then
+        age_block+=$'\n'"      ${_key},"
     else
-        age_block+=$'\n'"      ${all_keys[i]}"
+        age_block+=$'\n'"      ${_key}"
     fi
 done
 
@@ -89,10 +103,17 @@ for f in "${enc_files[@]}"; do
     sops updatekeys -y $f >/dev/null
 done
 
+# Suggest the repo-relative names for git add. The nested
+# ${${enc_files[@]#$SCRIPT_DIR/}} expansion has no bash spelling; build the
+# display list in a loop instead.
+_enc_rel_args=
+for f in "${enc_files[@]}"; do
+    _enc_rel_args="$_enc_rel_args ${f#$SCRIPT_DIR/}"
+done
 printf '%s\n' ""
-printf '%s\n' "Done. ${#enc_files} files re-encrypted to ${#all_keys} recipients."
+printf '%s\n' "Done. ${#enc_files[@]} files re-encrypted to ${#all_keys[@]} recipients."
 printf '%s\n' ""
 printf '%s\n' "Next steps:"
-printf '%s\n' "  git add .sops.yaml ${${enc_files[@]#$SCRIPT_DIR/}}"
+printf '%s\n' "  git add .sops.yaml$_enc_rel_args"
 printf '%s\n' "  git commit -m 'sops: register $new_key'"
 printf '%s\n' "  git push"
