@@ -177,7 +177,10 @@ fi
 # shell, without exposing all of /usr/local/bin. Idempotent.
 if [[ $DOTFILES_OS == Darwin ]]; then
     ts_link=$HOME/.local/bin/tailscale
-    if [[ ${ts_link:A} != ${ts_cli:A} ]]; then
+    # abspath (lib/helpers.zsh) replaces zsh's ${var:A} symlink resolution;
+    # a not-yet-existing link resolves empty, which differs from any real
+    # path — the same "create the link" outcome as before.
+    if [[ $(abspath "$ts_link" 2>/dev/null) != $(abspath "$ts_cli" 2>/dev/null) ]]; then
         if (( DEPLOY_DRY_RUN )); then
             printf '%s\n' "  [dry-run] would: ln -sfn $ts_cli ~/.local/bin/tailscale"
         else

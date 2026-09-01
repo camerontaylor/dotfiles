@@ -88,8 +88,17 @@ done
 
 # ── Self-location and environment defaults ─────────────────────────────────
 
-DOTFILES_DIR=${0:A:h:h}
-# With systemd-homed, :A expands to the storage location /home/user.homedir
+# Resolve the repo root from this script's real location: a hand-rolled
+# symlink walk (the repo's canonical pattern, scripts/generate-commit-msg).
+# zsh's ${0:A:h:h} has no bash spelling; cd -P yields the same physical path.
+_self=$0
+while [[ -L $_self ]]; do
+    _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+    _self=$(readlink "$_self")
+    [[ $_self != /* ]] && _self=$_self_dir/$_self
+done
+DOTFILES_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
+# With systemd-homed the physical path is the storage location /home/user.homedir
 # rather than the mounted /home/user — massage it back (as save-secrets.zsh).
 if [[ $DOTFILES_DIR == $HOME.homedir* ]]; then
     DOTFILES_DIR=${DOTFILES_DIR/.homedir/}
@@ -279,7 +288,7 @@ for _row_rec in "${MAP_ROWS[@]}"; do
     # filesystem, and $TMPDIR is routinely a different one (tmpfs). A
     # cross-device `mv` degrades to copy-then-unlink, which can leave a
     # half-written private key if the box dies mid-render.
-    dstdir=${dst:h}
+    dstdir=$(dirname -- "$dst")
     if [[ ! -d $dstdir ]]; then
         if [[ $mode == 600 ]]; then
             install -m 700 -d $dstdir
@@ -339,7 +348,7 @@ for _row_rec in "${MAP_ROWS[@]}"; do
         backup="$LEGACY_DIR/$(_backup_name "$dst")"
         if [[ ! -e $backup ]]; then
             cp $dst $backup && (( N_BACKED_UP++ ))
-            printf '%s\n' "  backed up pre-existing $dst -> legacy-removed/${backup:t}"
+            printf '%s\n' "  backed up pre-existing $dst -> legacy-removed/${backup##*/}"
         fi
     fi
 
@@ -353,10 +362,10 @@ done
 _link=
 for _link in "${SSH_LINKS[@]}"; do
     if (( _dry )); then
-        printf '%s\n' "  [dry-run] would link $HOME/.ssh/${_link:t} -> $_link"
+        printf '%s\n' "  [dry-run] would link $HOME/.ssh/${_link##*/} -> $_link"
     else
         [[ -d $HOME/.ssh ]] || install -m 700 -d $HOME/.ssh
-        ln -sfn $_link $HOME/.ssh/${_link:t}
+        ln -sfn $_link "$HOME/.ssh/${_link##*/}"
     fi
 done
 
@@ -381,7 +390,7 @@ elif (( N_FAILED > 0 )); then
     # A failed render skips the quarantine entirely, so say plainly which
     # stale basenames are still in the load path shadowing rendered values.
     for _legacy in "${LEGACY_PLAINTEXTS[@]}"; do
-        [[ -f $_legacy ]] && STILL_SHADOWING+=("${_legacy:t}")
+        [[ -f $_legacy ]] && STILL_SHADOWING+=("${_legacy##*/}")
     done
 fi
 
@@ -433,7 +442,8 @@ if (( ! _dry )); then
     dot_head= sec_head=
     dot_head=$(git -C $DOTFILES_DIR rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
     sec_head=$(git -C $SECRETS_REPO rev-parse HEAD 2>/dev/null || printf '%s\n' unknown)
-    [[ -d ${MARKER:h} ]] || mkdir -p ${MARKER:h}
+    marker_dir=$(dirname -- "$MARKER")
+    [[ -d $marker_dir ]] || mkdir -p $marker_dir
     {
         printf '%s\n' "rendered_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
         printf '%s\n' "dotfiles_head=$dot_head"

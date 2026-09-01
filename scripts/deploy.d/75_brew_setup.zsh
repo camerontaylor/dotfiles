@@ -6,7 +6,7 @@
 if [[ $(uname -s) == Darwin ]] && ! have brew; then
     for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
         if [[ -x $brew_bin ]]; then
-            path=(${brew_bin:h} $path)
+            PATH="${brew_bin%/*}:$PATH"
             break
         fi
     done
@@ -237,7 +237,7 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     printf '%s\n' "Installing PostgreSQL client tools via brew..."
     brew_formula_install_or_upgrade libpq || true
     if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
-        path=($HOMEBREW_PREFIX/opt/libpq/bin $path)
+        PATH="$HOMEBREW_PREFIX/opt/libpq/bin:$PATH"
         rehash
     fi
 fi

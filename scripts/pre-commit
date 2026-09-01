@@ -10,5 +10,13 @@
 
 setopt err_exit
 
-SCRIPT_DIR=${0:A:h}
+# Hand-rolled symlink walk (the repo's canonical pattern, see
+# scripts/generate-commit-msg) — zsh's ${0:A:h} has no bash spelling.
+_self=$0
+while [[ -L $_self ]]; do
+    _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+    _self=$(readlink "$_self")
+    [[ $_self != /* ]] && _self=$_self_dir/$_self
+done
+SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
 exec $SCRIPT_DIR/enforce-codex-defaults.zsh --git-add

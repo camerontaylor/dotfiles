@@ -19,8 +19,17 @@ for arg in "$@"; do
     esac
 done
 
-SCRIPT_DIR=${0:A:h:h}
-# with systemd-homed `a`/`A` expands to storage location `/home/username.homedir` instead of mounted location `/home/username`
+# Resolve the repo root from this script's real location: a hand-rolled
+# symlink walk (the repo's canonical pattern, scripts/generate-commit-msg).
+# zsh's ${0:A:h:h} has no bash spelling; cd -P yields the same physical path.
+_self=$0
+while [[ -L $_self ]]; do
+    _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+    _self=$(readlink "$_self")
+    [[ $_self != /* ]] && _self=$_self_dir/$_self
+done
+SCRIPT_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
+# with systemd-homed the physical path is the storage location `/home/username.homedir` instead of mounted location `/home/username`
 # therefore massage SCRIPT_DIR to expected home location by removing `.homedir` from it
 if [[ $SCRIPT_DIR == $HOME.homedir* ]]; then
     SCRIPT_DIR=${SCRIPT_DIR/.homedir/}

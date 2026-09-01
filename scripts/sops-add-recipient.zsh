@@ -10,7 +10,15 @@
 
 setopt extended_glob err_exit
 
-SCRIPT_DIR=${0:A:h:h}
+# Repo root from this script's real location — hand-rolled symlink walk (the
+# repo's canonical pattern, scripts/generate-commit-msg); ${0:A:h:h} is zsh-only.
+_self=$0
+while [[ -L $_self ]]; do
+    _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+    _self=$(readlink "$_self")
+    [[ $_self != /* ]] && _self=$_self_dir/$_self
+done
+SCRIPT_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
 sops_yaml=$SCRIPT_DIR/.sops.yaml
 
 if [[ $# -ne 1 ]]; then

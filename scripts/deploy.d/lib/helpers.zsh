@@ -7,6 +7,21 @@
 have() { command -v -- "$1" >/dev/null 2>&1; }
 isfunc() { typeset -f -- "$1" >/dev/null 2>&1; }
 
+# Absolute, symlink-resolved path of $1 — zsh's ${var:A} in portable form
+# (the same walker as scripts/generate-commit-msg; `readlink -f` only exists
+# on macOS >= 12.3 and `realpath` is not universal). Callers comparing an
+# not-yet-existing path should tolerate failure: pipe stderr to /dev/null and
+# treat an empty result as "differs from any existing path".
+abspath() {
+    local p=$1 d
+    while [[ -L $p ]]; do
+        d=$(cd -P -- "$(dirname -- "$p")" && pwd)
+        p=$(readlink "$p")
+        [[ $p != /* ]] && p=$d/$p
+    done
+    printf '%s\n' "$(cd -P -- "$(dirname -- "$p")" && pwd)/$(basename -- "$p")"
+}
+
 # Dry-run-aware wrappers over the mutating coreutils. A real run passes
 # straight through to the command (preserving its exit status, and so
 # err_exit behavior); under --dry-run (DEPLOY_DRY_RUN=1) they print the

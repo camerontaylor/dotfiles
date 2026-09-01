@@ -4,7 +4,12 @@
 if ! have mise; then
     printf '%s\n' "Installing mise..."
     mise_arch=$DOTFILES_ARCH
-    mise_os=${DOTFILES_OS:l}
+    # Explicit mapping (zsh's :l lowercase flag has no bash spelling); mise
+    # asset names use lowercase os identifiers.
+    case $DOTFILES_OS in
+        Darwin) mise_os=darwin ;;
+        Linux)  mise_os=linux ;;
+    esac
     if [[ $mise_os == linux && ($mise_arch == x86_64 || $mise_arch == aarch64) ]]; then
         [[ $mise_arch == x86_64 ]] && mise_arch=x64
         [[ $mise_arch == aarch64 ]] && mise_arch=arm64
