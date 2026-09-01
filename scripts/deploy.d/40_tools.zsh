@@ -83,7 +83,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             ;;
     esac
 
-    if (( ${#recipes} == 0 )); then
+    if (( ${#recipes[@]} == 0 )); then
         # Unknown distro or no package manager detected — hint with the generic names.
         have git-extras \
             || printf '%s\n' "  hint: git-extras not installed — install via your package manager"
@@ -93,7 +93,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             || printf '%s\n' "  hint: testssl not installed — install via your package manager"
     else
         recipe= probe_str= cmd= label= present= p=
-        for recipe in $recipes; do
+        for recipe in "${recipes[@]}"; do
             probe_str=${recipe%%|*}
             cmd=${recipe#*|}
             label=${probe_str%% *}        # first probe name = display label

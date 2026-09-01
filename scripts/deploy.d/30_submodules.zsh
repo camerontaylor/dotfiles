@@ -17,7 +17,7 @@ while IFS= read -r _sm_path; do
     submodule_paths+=($_sm_path)
 done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')
 # Parallel + shallow clone cuts fresh-clone time ~70%.
-git submodule update --init --recursive --jobs 8 --depth 1 -- $submodule_paths > /dev/null
+git submodule update --init --recursive --jobs 8 --depth 1 -- "${submodule_paths[@]}" > /dev/null
 # Destructive clean only on --upgrade; otherwise dry-run report only.
 # `clean -ffd` will silently delete any untracked work inside submodules, so
 # never default-on after every `git pull`.

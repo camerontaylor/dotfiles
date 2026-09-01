@@ -33,7 +33,7 @@ obs_enabled=()
 obs_enabled=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $obs_hosts)}")
 
 host= self_enabled=0
-for host in $obs_enabled; do
+for host in "${obs_enabled[@]}"; do
     [[ $host == $self ]] && self_enabled=1
 done
 

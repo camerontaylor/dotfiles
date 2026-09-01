@@ -216,7 +216,7 @@ up_args=(--accept-routes "--authkey=$TAILSCALE_AUTHKEY")
 # opt in with TAILSCALE_EXTRA_ARGS="--ssh".)
 ssh_label="accept-routes"
 if [[ $DOTFILES_OS == Linux ]]; then
-    up_args=(--ssh $up_args)
+    up_args=(--ssh "${up_args[@]}")
     ssh_label="ssh, accept-routes"
 fi
 
@@ -247,9 +247,9 @@ if (( DEPLOY_DRY_RUN )); then
 else
     ts_cmd=()
     if [[ $DOTFILES_OS == Linux ]]; then
-        ts_cmd=(sudo "$ts_cli" up $up_args)
+        ts_cmd=(sudo "$ts_cli" up "${up_args[@]}")
     else
-        ts_cmd=("$ts_cli" up $up_args)
+        ts_cmd=("$ts_cli" up "${up_args[@]}")
     fi
     if "${ts_cmd[@]}" > /dev/null 2>&1; then
         printf '%s\n' "  ...connected"

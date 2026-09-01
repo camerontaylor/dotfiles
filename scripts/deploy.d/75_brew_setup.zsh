@@ -54,13 +54,13 @@ if have brew && $upgrade_mode; then
     brew_outdated=( ${(f)"$(brew outdated --quiet 2>/dev/null)"} )
     brew_upgradable=( ${brew_outdated:|brew_upgrade_skip} )
     printf '%s\n' "Upgrading Homebrew packages..."
-    if (( ${#brew_outdated} == 0 )); then
+    if (( ${#brew_outdated[@]} == 0 )); then
         printf '%s\n' "  ...nothing outdated"
-    elif (( ${#brew_upgradable} == 0 )); then
+    elif (( ${#brew_upgradable[@]} == 0 )); then
         printf '%s\n' "  ...nothing to upgrade (held back: ${(j:, :)brew_upgrade_skip})"
-    elif brew upgrade $brew_upgradable > /dev/null 2>&1; then
-        printf '%s\n' "  ...done (${#brew_upgradable} upgraded)"
-        (( ${#brew_outdated} != ${#brew_upgradable} )) \
+    elif brew upgrade "${brew_upgradable[@]}" > /dev/null 2>&1; then
+        printf '%s\n' "  ...done (${#brew_upgradable[@]} upgraded)"
+        (( ${#brew_outdated[@]} != ${#brew_upgradable[@]} )) \
             && printf '%s\n' "  ...held back: ${(j:, :)brew_upgrade_skip}"
     else
         printf '%s\n' "  ...brew upgrade had issues (may be normal if no updates)"

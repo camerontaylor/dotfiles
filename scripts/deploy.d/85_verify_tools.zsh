@@ -44,7 +44,7 @@ tool_checks=(
 failed=()
 entry= tool= bin_name=
 
-for entry in $tool_checks; do
+for entry in "${tool_checks[@]}"; do
     tool=${entry%%:*}
     bin_name=${entry##*:}
 
@@ -60,15 +60,15 @@ for entry in $tool_checks; do
     fi
 done
 
-if (( ${#failed} == 0 )); then
-    printf '%s\n' "  ...all ${#tool_checks} checked tools respond"
+if (( ${#failed[@]} == 0 )); then
+    printf '%s\n' "  ...all ${#tool_checks[@]} checked tools respond"
     return 0
 fi
 
 printf '%s\n' ""
-printf '%s\n' "⚠ ${#failed} tool(s) failed smoke test:"
+printf '%s\n' "⚠ ${#failed[@]} tool(s) failed smoke test:"
 line=
-for line in $failed; do
+for line in "${failed[@]}"; do
     printf '%s\n' "    - $line"
 done
 printf '%s\n' ""

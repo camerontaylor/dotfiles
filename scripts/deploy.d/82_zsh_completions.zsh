@@ -35,7 +35,7 @@ generators=(
 printf '%s\n' "Generating zsh completion files into $cache_fpath..."
 
 entry= tool= subcmd= dest_name= dest_path= generated_count=0 skipped_count=0
-for entry in $generators; do
+for entry in "${generators[@]}"; do
     tool=${entry%%:*}
     rest=${entry#*:}
     subcmd=${rest%:*}

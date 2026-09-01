@@ -90,7 +90,7 @@ while IFS= read -r -d '' _entry; do
     stale+=("$_entry")
 done < <(find "$target" -mindepth 1 -maxdepth 1 -mtime +$days -print0 2>/dev/null)
 
-if (( ${#stale} == 0 )); then
+if (( ${#stale[@]} == 0 )); then
     printf '%s\n' "prune-tmpdir: $target has no entries older than ${days}d"
     exit 0
 fi
@@ -101,19 +101,19 @@ freed_kb=$(du -sck "${stale[@]}" 2>/dev/null | tail -1 | awk '{print $1}') || fr
 [[ $freed_kb =~ $_num_re ]] || freed_kb=0
 
 noun=
-if (( ${#stale} == 1 )); then noun=entry; else noun=entries; fi
+if (( ${#stale[@]} == 1 )); then noun=entry; else noun=entries; fi
 
 if (( dry_run )); then
     e=
-    for e in $stale; do
+    for e in "${stale[@]}"; do
         printf '%s\n' "  [dry-run] would remove $e"
     done
     printf 'prune-tmpdir: [dry-run] would remove %d %s older than %dd (%d MB) from %s\n' \
-        ${#stale} $noun $days $(( freed_kb / 1024 )) $target
+        "${#stale[@]}" "$noun" "$days" "$(( freed_kb / 1024 ))" "$target"
     exit 0
 fi
 
-rm -rf -- ${stale}
+rm -rf -- "${stale[@]}"
 
 printf 'prune-tmpdir: removed %d %s older than %dd (%d MB) from %s\n' \
-    ${#stale} $noun $days $(( freed_kb / 1024 )) $target
+    "${#stale[@]}" "$noun" "$days" "$(( freed_kb / 1024 ))" "$target"

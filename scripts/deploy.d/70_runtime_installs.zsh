@@ -47,7 +47,7 @@ elif have mise; then
     )
 
     printf '%s\n' "Removing stale mise installs..."
-    mise uninstall -y --all $obsolete_mise_tools > /dev/null 2>&1 || true
+    mise uninstall -y --all "${obsolete_mise_tools[@]}" > /dev/null 2>&1 || true
     printf '%s\n' "  ...done"
 
     # npm globals install into the active mise node's prefix through its own
@@ -70,9 +70,9 @@ elif have mise; then
             npm_packages+=("$npm_package")
         done < $npm_packages_file
 
-        if (( ${#npm_packages} > 0 )); then
+        if (( ${#npm_packages[@]} > 0 )); then
             printf '%s\n' "Installing npm globals through mise node's npm..."
-            if mise exec node -- npm install -g $npm_packages > /dev/null 2>&1; then
+            if mise exec node -- npm install -g "${npm_packages[@]}" > /dev/null 2>&1; then
                 printf '%s\n' "  ...done"
             else
                 printf '%s\n' "  ...failed to install npm globals"

@@ -30,7 +30,7 @@ peers=()
 peers=("${(@f)$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' $peers_conf)}")
 
 host= self_in_list=0
-for host in $peers; do
+for host in "${peers[@]}"; do
     [[ $host == $self ]] && self_in_list=1
 done
 

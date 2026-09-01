@@ -100,7 +100,7 @@ done < <(
 f=
 for f in "${enc_files[@]}"; do
     printf '%s\n' "  ${f#$SCRIPT_DIR/}"
-    sops updatekeys -y $f >/dev/null
+    sops updatekeys -y "$f" >/dev/null
 done
 
 # Suggest the repo-relative names for git add. The nested

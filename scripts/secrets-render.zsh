@@ -351,7 +351,7 @@ done
 
 # ~/.ssh symlinks into the rendered dotfiles copies.
 _link=
-for _link in $SSH_LINKS; do
+for _link in "${SSH_LINKS[@]}"; do
     if (( _dry )); then
         printf '%s\n' "  [dry-run] would link $HOME/.ssh/${_link:t} -> $_link"
     else
@@ -366,7 +366,7 @@ N_QUARANTINED=0
 STILL_SHADOWING=()
 _legacy=
 if (( N_FAILED == 0 && ! _dry )); then
-    for _legacy in $LEGACY_PLAINTEXTS; do
+    for _legacy in "${LEGACY_PLAINTEXTS[@]}"; do
         [[ -f $_legacy ]] || continue
         [[ -d $LEGACY_DIR ]] || install -m 700 -d $LEGACY_DIR
         q="$LEGACY_DIR/$(_backup_name "$_legacy")"
@@ -380,7 +380,7 @@ if (( N_FAILED == 0 && ! _dry )); then
 elif (( N_FAILED > 0 )); then
     # A failed render skips the quarantine entirely, so say plainly which
     # stale basenames are still in the load path shadowing rendered values.
-    for _legacy in $LEGACY_PLAINTEXTS; do
+    for _legacy in "${LEGACY_PLAINTEXTS[@]}"; do
         [[ -f $_legacy ]] && STILL_SHADOWING+=("${_legacy:t}")
     done
 fi

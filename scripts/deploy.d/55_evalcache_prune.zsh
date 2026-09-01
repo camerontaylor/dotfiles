@@ -30,21 +30,21 @@ while IFS= read -r _cache_file; do
     empty_caches+=("$_cache_file")
 done < <(find "$cache_dir" -maxdepth 1 -type f -name '*.zsh' -size 0c 2>/dev/null | sort)
 
-if (( ${#empty_caches} == 0 )); then
+if (( ${#empty_caches[@]} == 0 )); then
     printf '%s\n' "  ...none found"
     return 0
 fi
 
 if (( DEPLOY_DRY_RUN )); then
     f=
-    for f in $empty_caches; do
+    for f in "${empty_caches[@]}"; do
         printf '%s\n' "  [dry-run] would remove $f (and $f.zwc if present)"
     done
     return 0
 fi
 
 f=
-for f in $empty_caches; do
-    deploy_rm -f $f $f.zwc
+for f in "${empty_caches[@]}"; do
+    deploy_rm -f "$f" "$f.zwc"
 done
-printf '%s\n' "  ...removed ${#empty_caches} empty cache file(s)"
+printf '%s\n' "  ...removed ${#empty_caches[@]} empty cache file(s)"
