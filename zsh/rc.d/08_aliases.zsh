@@ -71,10 +71,6 @@ else
 fi
 gnu_alias diff --color=auto --new-file --text --recursive --unified
 
-
-# OpenClaw
-alias openclaw='docker compose -f ~/repos/deploy/openclaw/docker-compose.yml exec openclaw-gateway openclaw'
-
 # GTK portal file dialogs
 export GTK_USE_PORTAL=1
 
