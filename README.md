@@ -187,6 +187,26 @@ The age key lives at `~/.config/sops/age/keys.txt` — **back it up to your
 password manager.** On deploy, [`65_sops.zsh`](scripts/deploy.d/65_sops.zsh)
 restores `ssh/*.enc` with a date guard; `./deploy.zsh --force` overrides it.
 
+## Deployed services
+
+Beyond shell/editor config, this repo also carries the deploy artifacts for a
+few self-hosted services: tracked files in `configs/<service>/`, an idempotent
+installer at `scripts/setup-<service>.sh`, a runbook in `docs/<service>.md`.
+
+| Service | Installer | Runbook |
+|---|---|---|
+| Immich (photo library + nightly restic backup, ceres) | [`scripts/setup-immich.sh`](scripts/setup-immich.sh) | [`docs/immich.md`](docs/immich.md) |
+| Caddy (TLS ingress, ceres) | [`scripts/setup-caddy.sh`](scripts/setup-caddy.sh) | [`docs/caddy-ingress.md`](docs/caddy-ingress.md) |
+| Paseo (agent orchestrator) | [`scripts/setup-paseo.sh`](scripts/setup-paseo.sh) | [`docs/paseo.md`](docs/paseo.md) |
+
+These are **hand-run**, never wired into `scripts/deploy.d/` — the fleet
+auto-deploys on every pull and two of three boxes are Macs with none of these
+stacks. Each supports `--check` / `--dry-run` first.
+
+> **Interim home.** Infra is slated to move out of dotfiles into its own repo,
+> the way secrets were carved out into `camerontaylor/dotfiles-secrets`. See
+> [AGENTS.md § infra carve-out](AGENTS.md#todo-infra-carve-out).
+
 ## Zero home presence
 
 **zsh** can be installed without even a `~/.zshenv` symlink: set `ZDOTDIR` to

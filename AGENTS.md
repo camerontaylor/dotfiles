@@ -35,6 +35,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
 | macOS App Shortcuts / Finder `defaults` / default-app associations | `scripts/macos/macos-defaults.sh` (shortcuts + Finder prefs + `duti` file-type→VS Code; change-aware, backs up to `$XDG_STATE_HOME/macos-defaults/`; applied on deploy by `77_macos_defaults.zsh`, needs `duti` from brew). Capture hand-set shortcuts with `capture-shortcuts.sh`. See [`scripts/macos/README.md`](scripts/macos/README.md) |
 | macOS Raycast script command | drop a `*.sh` in `raycast/` (version-controlled; add the dir once in Raycast settings). See [`raycast/README.md`](raycast/README.md) |
+| Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-paseo.sh`, `setup-immich.sh`. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
 
 ## Secrets Encryption (SOPS + Age)
 Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:
@@ -129,3 +130,20 @@ crash-looped three services for a week in 2026-07.
 └── tools/              # git-diff-pager + vendored submodules
 ```
 (Vim was removed — Neovim is the only editor.)
+
+## TODO: infra carve-out
+
+Deployed-service infrastructure (`configs/immich/`, `configs/caddy/`,
+`scripts/setup-*.sh`, `docs/immich.md`, `docs/caddy-ingress.md`, …) lives here
+as an **interim home**. Cameron's intent (2026-09-03) is to split infra out of
+dotfiles into its own repo, leaving this one to config *preferences* — shell,
+editor, keybindings, terminal.
+
+The precedent is the secrets carve-out: ciphertext moved to the private
+`camerontaylor/dotfiles-secrets` in 2026-08 with `scripts/secrets-render.zsh`
+as the seam. Infra should follow that shape — own repo, own lifecycle, defined
+seam back to dotfiles.
+
+Until then, keep new infra to the `configs/<service>/` + `scripts/setup-<service>.sh`
++ `docs/<service>.md` triple so the eventual move is a `git mv`, not a rewrite.
+Full candidate list and rationale: [`docs/immich.md`](docs/immich.md#todo-carve-infra-out-of-dotfiles-into-its-own-repo).
