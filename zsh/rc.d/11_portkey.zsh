@@ -523,10 +523,11 @@ if (( ${+commands[claude]} )); then
     shift 2
     _portkey_ensure_service || return 1
     local zai_model="fleet-ccz"
-    local haiku_model="fleet-haiku"
-    local small_fast_model="fleet-small-fast"
+    local flash_model="fleet-ccz-flash"
+    local haiku_model="$flash_model"
+    local small_fast_model="$flash_model"
     local headers
-    headers="$(_portkey_headers "$alias_name" "$zai_model" "$haiku_model" "$small_fast_model")" || return $?
+    headers="$(_portkey_headers "$alias_name" "$zai_model" "$flash_model")" || return $?
 
     case "$runner" in
       claude)
@@ -539,9 +540,10 @@ if (( ${+commands[claude]} )); then
         ANTHROPIC_CUSTOM_HEADERS="$headers" \
         ANTHROPIC_MODEL="$zai_model" \
         ANTHROPIC_DEFAULT_OPUS_MODEL="$zai_model" \
-        ANTHROPIC_DEFAULT_SONNET_MODEL="$zai_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$flash_model" \
         ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
         ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        CLAUDE_CODE_SUBAGENT_MODEL="$flash_model" \
         API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
           claude --model "$zai_model" "$@"
         ;;
@@ -555,9 +557,10 @@ if (( ${+commands[claude]} )); then
         ANTHROPIC_CUSTOM_HEADERS="$headers" \
         ANTHROPIC_MODEL="$zai_model" \
         ANTHROPIC_DEFAULT_OPUS_MODEL="$zai_model" \
-        ANTHROPIC_DEFAULT_SONNET_MODEL="$zai_model" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="$flash_model" \
         ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku_model" \
         ANTHROPIC_SMALL_FAST_MODEL="$small_fast_model" \
+        CLAUDE_CODE_SUBAGENT_MODEL="$flash_model" \
         API_TIMEOUT_MS="$_PORTKEY_TIMEOUT_MS" \
           happy yolo --dangerously-skip-permissions "$@"
         ;;
