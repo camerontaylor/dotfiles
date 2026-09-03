@@ -8,7 +8,7 @@ skills:
   customDirectories: 
     - ~/.agents/skills
 modelRoles: 
-  default: zai/glm-5.3-flash
+  default: zai/glm-5.3
 task: 
   agentModelOverrides: 
     executor: zai/glm-5.3-flash
