@@ -8,6 +8,14 @@ export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 # Full hook-based activation happens in rc.d/22_mise.zsh for interactive shells.
 [[ -d "$MISE_DATA_DIR/shims" ]] && path_prepend "$MISE_DATA_DIR/shims"
 
+# Direct symlinks to static CLI binaries, built by deploy.d/51_mise_fastbin.zsh.
+# Prepended AFTER the shims line so it lands AHEAD of it — path_prepend moves an
+# entry to the front, so the last call wins. Everything not in fastbin still
+# falls through to the shim behind it, keeping per-project runtime switching.
+# Measured ~5x on tool invocation in non-interactive shells; see the fragment
+# header for the full rationale and the numbers.
+[[ -d "$MISE_DATA_DIR/fastbin" ]] && path_prepend "$MISE_DATA_DIR/fastbin"
+
 # GitHub token — lifts mise's GitHub-release version-resolution rate limit
 # from 60/hr (unauthenticated) to 5000/hr. Read from gh's keyring so it stays
 # in sync with `gh auth login` rotations. Skipped if already exported (e.g. CI).
