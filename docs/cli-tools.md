@@ -144,7 +144,7 @@ in `zsh/env.d/09_claude_code_aliases.zsh`. Full roster and model tiers:
 | `tailscale` | pkg | Mesh VPN; the fleet's private network. Joined automatically by `73_tailscale.zsh`. |
 | `mosh` | pkg | Roaming-tolerant SSH replacement — survives sleep and network changes. |
 | `nc` / `socat` | pkg | Port probing and socket plumbing. `nc` backs the SSH config's LAN fast-path. |
-| `rsync` (3.x) | brew | GNU-parity rsync on macOS (stock openrsync rejects `--info=progress2` etc.). |
+| `rsync` (3.x) | brew | GNU/samba rsync. macOS `/usr/bin/rsync` is now **openrsync** (protocol 29; reports `rsync version 2.6.9 compatible`, so a naive version grep still "passes") and silently mishandles `--info=progress2`, `--link-dest`, `--delete-excluded`, `--chmod`, `--iconv`. Brew's must therefore win on PATH — on Apple silicon `bash -l` needs [`bash/.bash_profile`](../bash/.bash_profile) for that, since `path_helper` demotes `/opt/homebrew/bin` behind `/usr/bin`. A launchd job with no explicit `PATH` still gets openrsync; set `PATH` in the plist. |
 | `testssl` | pkg | TLS/SSL configuration scanner. |
 | `httpstat` | vendor (alias) | Visualises curl timing breakdown for a URL. |
 | `wake-peers` | repo | Sends wake-on-LAN packets to the other fleet boxes. |
