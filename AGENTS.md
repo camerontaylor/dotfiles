@@ -36,7 +36,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-paseo.sh`, `setup-immich.sh`. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
 
 ## Secrets Encryption (SOPS + Age)
-**No secret material lives in this repo.** Ciphertext is canonical, plaintext is derived: encrypted material lives in the private repo `camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`. Files in the 90-99 range are gitignored and hold the *rendered* plaintext.
+**No secret material lives in this repo.** Ciphertext is canonical, plaintext is derived: encrypted material lives in the private repo `camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`. Rendered shell exports live *outside* every worktree at `$XDG_STATE_HOME/secrets/zsh/9*.zsh` (600), sourced by the tracked `zsh/env.d/89_secrets_loader.zsh` — which is numbered 89 so a deliberate local `90-99` override still sorts after it and wins.
 
 ```bash
 secrets-edit shell/90_secrets.yaml    # sops edit, then re-render this box
@@ -47,7 +47,7 @@ git -C ~/.local/secrets push          # other boxes render it on their next pull
 **Key location**: `~/.config/sops/age/keys.txt` — **BACKUP THIS FILE** to your password manager!
 **On deploy**: `scripts/deploy.d/65_secrets.zsh` clones/pulls `~/.local/secrets` and drives `scripts/secrets-render.zsh`, which renders every target for this box. There are deliberately **no mtime/clobber guards** — re-rendering derived plaintext is always correct — so `--force`/`DEPLOY_FORCE` does not affect secrets at all.
 **Degraded mode**: a box missing the age key or GitHub read access prints an instruction block and mutates nothing; deploy stays green. `zsh/rc.d/33_secrets_staleness.zsh` warns in new interactive shells after 14 days without a render.
-**Never** edit a rendered file directly (`zsh/env.d/9*_secrets.zsh`, `ssh/*`) — the next deploy overwrites it.
+**Never** edit a rendered file directly (`$XDG_STATE_HOME/secrets/zsh/*`, `ssh/*`, `configs/portless/*.pem`) — the next deploy overwrites it.
 
 ## Runtime Management (mise)
 mise owns ALL runtimes — including Node/npm — plus non-npm CLIs. npm globals

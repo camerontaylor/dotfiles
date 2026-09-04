@@ -36,9 +36,10 @@ set -euo pipefail
 #   for BOTH a systemd-managed daemon and a GUI-launched one. PASEO_PASSWORD as
 #   an env var only reaches the daemon on Linux; the macOS desktop app is
 #   launched by the GUI and never sees your shell environment. Set
-#   PASEO_PASSWORD (or a precomputed PASEO_PASSWORD_HASH) in the encrypted
-#   secrets file zsh/env.d/90_secrets.zsh, which zsh/rc.d/12_paseo.zsh also
-#   sources so CLI clients authenticate without a flag.
+#   PASEO_PASSWORD (or a precomputed PASEO_PASSWORD_HASH) in the private
+#   secrets repo (`secrets-edit shell/90_secrets.yaml`). It is rendered to
+#   $XDG_STATE_HOME/secrets/zsh/90_secrets.zsh and exported by every shell via
+#   zsh/env.d/89_secrets_loader.zsh, so CLI clients authenticate without a flag.
 #
 # WITHOUT a password this script refuses to widen the bind past 127.0.0.1:
 #   an unauthenticated Paseo daemon on the office LAN is remote code execution

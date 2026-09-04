@@ -733,7 +733,7 @@ carries the never-older property once the base is a stable
 | `scripts/paseo-watchdog` | 5-min health probe; restarts a dead daemon, with a free-space floor |
 | `scripts/deploy.d/75_brew_setup.zsh` | `paseo` cask on macOS |
 | `zsh/rc.d/12_paseo.zsh` | `paseo-at` / `paseo-ceres` / `paseo-hosts`, mise wrapper |
-| `zsh/env.d/90_secrets.zsh` | `PASEO_PASSWORD` (encrypted) |
+| `~/.local/secrets` `shell/90_secrets.yaml` | `PASEO_PASSWORD` (canonical ciphertext; rendered to `$XDG_STATE_HOME/secrets/zsh/90_secrets.zsh`) |
 | `/etc/systemd/system/paseo-daemon.service` | generated on ceres by the setup script |
 | `~/Library/LaunchAgents/local.paseo-daemon.plist` | generated on the Macs by the setup script |
 | `~/Library/LaunchAgents/local.paseo-watchdog.plist` | ditto; the 5-min `StartInterval` job |

@@ -178,8 +178,11 @@ No secret material lives in this repo. Ciphertext is canonical and plaintext is
 `camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`, and every deploy
 re-renders this machine's plaintext targets from it —
 [`65_secrets.zsh`](scripts/deploy.d/65_secrets.zsh) drives
-[`scripts/secrets-render.zsh`](scripts/secrets-render.zsh). Every rendered
-target (the `90`–`99` range under `zsh/env.d/`, plus `ssh/*`) is gitignored.
+[`scripts/secrets-render.zsh`](scripts/secrets-render.zsh). Shell exports land
+**outside every worktree** at `$XDG_STATE_HOME/secrets/zsh/9*.zsh` (mode 600)
+and are sourced by the one tracked file, `zsh/env.d/89_secrets_loader.zsh`.
+Other targets (`ssh/*`, `configs/portless/*.pem`, service env files) render to
+their usual paths and are gitignored.
 
 Edit a secret with `secrets-edit` — never edit a rendered file, since the next
 deploy overwrites it:

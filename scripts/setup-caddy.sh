@@ -23,7 +23,8 @@ set -euo pipefail
 #
 # Prerequisites:
 #   1. Set the machine's hostname.
-#   2. Source CF_API_TOKEN: source zsh/env.d/91_cloudflare_secrets.zsh
+#   2. CF_API_TOKEN: exported by any new shell (89_secrets_loader), or
+#      source "$XDG_STATE_HOME"/secrets/zsh/91_cloudflare_secrets.zsh
 #   3. Install portless: mise use -g npm:portless
 #   4. Create Cloudflare DNS records for {hostname}.webfront.app and wildcard.
 
@@ -244,7 +245,8 @@ launchd_job_running() {
 
 preflight() {
   if [[ -z "${CF_API_TOKEN:-}" ]]; then
-    echo "ERROR: CF_API_TOKEN not set. Source zsh/env.d/91_cloudflare_secrets.zsh first."
+    echo "ERROR: CF_API_TOKEN not set. Open a new shell, or run:"
+    echo "  source \"\${XDG_STATE_HOME:-\$HOME/.local/state}\"/secrets/zsh/91_cloudflare_secrets.zsh"
     exit 1
   fi
   if [[ ! "$CF_API_TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then

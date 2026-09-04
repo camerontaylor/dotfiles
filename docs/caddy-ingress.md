@@ -50,8 +50,9 @@ variable, `CF_API_TOKEN`, a Cloudflare API token used by all five `tls { dns
 cloudflare {env.CF_API_TOKEN} }` blocks for the DNS-01 challenge. It is loaded
 via `EnvironmentFile=/etc/caddy/env` (`configs/caddy/caddy.service:23`).
 
-The canonical copy is `zsh/env.d/91_cloudflare_secrets.zsh`, tracked here only
-as the sops-encrypted `zsh/env.d/91_cloudflare_secrets.zsh.enc`. To rebuild
+The canonical copy is `shell/91_cloudflare_secrets.yaml` in the private secrets
+repo (`~/.local/secrets`), rendered on each deploy to
+`$XDG_STATE_HOME/secrets/zsh/91_cloudflare_secrets.zsh`. To rebuild
 `/etc/caddy/env`, see `configs/caddy/env.example`.
 
 Without this token Caddy cannot renew certificates. It does not need it to
@@ -60,8 +61,9 @@ serve existing ones, so the failure is silent for up to ~60 days.
 ## Restore from bare metal
 
 1. `./deploy.zsh --only 65_secrets` to render secrets from `~/.local/secrets`,
-   then `source zsh/env.d/91_cloudflare_secrets.zsh` to get `CF_API_TOKEN` into
-   the environment.
+   then `source "${XDG_STATE_HOME:-$HOME/.local/state}"/secrets/zsh/91_cloudflare_secrets.zsh`
+   to get `CF_API_TOKEN` into the environment. (Any new interactive shell has
+   it already — `zsh/env.d/89_secrets_loader.zsh` sources that dir.)
 2. Install portless (`mise use -g npm:portless`) and start the **user** unit
    `~/.config/systemd/user/portless.service` (`systemctl --user enable --now
    portless`; `loginctl enable-linger ctaylor` so it survives reboot).
