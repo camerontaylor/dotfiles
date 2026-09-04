@@ -22,9 +22,10 @@ timestamped, **non-tracked** restore script under
 `${XDG_STATE_HOME:-~/.local/state}/macos-defaults/backup-<timestamp>.sh`
 (outside the repo, so it's never committed; created only when something actually
 changes, never in dry-run). To undo a run, execute that file — then `killall
-Finder` if it reverted a Finder pref. Per-extension `duti` associations are
-recorded precisely; broad UTI-family handlers aren't individually queryable via
-`duti`, so they're applied idempotently and not individually backed up.
+Finder` if it reverted a Finder pref. Both the per-extension and the broad
+UTI-family associations are recorded. `duti` can only *query* by extension
+(`-x`), never by UTI, so the UTI side reads the LaunchServices preference store
+directly to decide whether a write is needed.
 
 ## Use
 
@@ -69,6 +70,20 @@ The last character is the key. Example: ⌘⇧. → `@$.`
   (`brew install duti`; `75_brew_setup.zsh` installs it). The script skips that
   section cleanly if `duti` or VS Code is missing. Verify a binding with
   `duti -x md`; trim the extension list in the script to taste.
+- **If you add a file type, check it converges**: apply once, then re-run with
+  `DRY_RUN=1` and confirm it reports nothing. macOS silently refuses some
+  bindings, and a refused one is retried on every `git pull` (each retry
+  relaunching Finder). Three known-unbindable cases are documented in the
+  script and deliberately excluded:
+  - `.html` — Chrome owns `public.html` as default browser, and VS Code
+    declares html as `CFBundleTypeRole=Editor` only, so a `role all` bind
+    fails. Bind `public.html editor` if you want it, and leave double-click
+    to Chrome.
+  - `.conf`, `.env`, `.vim` — no installed app declares them, so macOS
+    synthesises a *dynamic* UTI (`dyn.…`) and rejects the bind with error -50.
+  - `public.python-script` — VS Code ships no `UTImportedTypeDeclarations`
+    (it claims extensions only), and LaunchServices won't record a handler for
+    a UTI the app never claims. `duti -s` still exits 0. `.py` is what binds.
 - `duti` can't reassign double-clicking a **folder** away from Finder (macOS
   special-cases `public.folder`). Use the Raycast **Open in ForkLift** command in
   [`raycast/`](../../raycast/README.md) for that.
