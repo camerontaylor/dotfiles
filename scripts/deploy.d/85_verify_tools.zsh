@@ -39,7 +39,29 @@ tool_checks=(
     pnpm:pnpm
     corepack:corepack
     psql:psql
+    # Resource monitoring (docs/monitoring.md). These are here BECAUSE they are
+    # how the fragment's premise failed once: btop/bandwhich/samply were
+    # installed straight into mise's store but never declared in
+    # configs/mise.toml, so the shims resolved to "No version is set" and both
+    # bandwhich and samply were dead on ceres for ~6 days without a single
+    # error surfacing. An undeclared install is invisible to every check except
+    # this one — the `--version` leg below is what turns that into a warning.
+    btop:btop
+    bandwhich:bandwhich
+    samply:samply
 )
+
+# Linux-only monitoring tier (42_monitoring.zsh). Appended rather than listed
+# above because none of these exist on macOS, where they would be permanent
+# false failures. `iotop-c` installs a binary named `iotop`.
+if [[ $DOTFILES_OS == Linux ]]; then
+    tool_checks+=(
+        atop:atop
+        iotop:iotop
+        bpftrace:bpftrace
+        nvtop:nvtop
+    )
+fi
 
 failed=()
 entry= tool= bin_name=
@@ -78,3 +100,5 @@ printf '%s\n' "  - inspect the deploy log:                          $XDG_STATE_H
 printf '%s\n' "  - check mise health:                               mise doctor"
 printf '%s\n' "  - if a binary is on PATH but doesn't launch, the install is corrupt — try:"
 printf '%s\n' "      mise uninstall <tool> && mise install"
+printf '%s\n' "  - \"No version is set for shim\" means the tool is installed but NOT"
+printf '%s\n' "    declared in configs/mise.toml — add it there, don't \`mise use -g\`"

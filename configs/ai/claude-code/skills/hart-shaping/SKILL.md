@@ -1,8 +1,8 @@
 ---
 name: hart-shaping
-description: The hart definition-step burst - a short scoping conversation that turns a fuzzy item into a card (Done, Tier, First move, plus Appetite, Tail, Obstacle, Not doing). Use when Cameron says "shape X" or "scope X" in any chat, or accepts a shape offer. Runs the conversation, then writes the card back to triage/proposals.md or triage/shaping/.
+description: The hart definition-step burst - opens with a plain-language orientation brief, forks shape/close/park/split, then a short scoping conversation that turns a fuzzy item into a card (About, Done, Tier, First move, plus Tail, Obstacle, Not doing) or an evidence-argued disposition. Use when Cameron says "shape X" or "scope X" in any chat, or accepts a shape offer. Writes the result back to triage/proposals.md or triage/shaping/.
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   emoji: "⌇"
   tags: ["adhd", "definition", "shaping", "hart"]
 ---
@@ -13,11 +13,15 @@ Canonical copy: `/home/ctaylor/repos/hart/skills/hart-shaping/`. Wesley's and Cl
 
 **The conversation is the product; the card is only its residue.**
 
-## 1. Invocation
+## 1. Invocation, orientation, fork
 Triggers: "shape X", "scope X", or an accepted shape offer. A loose reference ("the trust thing") resolves against `triage/queue.md` → `triage/proposals.md` → Linear, in that order. **Confirm which item you heard before asking anything else.**
 
+**Orientation brief (always, before any question).** Cameron arrives cold — he interrupt-slices across parallel agent threads, and he may only ever have half-known the item's referents even at capture time. Open with a short plain-language brief, cited: what this item is, where it came from, what has already been decided, what is genuinely open. Gloss every id or codename on first use ("R6 — the open question of whether skills keep separate references/ files"). **A referent you cannot resolve from the repo is surfaced as unresolved** ("I can't establish what X6 was from the source line — that's question 1"), never smoothly paraphrased: the citation hard rule extends to referents. The brief is also his grounding — it is what stops *him* piecing the item together from insufficient context.
+
+**Disposition fork (one question, right after the brief).** Not every accepted prompt wants shaping — some want to find out what the item was for and whether it can end. So the first question is the fork: **shape it / close it / park it / split it**, with your evidence-backed recommendation. Argue the recommendation from verified evidence (the python-dep-manifest precedent: closed on a live audit of all 16 scripts, not on staleness vibes) — closing must never become the low-friction default. Only "shape" enters the frontier rounds; close/park/merge land as a disposition card (§9).
+
 ## 2. Frontier rounds
-Ask **every currently-answerable question in one numbered round** — not one at a time. A question is currently-answerable when no other unanswered question could change it. His answers unlock the next frontier; repeat until the floor (§5) clears. **You research the facts yourself** — the item's own text and history, Linear, the court mirror — and never ask him something the repo can tell you. He only decides. Lead each round with one line of what you found, so the choices are grounded.
+Ask **every currently-answerable question in one numbered round** — not one at a time. A question is currently-answerable when no other unanswered question could change it. His answers unlock the next frontier; repeat until the floor (§5) clears. **You research the facts yourself** — the item's own text and history, Linear, the court mirror — and never ask him something the repo can tell you. He only decides. Lead each round with one line of what you found, so the choices are grounded. **Re-entry header:** every round after the first opens with 1–2 lines of where-we-are — the item in plain words, what's decided so far, what this round settles. Each round is an interrupt boundary in Cameron's threading model; any round must be re-enterable cold, ids glossed on first use.
 
 ## 3. Question rendering, per surface
 Every question carries **2–4 distinct options, a marked recommendation with one line of why, and free text as an escape hatch.** Reply cost: one number or word.
@@ -54,9 +58,12 @@ Collapse everything agreed into **ONE sentence**, display it verbatim, and ask: 
 - **Always show the finished card in-chat first.** Block format: `triage/shaping/README.md`.
 - **Pre-issue item** → append the card block to the item's `triage/proposals.md` entry. The existing `confirmed→issued` write carries it into Linear. No new write point.
 - **Already-issued item** → write `triage/shaping/<id>.md` with its `ids:` frontmatter list and exactly one `## shape <ISO>` heading. The consolidator folds it into the Linear description next run — ask for a run now if you want it sooner.
+- **Disposition outcome** (fork chose close/park/merge): write a disposition card — `level:disposition`, About + Disposition + Because, cited (format: `triage/shaping/README.md`). Pre-issue item → the `proposals.md` entry; the consolidator retires the queue side next run. Already-issued item → `triage/shaping/<id>.md`; the consolidator executes the Linear state change next run (its write point 4). Either way you still never write Linear.
+- **Split item** → the parts stay inside the parent card as `### Card — part <n>` sub-blocks, each with its own Done + First move (floor check 3). At `confirmed→issued` the consolidator creates the parent issue plus one sub-issue per part. Extract a part to its own top-level entry only when it is conceptually a different thing — **never for timing**.
 - **Concurrency on `proposals.md` — two writers.** Before appending, re-read the file and its `Generated:` stamp (`triage/proposals.md:4`). If the stamp advanced since you read the item, re-read that item's entry and append to the current text. Never rewrite another writer's content.
+- **Parallel sessions** (the paseo fan-out): one session per item, never two on the same item; never touch another item's entry or card file; `git add` only your own paths. The re-read rule above is what keeps N concurrent sessions safe.
 - **Commit the write.** `git add` the touched file and commit `shaping: card <item-id>`. An uncommitted card is not durable.
-- **Code-realm item** → the card *seeds* the coding pipeline: `deep-interview`/`ralplan` start from its Done/Tier/Appetite/Not-doing instead of a cold idea, and the finished work is validated against the Done sentence.
+- **Code-realm item** → the card *seeds* the coding pipeline: `deep-interview`/`ralplan` start from its Done/Tier/Not-doing instead of a cold idea, and the finished work is validated against the Done sentence.
 - **Hard prohibition:** you write `triage/proposals.md` and `triage/shaping/`, and nothing else. **Never `triage/queue.md`. Never `triage/plan.md`. Never Linear.**
 
 ## 10. Do not refactor this ritual into a form

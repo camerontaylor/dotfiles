@@ -57,6 +57,25 @@ sops = "3"
 # The registry's default age backend is aqua:FiloSottile/age, which does not
 # publish Intel macOS binaries. The GitHub backend supports this host.
 "github:FiloSottile/age" = "1.3.1"
+# Resource monitoring — the glance / attribution / profiling set (docs/monitoring.md).
+# btop is the glance layer on BOTH platforms but is gated to Linux *here*:
+# aristocratos/btop publishes no darwin release assets at all (checked
+# 2026-09-04 against v1.4.7 — Linux x86_64/aarch64/i686 only), so an ungated
+# entry would hard-fail `mise install` on saturn and neptune, the same way
+# delta/fd/age did above. The Macs take brew's btop bottle in 75_brew_setup.zsh.
+# The `os = [...]` key filters the tool out of resolution entirely on other
+# platforms — unlike the version-conditional trick used for delta/fd, which
+# still requires *some* installable version to exist everywhere.
+btop = { version = "1", os = ["linux"] }
+# bandwhich (per-process network) and samply (sampling profiler -> Firefox
+# Profiler UI) have no mise registry entry, so both use the github backend;
+# both publish darwin x86_64 + aarch64 and linux assets, so neither needs a
+# per-host conditional. Pinned exactly, matching the other github: entries.
+# samply MUST be pinned exactly rather than by major: its tags are prefixed
+# (`samply-v0.13.1`) and the same repo also carries `perfrecord-v*` tags, so a
+# loose spec can resolve to a different product's release.
+"github:imsnif/bandwhich" = "0.23.1"
+"github:mstange/samply" = "samply-v0.13.1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
 # opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
 # NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases

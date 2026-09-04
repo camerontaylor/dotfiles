@@ -66,3 +66,41 @@ mcp.ceres.webfront.app {
 		reverse_proxy localhost:3111
 	}
 }
+
+# Immich — tailnet-only (added 2026-08-26, photo-steward).
+# Unlike mcp/fred/miniflux.wedrifid.dev (orange-cloud CNAMEs into the
+# Cloudflare Tunnel), this is a grey-cloud A record straight at ceres's
+# Tailscale IP: Cloudflare answers DNS only and never proxies traffic.
+# Separate token because wedrifid.dev is the personal Cloudflare account
+# while webfront.app (CF_API_TOKEN above) is a different account entirely.
+# DNS-01 is mandatory: Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
+immich.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
+	# the DNS record alone — refuse anything not arriving over the tailnet.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+
+	reverse_proxy 100.82.17.115:2283
+}
+
+# CodexBar LLM plan-quota collector — tailnet-only (added 2026-09-04).
+# Same shape as immich.wedrifid.dev above: grey-cloud A record at ceres's
+# Tailscale IP, DNS-01 cert (Let's Encrypt cannot reach 100.82.17.115),
+# personal-account token because wedrifid.dev != webfront.app.
+# Backend is codexbar-serve.service, bound to 127.0.0.1:8791 only.
+usage.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
+	# the DNS record alone — refuse anything not arriving over the tailnet.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+
+	reverse_proxy 127.0.0.1:8791
+}

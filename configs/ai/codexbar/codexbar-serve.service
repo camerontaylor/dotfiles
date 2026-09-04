@@ -1,0 +1,38 @@
+[Unit]
+Description=CodexBar usage collector (LLM plan-quota HTTP API)
+Documentation=https://github.com/steipete/CodexBar
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Secrets: CODEXBAR_DASHBOARD_TOKEN (gates /dashboard/v1/snapshot) + ZAI_API_KEY.
+# Kept out of argv deliberately -- CodexBar's own docs warn --dashboard-token leaks via ps.
+EnvironmentFile=%S/codexbar/env
+Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/usr/bin/test -x %h/.local/share/codexbar/CodexBarCLI
+# Bind loopback only. Tailscale Serve terminates TLS in front of this, so the
+# token never crosses the network in cleartext and --allow-plain-http is not needed.
+ExecStart=%h/.local/share/codexbar/codexbar serve \
+    --host 127.0.0.1 \
+    --port 8791 \
+    --refresh-interval 180 \
+    --request-timeout 30 \
+    --identity redacted
+Restart=on-failure
+RestartSec=10s
+
+# Reads live OAuth credentials (~/.claude, ~/.codex) -- keep the blast radius small.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/codexbar %h/.cache
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+MemoryMax=1G
+
+[Install]
+WantedBy=default.target

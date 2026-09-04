@@ -199,6 +199,34 @@ elif have pacman && ! have htop; then
     fi
 fi
 
+# Resource monitoring, macOS half (docs/monitoring.md). btop is the glance
+# layer on both platforms, but upstream ships NO darwin release assets, so mise
+# cannot install it here — configs/mise.toml gates its entry to os=["linux"]
+# and the Macs take the brew bottle instead. htop (above) stays as the
+# SSH/low-memory fallback; bandwhich + samply are mise-managed on both OSes.
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
+    printf '%s\n' "Installing btop via brew..."
+    brew_formula_install_or_upgrade btop || true
+fi
+
+# macmon — power draw plus the ANE-vs-GPU split, which btop cannot reach on
+# Apple hardware. It reads the same private IOReport/IOKit counters
+# `powermetrics` uses but WITHOUT root, so it composes into scripts instead of
+# stopping to prompt for a password the way powermetrics and asitop do.
+#
+# APPLE SILICON ONLY — the counters are SoC IOReport channels that do not
+# exist on Intel. That makes this saturn-only; neptune is Intel and the formula
+# would install a binary that cannot report anything. Gate on `uname -m`, not
+# just $DOTFILES_OS, or every deploy on neptune installs dead weight.
+#
+# mactop (metaspartan/mactop) is the maximalist alternative — same IOReport
+# basis plus fans, thermal state and memory bandwidth. Deliberately NOT
+# installed: more surface area for no question we currently ask.
+if [[ $DOTFILES_OS == Darwin && $(uname -m) == arm64 ]] && have brew; then
+    printf '%s\n' "Installing macmon via brew..."
+    brew_formula_install_or_upgrade macmon || true
+fi
+
 # mosh — UDP-based remote shell that survives roaming/sleep; used for
 # connections across the home cluster. No mise/aqua backend, so it comes from
 # the platform package manager: brew on macOS, apt on Debian/Ubuntu, pacman on
