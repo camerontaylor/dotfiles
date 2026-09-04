@@ -80,6 +80,15 @@ if [[ -z "${RUN_HOME:-}" ]]; then
   exit 1
 fi
 
+# /opt/homebrew/bin only exists on Apple Silicon; baking it into the
+# LaunchDaemon PATH unconditionally (below) makes the service stat a
+# nonexistent dir on every lookup on Intel boxes. /usr/local/bin is a real,
+# always-present Unix dir (and brew's own prefix on Intel) so it stays
+# unconditional; only the arm64-only entry is gated, same existence-check
+# idiom as ensure_homebrew_path() in scripts/deploy.d/lib/helpers.zsh.
+ARM_BREW_BIN_PATH=""
+[[ -d /opt/homebrew/bin ]] && ARM_BREW_BIN_PATH="/opt/homebrew/bin:"
+
 CADDY_BIN=
 CADDY_CONFIG_DIR=/etc/caddy
 CADDYFILE_PATH=$CADDY_CONFIG_DIR/Caddyfile
@@ -631,7 +640,7 @@ setup_portless_launchd() {
     <key>HOME</key>
     <string>$RUN_HOME</string>
     <key>PATH</key>
-    <string>$portless_dir:$RUN_HOME/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <string>$portless_dir:$RUN_HOME/.local/share/mise/shims:${ARM_BREW_BIN_PATH}/usr/local/bin:/usr/bin:/bin</string>
     <key>PORTLESS_LAN</key>
     <string>0</string>
   </dict>

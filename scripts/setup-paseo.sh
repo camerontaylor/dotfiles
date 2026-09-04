@@ -141,6 +141,16 @@ fi
 MISE_SHIMS="$RUN_HOME/.local/share/mise/shims"
 PASEO_HOME_DIR="$RUN_HOME/.paseo"
 
+# /opt/homebrew/bin only exists on Apple Silicon; baking it into the
+# LaunchAgent PATH unconditionally (below) makes every command an agent
+# the daemon spawns run stat a nonexistent dir on Intel boxes.
+# /usr/local/bin is a real, always-present Unix dir (and brew's own prefix
+# on Intel) so it stays unconditional; only the arm64-only entry is gated,
+# same existence-check idiom as ensure_homebrew_path() in
+# scripts/deploy.d/lib/helpers.zsh.
+ARM_BREW_BIN_PATH=""
+[[ -d /opt/homebrew/bin ]] && ARM_BREW_BIN_PATH="/opt/homebrew/bin:"
+
 # Resolve a mise binary the same way setup-t3.sh does: mise may not be on the
 # PATH of a sudo/cron/non-interactive caller.
 MISE_BIN=""
@@ -541,7 +551,7 @@ setup_launchagent() {
     <!-- Agents spawned by the daemon inherit this PATH. launchd's default has
          no mise shims, so a GUI-launched daemon cannot even find claude. -->
     <key>PATH</key>
-    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:${ARM_BREW_BIN_PATH}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <!-- USER is load-bearing, not cosmetic. Claude Code looks its OAuth token
          up in the login keychain as generic-password service
          "Claude Code-credentials", account "$USER". launchd hands a LaunchAgent
@@ -627,7 +637,7 @@ setup_watchdog() {
     <!-- Must reach \`paseo\` and, through it, the agent CLIs a restarted daemon
          will spawn. Same PATH as the daemon job on purpose. -->
     <key>PATH</key>
-    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:${ARM_BREW_BIN_PATH}/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <!-- USER/LOGNAME are load-bearing for the same reason as in the daemon job:
          Claude Code resolves its OAuth token from the login keychain by
          account "\$USER", and launchd supplies no USER. Omit them here and the

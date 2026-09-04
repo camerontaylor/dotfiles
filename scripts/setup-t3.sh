@@ -56,6 +56,15 @@ if [[ -z "${RUN_HOME:-}" ]]; then
 fi
 
 MISE_SHIMS="$RUN_HOME/.local/share/mise/shims"
+
+# /opt/homebrew/bin only exists on Apple Silicon; baking it into the
+# LaunchDaemon PATH unconditionally (below) makes the service stat a
+# nonexistent dir on every lookup on Intel boxes. /usr/local/bin is a real,
+# always-present Unix dir (and brew's own prefix on Intel) so it stays
+# unconditional; only the arm64-only entry is gated, same existence-check
+# idiom as ensure_homebrew_path() in scripts/deploy.d/lib/helpers.zsh.
+ARM_BREW_BIN_PATH=""
+[[ -d /opt/homebrew/bin ]] && ARM_BREW_BIN_PATH="/opt/homebrew/bin:"
 T3_LOG_DIR="$RUN_HOME/.t3code/logs"
 T3_TOOL="npm:t3@latest"
 
@@ -191,7 +200,7 @@ setup_t3_launchd() {
     <key>HOME</key>
     <string>$RUN_HOME</string>
     <key>PATH</key>
-    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <string>$MISE_SHIMS:$RUN_HOME/.local/bin:${ARM_BREW_BIN_PATH}/usr/local/bin:/usr/bin:/bin</string>
   </dict>
   <key>ProgramArguments</key>
   <array>
