@@ -52,7 +52,15 @@
 	# Off by default — opt in per-command with `--recurse-submodules` when needed.
 	recurse = false
 [status]
-	submoduleSummary = true
+	# Off: with 48 vendored plugin submodules (git/modules ~577M on the
+	# dotfiles repo), this makes `git status` walk a submodule diff summary
+	# on every invocation — measured 6x slower than a full status with it on
+	# (fleet-wide cost, not a neptune-only quirk: every host that deploys
+	# this repo carries the same 48 submodules). Vendored plugins are rarely
+	# hand-edited, so the summary's value is low relative to what every
+	# shell-prompt/IDE status call pays for it. `diff.submodule = log` above
+	# still applies when you explicitly `git diff`/`git submodule summary`.
+	submoduleSummary = false
 [rerere]
 	enabled = true
 [color "diff-highlight"]
