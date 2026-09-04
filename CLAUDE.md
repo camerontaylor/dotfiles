@@ -197,6 +197,9 @@ gotchas there — see the global memory protocol for cadence.
 
 ## Other notes
 
+- [`docs/cli-tools.md`](docs/cli-tools.md) indexes every CLI this repo installs —
+  what each does and which installer owns it. Check it before grepping the deploy
+  fragments to find out whether a tool is available or where it comes from.
 - `mise.toml` (under `configs/mise.toml`, symlinked to `~/.config/mise/config.toml`)
   is the source of truth for tool versions. Add new tools there, not in
   `deploy.zsh`.
