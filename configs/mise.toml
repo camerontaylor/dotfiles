@@ -28,6 +28,20 @@ ripgrep = "14"
 ast-grep = "0"
 gh = "2"
 glab = "1"
+# Needed so the global `cargo`/`rustc`/etc. mise shims actually resolve.
+# scripts/deploy.d/70_runtime_installs.zsh installs rust via rustup (not
+# mise) into ~/.cargo/bin, and mise's core rust backend recognizes an
+# already-active rustup toolchain rather than downloading its own — on a
+# box that already has one, this is a symlink, zero extra bytes (verified
+# on neptune: ~/.local/share/mise/installs/rust/1.85.1 -> ~/.cargo/bin).
+# Without this pin the shims exist (mise creates them the moment any
+# project — e.g. paseo's own .tool-versions — resolves rust once) but have
+# no active version outside that project's directory, so `have cargo`
+# (a bare `command -v`) reports true while `cargo install` actually fails
+# with "No version is set for shim" — silently breaking the
+# linear-cli/CodeWhale cargo installs below whenever they run from outside
+# a rust-pinning project directory.
+rust = "1"
 # delta >=0.19 and fd >=10.4 dropped x86_64-apple-darwin release binaries
 # (aqua-registry supported_envs exclude darwin/amd64), which hard-fails
 # `mise install` on Intel macs (e.g. neptune). Pin the last x64-mac versions
