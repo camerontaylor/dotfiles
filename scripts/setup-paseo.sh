@@ -397,7 +397,14 @@ WorkingDirectory=$RUN_HOME
 ExecStart=$MISE_BIN exec $PASEO_TOOL -- paseo daemon start --foreground --home $PASEO_HOME_DIR
 Restart=on-failure
 RestartSec=3
-NoNewPrivileges=true
+# NoNewPrivileges is deliberately NOT set (dropped 2026-09-04). It sets
+# PR_SET_NO_NEW_PRIVS on the daemon and, irrevocably, on every agent it forks,
+# which makes setuid binaries refuse to elevate - so `sudo` failed outright for
+# anything running inside the daemon, including an agent doing privileged fleet
+# work. Note what that means here: $RUN_USER has passwordless sudo on ceres, so
+# the daemon now forks children that can become root without a challenge. The
+# bcrypt daemon password is the control that keeps that reachable only by an
+# authenticated client - do not widen the bind without it (see the header).
 
 [Install]
 WantedBy=multi-user.target

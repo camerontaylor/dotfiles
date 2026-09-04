@@ -265,10 +265,12 @@ new config but reports the path under "these changes require a daemon restart",
 so the UI keeps serving until the daemon actually bounces.
 
 Do not reach for `paseo daemon restart` on ceres to force it. The unit is
-`Restart=on-failure`, so a *clean* stop is not restarted by systemd — and since
-the daemon is `User=ctaylor` + `NoNewPrivileges=true`, nothing running inside it
-can sudo the unit back up. Let the next `sudo -E ./scripts/setup-paseo.sh` apply
-it, which is also how the CLI gets upgraded.
+`Restart=on-failure`, so a *clean* stop is not restarted by systemd, and the
+daemon stays down until something starts it. Let the next
+`sudo -E ./scripts/setup-paseo.sh` apply it, which is also how the CLI gets
+upgraded. (Since the unit dropped `NoNewPrivileges=true` on 2026-09-04 an
+agent *can* `sudo systemctl start paseo-daemon` it back up — but only the
+setup-script path leaves the unit, the pin and config.json consistent.)
 
 ## Operational notes
 
@@ -330,11 +332,13 @@ it, which is also how the CLI gets upgraded.
   sudo -E PASEO_TOOL=npm:@getpaseo/cli@0.7.0-beta.2 ./scripts/setup-paseo.sh
   ```
 
-  A Paseo *agent* on ceres cannot do this to itself: agents run inside
-  `paseo-daemon.service`'s own cgroup, which is `User=ctaylor` +
-  `NoNewPrivileges=true`, so `sudo` fails outright. An agent can safely stage
-  the version (`mise install npm:@getpaseo/cli@<ver>`) and leave the restart to
-  a human at a real terminal.
+  A Paseo *agent* on ceres can now run this itself — the unit dropped
+  `NoNewPrivileges=true` on 2026-09-04 and `ctaylor` has passwordless sudo, so
+  `sudo` inside a daemon-spawned agent succeeds. It is still the wrong place to
+  run it: the script restarts `paseo-daemon.service`, which kills the very
+  agent issuing the command, mid-run and mid-output. Prefer staging the version
+  (`mise install npm:@getpaseo/cli@<ver>`) and leaving the restart to a human
+  at a real terminal.
 - **`node-pty`**: Paseo pins `node-pty 1.2.0-beta.15`, which ships a
   `prebuilds/linux-x64` binary — so ceres avoids the build-from-source dance
   `setup-t3.sh` needs. The setup script verifies it anyway; that failure is
@@ -598,10 +602,11 @@ quiet — without them, a fresh home eagerly downloads a few hundred MB of
 speech models (see *Operational notes*).
 
 ceres — one `sudo -E` run re-installs the pinned tool, rewrites the unit,
-restarts the daemon, and verifies `/api/health`. The restart is the human
-moment: an agent inside `paseo-daemon.service` cannot sudo
-(`NoNewPrivileges`), so agents stage and a human types. **`sudo -E` is
-load-bearing** — the script reads `PASEO_PASSWORD` from the environment (see
+restarts the daemon, and verifies `/api/health`. The restart is still the human
+moment, now by convention rather than by enforcement: an agent inside
+`paseo-daemon.service` can sudo since the unit dropped `NoNewPrivileges`, but
+the restart it triggers kills that agent. Agents stage, a human types.
+**`sudo -E` is load-bearing** — the script reads `PASEO_PASSWORD` from the environment (see
 *Upgrades*):
 
 ```zsh
