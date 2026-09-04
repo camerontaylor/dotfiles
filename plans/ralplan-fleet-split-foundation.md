@@ -1,6 +1,8 @@
 # Foundation Plan — Three-Repo Fleet Split (Frozen Contracts)
 
-> Status: **pending approval** — no implementation may begin without explicit human approval.
+> Status: **APPROVED 2026-09-04** — owner directed end-to-end orchestration of this plan
+> ("orchestrate … end to end, using your best judgement"), which per §Approval freezes
+> C1–C7 and the sequencing table and authorizes dispatching domain plan 1 (infra-repo).
 >
 > **Provenance**: ralplan run `1b5daf07` (gjc, deliberate mode) — planner 41,255 B ·
 > intent 2,659 B · critic 19,446 B (codex `gpt-5.6-sol:xhigh`, verdict **ITERATE**) ·
