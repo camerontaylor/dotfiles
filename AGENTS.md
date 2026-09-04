@@ -53,7 +53,7 @@ echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
 **Encrypted file pattern**: `zsh/env.d/9[0-9]_*.enc`, `zsh/rc.d/9[0-9]_*.enc`, `nvim/init/9[0-9]_*.enc`
 **Encryption**: `./scripts/save-secrets.zsh` skips overwriting a newer `.enc` (and skips when content already matches) unless `--force`
 **Decryption**: `./scripts/restore-secrets.zsh` writes plaintext from tracked `.enc`, but skips a plaintext that is newer than its `.enc` unless `--force` (so local edits aren't clobbered)
-**On deploy**: `scripts/deploy.d/65_sops.zsh` restores `ssh/*.enc` with the same date guard; `./deploy.zsh --force` (`DEPLOY_FORCE=1`) overrides it
+**On deploy**: `scripts/deploy.d/65_secrets.zsh` renders every secret from the private `dotfiles-secrets` repo at `~/.local/secrets` — no date guard, no `.enc` involvement, and `--force`/`DEPLOY_FORCE` does not affect it. The tracked `.enc` files and the save/restore scripts above are legacy pending the Phase-5 cleanup (`plans/ralplan-secrets-repo-migration.md`)
 
 ## Runtime Management (mise)
 mise owns ALL runtimes — including Node/npm — plus non-npm CLIs. npm globals

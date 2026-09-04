@@ -314,3 +314,35 @@ This plan was produced by a non-interactive agent; the open assumptions below co
 - **Iteration 2** — Planner adopted all deltas (stale-plaintext deletion on full render success, consumer repointing + quote-agnostic rewrite, Phase 2.5 pre-flight, marker-ancestry gate, enumerated basenames, portless PEM exemption). Architect: verified all fixes real; new findings — `rm -f` deletes unverified files on 3 boxes (MEDIUM), pre-flight tests token validity not repo readability, `$DOTFILES`/`DEPLOY_DRY_RUN` standalone gaps, stale cite. Critic: **ITERATE** — upgraded the unverified `rm -f` to CRITICAL (data-loss class, documented per-box tailscale knobs), plus mediums (capability probe, self-location, clone fallback chain).
 - **Iteration 3** — Planner adopted everything: move-to-quarantine + gated purge, `96_local_tailscale.zsh` convention + Phase-4 key-name triage, `gh api` capability probes + clone-time gh→ssh fallback, `${0:A:h:h}` self-location, `${DEPLOY_DRY_RUN:-0}`, committed pre-flight record, sops-set rotation ordering, staleness sentinel. Architect: all claims verified; one BLOCKING delta — quarantine covered only 7 of 21 targets while `ssh/config`/service files were overwritten unverified; proposed first-render cutover backup; "with delta 1 absorbed … I would support consensus." Critic: **APPROVE** with the first-render cutover backup as a fully-specified MANDATORY AMENDMENT (merged verbatim into this file, including the critic's first-write-wins refinement), explicitly judging that no fourth iteration was warranted ("a fourth iteration would reproduce this document verbatim plus five lines"). Non-blocking refinements also merged: immich dir-preexistence gate, `33_` sentinel slot, K>0 shadow-warning line, CLAUDE.md cite fix.
 - **Unresolved objections**: none. The architect's surviving antithesis (post-cutover per-box GitHub-auth liveness dependency; machinery moved rather than deleted) is recorded as a priced consequence in the ADR, not an objection to the plan.
+
+---
+
+## Phase-5 gate attempts
+
+### 2026-09-04 — attempt 1: **BLOCKED, 3/4**
+
+`ssh <box> 'cat ~/.local/state/secrets-render-ok'`, ancestry checked with
+`git merge-base --is-ancestor 1923532a <recorded-sha>`:
+
+| Box | Recorded dotfiles sha | Rendered at | Descendant of Phase-3 `1923532a`? |
+|---|---|---|---|
+| ceres | `1edd6555` | 2026-08-29T04:18:20Z | yes |
+| saturn | `05509ab2` | 2026-09-02T14:00:36Z | yes |
+| neptune | `c8bb896b` | 2026-08-31T05:02:28Z | yes |
+| quaoar | — (unreachable) | — | **unknown** |
+
+quaoar is offline: `tailscale status` reports `offline, last seen 27d ago`
+(≈2026-08-08, i.e. **before** the Phase-3 cutover on 2026-08-25), and
+`ssh quaoar` (`quaoar.webfront.app`) and the tailnet IP `100.93.28.15` both
+time out. It has therefore almost certainly never run `65_secrets.zsh`, still
+holds the seven legacy `env.d/9*_secrets.zsh` plaintexts, and still depends on
+the tracked `.enc` files for a from-scratch restore.
+
+**Nothing irreversible executed.** No `.enc` deletion, no `.sops.yaml` move, no
+`legacy-removed/` purge, no rotation. The only Phase-5 work landed is step 8's
+safely-independent slice: the stale `--force` / `65_sops.zsh` wording in
+`deploy.zsh`, `deploy.bash`, and `AGENTS.md`.
+
+**Next human action**: bring quaoar online, `git -C ~/.local/dotfiles pull`
+(post-merge auto-deploys), confirm a non-degraded render, triage its
+`legacy-removed/` per Phase 4 step 2, then re-run this gate.

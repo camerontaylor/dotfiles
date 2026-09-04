@@ -54,9 +54,12 @@ unset _bash_version _bash_major _bash_minor
 # Argument parsing — fail-closed on unknown flags or missing --only value.
 local upgrade_mode=false
 export DEPLOY_DRY_RUN=0
-# Force overrides the "don't clobber newer plaintext" date guards in the
-# secrets-restore fragments (e.g. 65_sops.zsh). Off by default so a routine
-# deploy never silently overwrites locally-edited secrets with stale .enc.
+# Escape hatch for fragment-level safety guards. It originally bypassed the
+# mtime/clobber date guards in 65_sops.zsh; that fragment was retired by the
+# secrets-repo migration, and its replacement (65_secrets.zsh) deliberately
+# has no guards to bypass — ciphertext is canonical, plaintext is derived, so
+# re-rendering is always correct. No fragment reads DEPLOY_FORCE today; the
+# flag is kept as a stable interface for future guarded fragments.
 export DEPLOY_FORCE=0
 typeset -ga deploy_only=()
 while (( $# > 0 )); do
@@ -86,8 +89,8 @@ while (( $# > 0 )); do
             print ""
             print "  --upgrade    run brew/mise/cargo upgrades in addition to installs"
             print "  --dry-run    fragments print intentions via [dry-run] without mutating"
-            print "  --force      overwrite locally-edited secrets from .enc even when the"
-            print "               plaintext is newer (bypasses the date guard)"
+            print "  --force      bypass fragment safety guards (no fragment reads it"
+            print "               today; secrets rendering is unconditional)"
             print "  --only NAME  run only fragments whose basename matches NAME"
             print "               (e.g., --only 30_submodules); repeat for multiple"
             exit 0
