@@ -2,11 +2,11 @@
 # Enforce stable generated config defaults before commit.
 # Runs on: git commit (pre-commit hook)
 #
-# Secrets re-encryption was previously chained here via save-secrets.zsh
-# --git-add, but every commit re-encrypted all .enc files with fresh nonces
-# even when plaintext hadn't changed — folding noise into unrelated commits
-# and producing routine ssh/config.enc conflicts on stash/rebase. Run
-# `./scripts/save-secrets.zsh` manually after editing a secret.
+# This hook does NOT touch secrets. It once chained save-secrets.zsh --git-add,
+# which re-encrypted every .enc file with fresh nonces on every commit — folding
+# noise into unrelated commits and producing routine ssh/config.enc conflicts on
+# stash/rebase. Both the chaining and the .enc files are gone: secrets live in
+# the private repo at ~/.local/secrets and are edited with `secrets-edit`.
 #
 # POSIX sh (docs/bash-compatibility.md §D): a zsh-shebang hook would block
 # every commit on a host without zsh. The staged file list moves through a

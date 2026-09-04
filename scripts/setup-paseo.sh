@@ -748,9 +748,9 @@ else
   # password, so the localhost/::1 asymmetry above can bite until you do.
   LISTEN="127.0.0.1:$PASEO_PORT"
   echo "Auth:     NONE - binding loopback only."
-  echo "          Set PASEO_PASSWORD in zsh/env.d/90_secrets.zsh (then"
-  echo "          ./scripts/save-secrets.zsh) and re-run to expose this daemon"
-  echo "          to the tailnet."
+  echo "          Set PASEO_PASSWORD via 'secrets-edit shell/90_secrets.yaml',"
+  echo "          then re-run this installer to expose the daemon to the"
+  echo "          tailnet."
 fi
 echo "Bind:     $LISTEN"
 echo ""

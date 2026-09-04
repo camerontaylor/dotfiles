@@ -45,6 +45,11 @@ autoload -z fz ineachdir evalcache compdefcache
 # (p cc yolo *-direct moved to bin/; the ccm/ccz non-direct wrappers keep
 # their zsh-only Portkey fallback, so they stay fpath functions.)
 autoload -Uz _webfront_root w ccm ccz ccm-happy ccz-happy
+# secrets-edit needs an explicit autoload: $ZDOTDIR/fpath is on $fpath
+# (env.d/03_paths.zsh) but that only makes a file autoload-ABLE. Its
+# predecessor dotfiles-encrypt was never listed here and so was never actually
+# callable — do not repeat that by adding a file without a line here.
+autoload -Uz secrets-edit
 
 # Enable wrapper, if original command is available
 (( ${+commands[man]} )) && autoload -Uz wrap-man

@@ -6,18 +6,14 @@ vim/vimrc.local
 
 nvim/init/0[1-9]_*
 nvim/init/9[0-9]_*
-!nvim/init/9[0-9]_*.enc
 
 zsh/rc.d/9[0-9]_*
-!zsh/rc.d/9[0-9]_*.enc
 zsh/env.d/9[0-9]_*
-!zsh/env.d/9[0-9]_*.enc
 zsh/.zlogin
 zsh/.zlogout
 zsh/.zcompdump*
 
 ssh/*
-!ssh/*.enc
 
 configs/ranger-plugins/__init__.py
 configs/ranger-plugins/__pycache__

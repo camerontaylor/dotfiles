@@ -131,7 +131,7 @@ while [[ -L $_self ]]; do
 done
 DOTFILES_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
 # With systemd-homed the physical path is the storage location /home/user.homedir
-# rather than the mounted /home/user — massage it back (as save-secrets.zsh).
+# rather than the mounted /home/user — massage it back.
 if [[ $DOTFILES_DIR == $HOME.homedir* ]]; then
     DOTFILES_DIR=${DOTFILES_DIR/.homedir/}
 fi

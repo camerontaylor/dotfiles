@@ -128,9 +128,10 @@ deploy_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFI
 # box the DNS name points at, and the ExecStart path (~/apps/openclaw-mcp) does
 # not exist anywhere else. Linking the unit on another host would put a
 # startable service on a machine that cannot run it.
-# The unit is tracked and symlinked; its EnvironmentFile is a decrypted copy at
-# ~/.config/openclaw-mcp/env placed by scripts/restore-secrets.zsh, not a
-# symlink into this repo.
+# The unit is tracked and symlinked; its EnvironmentFile is a rendered copy at
+# ~/.config/openclaw-mcp/env written by scripts/secrets-render.zsh (the
+# services/openclaw row, ceres-gated) — never a symlink into this repo, since
+# plaintext must not land in the working tree.
 if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
     deploy_ln -sfn $SCRIPT_DIR/configs/openclaw-mcp/openclaw-mcp.service $XDG_CONFIG_HOME/systemd/user/openclaw-mcp.service
 fi

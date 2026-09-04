@@ -118,18 +118,17 @@ changed.
 
 ### 1. Set the shared daemon password
 
-`PASEO_PASSWORD` lives in the encrypted secrets file so every box and every CLI
+`PASEO_PASSWORD` lives in the private secrets repo so every box and every CLI
 client agrees on it:
 
 ```zsh
-# edit the decrypted file, add:  export PASEO_PASSWORD="…"
-$EDITOR ~/.local/dotfiles/zsh/env.d/90_secrets.zsh
-./scripts/save-secrets.zsh          # re-encrypt to 90_secrets.zsh.enc
-git commit -m "chore(secrets): add paseo daemon password"
+# add:  PASEO_PASSWORD: "…"
+secrets-edit shell/90_secrets.yaml   # sops edit, then re-render this box
+git -C ~/.local/secrets commit -am "chore: add paseo daemon password"
+git -C ~/.local/secrets push
 ```
 
-Then `./deploy.zsh` on the other boxes (or `./scripts/restore-secrets.zsh`) to
-land the decrypted copy there.
+Then `./deploy.zsh` on the other boxes to render the value there.
 
 A bcrypt hash of it goes into `config.json` on every host — the one auth
 mechanism that works for **both** a systemd-managed daemon and a GUI-launched

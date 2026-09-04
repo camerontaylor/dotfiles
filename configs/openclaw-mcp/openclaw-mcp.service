@@ -5,10 +5,10 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-# Gateway URL + token, MCP OAuth client id/secret. Tracked here only as the
-# sops-encrypted configs/openclaw-mcp/env.enc; restore-secrets.zsh decrypts it
-# to this path as a plain copy (never a symlink into the repo — plaintext must
-# not land in the working tree).
+# Gateway URL + token, MCP OAuth client id/secret. The canonical copy is
+# services/openclaw/env.yaml in the private secrets repo (~/.local/secrets);
+# scripts/secrets-render.zsh renders it to this path as a plain copy (never a
+# symlink into the repo — plaintext must not land in the working tree).
 EnvironmentFile=%h/.config/openclaw-mcp/env
 Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/apps/openclaw-mcp/node_modules/.bin/openclaw-mcp --transport http --port 3111

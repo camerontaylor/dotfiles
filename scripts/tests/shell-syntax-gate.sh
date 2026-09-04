@@ -68,7 +68,6 @@ _zsh_only() {
         zsh/fpath/compdefcache) return 0 ;;           # compdef/compadd wrappers
         zsh/fpath/ftb-tmux-popup) return 0 ;;         # zle widget + zsh parameter flags
         zsh/fpath/ineachdir) return 0 ;;              # zparseopts + TRAPINT + always block
-        zsh/fpath/dotfiles-encrypt) return 0 ;;       # ${(...)~} glob modifiers
         zsh/fpath/w) return 0 ;;                      # wtp + zsh param expansion flags
         zsh/fpath/fz) return 0 ;;                     # zsh param expansion flags
         *) return 1 ;;

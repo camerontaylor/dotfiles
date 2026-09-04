@@ -346,3 +346,27 @@ safely-independent slice: the stale `--force` / `65_sops.zsh` wording in
 **Next human action**: bring quaoar online, `git -C ~/.local/dotfiles pull`
 (post-merge auto-deploys), confirm a non-degraded render, triage its
 `legacy-removed/` per Phase 4 step 2, then re-run this gate.
+
+### 2026-09-04 — attempt 2: **CLEARED 3/4 by owner decision**
+
+Cameron waived the fourth marker: quaoar is written off as a gate participant,
+and if it is ever resurrected it re-onboards as a fresh box (register its age
+key, first render). Phase-5 **dotfiles cleanup** executed on that authority.
+
+Executed: all 21 `.enc` deleted; `.sops.yaml` + `.sops.yaml.example` retired
+(the live recipient list is `~/.local/secrets/.sops.yaml`);
+`save-secrets.zsh`, `restore-secrets.zsh`, `sops-add-recipient.zsh` (the live
+copy is `~/.local/secrets/scripts/`) and `zsh/fpath/dotfiles-encrypt` removed;
+`zsh/fpath/secrets-edit` and `zsh/rc.d/33_secrets_staleness.zsh` added;
+`.gitignore` negations and the dead `*.enc` loader skips dropped; docs swept.
+
+**NOT executed, still open:**
+
+- **Step 3 — key rotation (human).** GitHub PAT and Tailscale authkey. The
+  Tailscale key is recorded as leaked, so it is the priority. Old ciphertext
+  remains in this repo's public history by explicit decision (spec #13) —
+  rotation *is* the mitigation.
+- **Step 4 — quarantine purge (deferred, deliberately).** `legacy-removed/`
+  still holds ~6 files each on ceres, saturn and neptune. Phase-4 step 2 triage
+  was never signed off per box, so these are the last copies of any pre-cutover
+  hand-edit. Triage first, then `rm -rf`.

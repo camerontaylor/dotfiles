@@ -81,7 +81,6 @@ if [[ -d $ZDOTDIR/env.d ]]; then
     setopt null_glob
     for envfile in $ZDOTDIR/env.d/*; do
         [[ -e $envfile ]] || continue
-        [[ $envfile == *.enc ]] && continue
         _zshenv_dbg "sourcing $envfile"
         if ! source "$envfile" 2>&1; then
             echo "Warning: error in $envfile" >&2

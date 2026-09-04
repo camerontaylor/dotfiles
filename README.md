@@ -153,7 +153,7 @@ with `DOTFILES_SKIP_POSTMERGE=1`).
 |------|---------|
 | `--upgrade` / `-u` | run brew/mise/cargo upgrades in addition to installs |
 | `--dry-run` / `-n` | fragments print intentions via `[dry-run]` without mutating |
-| `--force` / `-f` | overwrite locally-edited secrets from `.enc` even when newer (bypass the date guard) |
+| `--force` / `-f` | bypass fragment safety guards — no fragment currently reads it |
 | `--only NAME` | run only fragments whose basename matches NAME (e.g. `--only 30_submodules`); repeatable |
 | `--help` / `-h` | show flag summary |
 
@@ -173,19 +173,28 @@ It prints the manual System Settings grants (Full Disk Access, etc.) needed.
 
 ## Secrets
 
-Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + age and
-committed as `.enc` files; plaintext overrides (the `90`–`99` numeric range under
-`zsh/env.d/`, `zsh/rc.d/`, `nvim/init/`, plus `ssh/*`) are gitignored.
+No secret material lives in this repo. Ciphertext is canonical and plaintext is
+**derived**: everything encrypted lives in the private repo
+`camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`, and every deploy
+re-renders this machine's plaintext targets from it —
+[`65_secrets.zsh`](scripts/deploy.d/65_secrets.zsh) drives
+[`scripts/secrets-render.zsh`](scripts/secrets-render.zsh). Every rendered
+target (the `90`–`99` range under `zsh/env.d/`, plus `ssh/*`) is gitignored.
+
+Edit a secret with `secrets-edit` — never edit a rendered file, since the next
+deploy overwrites it:
 
 ```sh
-echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
-./scripts/save-secrets.zsh      # encrypt plaintext → tracked .enc
-./scripts/restore-secrets.zsh   # decrypt tracked .enc → plaintext
+secrets-edit shell/90_secrets.yaml    # sops edit, then re-render this box
+git -C ~/.local/secrets commit -am "chore: rotate MY_API_KEY"
+git -C ~/.local/secrets push          # other boxes render it on their next pull
 ```
 
 The age key lives at `~/.config/sops/age/keys.txt` — **back it up to your
-password manager.** On deploy, [`65_sops.zsh`](scripts/deploy.d/65_sops.zsh)
-restores `ssh/*.enc` with a date guard; `./deploy.zsh --force` overrides it.
+password manager.** A box missing that key, or missing GitHub read access to
+the private repo, gets a printed instruction block and the deploy mutates
+nothing rather than failing. `zsh/rc.d/33_secrets_staleness.zsh` warns in new
+interactive shells if this box has not rendered for 14 days.
 
 ## Deployed services
 

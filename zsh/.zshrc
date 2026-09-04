@@ -46,7 +46,6 @@ fi
 setopt null_glob
 for conffile in $ZDOTDIR/rc.d/*; do
   [[ -e $conffile ]] || continue
-  [[ $conffile == *.enc ]] && continue
   _zshrc_dbg "sourcing $conffile"
   if ! source "$conffile" 2>&1; then
     echo "Warning: error in $conffile" >&2

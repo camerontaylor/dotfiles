@@ -11,11 +11,9 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
   - `--only NAME` — run only fragments whose basename matches NAME (repeatable)
 - `./deploy.bash` — bash twin of the driver: same CLI, same fragments (fragment bodies are dual-shell by contract); both drivers assert `/bin/bash` ≥ 3.2 at startup
 - `scripts/eris-macos-bootstrap.zsh` — Day-0 macOS bootstrap (run BEFORE clone via `curl | zsh`); installs Homebrew + baseline, then clones and runs deploy
-- `./scripts/save-secrets.zsh` — encrypt plaintext override secrets back into tracked `.enc` files
-- `./scripts/restore-secrets.zsh` — decrypt tracked `.enc` files back to plaintext overrides
+- `secrets-edit <path>` — edit a secret in the private secrets repo, then re-render this box (autoloaded function; `secrets-edit` with no args lists what is editable)
 - Deploy runs automatically on `git pull` via `scripts/post-merge` (prefers `deploy.zsh`, falls back to `deploy.bash` — each `-n`-checked before running, loud failure when neither is runnable; `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
 - CI: `.github/workflows/shells.yml` — macOS + Ubuntu matrix running the tree-wide dual `-n` sweep (`scripts/tests/shell-syntax-gate.sh`, the same gate `scripts/pre-commit` runs over staged files), and both drivers' `--dry-run` with `DOTFILES_SKIP_BREW=1` (no brew installs on hosted runners; macOS `/bin/bash` 3.2 is the floor leg)
-- `dotfiles-encrypt <file>` — encrypt a secrets file (autoloaded function; honors `.sops.yaml` recipients)
 
 ## Where to Add Commands/Tools
 | Want to add... | Location |
@@ -38,22 +36,18 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-paseo.sh`, `setup-immich.sh`. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
 
 ## Secrets Encryption (SOPS + Age)
-Files in the 90-99 range are gitignored and can hold secrets. Encrypt with `dotfiles-encrypt`:
+**No secret material lives in this repo.** Ciphertext is canonical, plaintext is derived: encrypted material lives in the private repo `camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`. Files in the 90-99 range are gitignored and hold the *rendered* plaintext.
 
 ```bash
-# Create a secrets file
-echo 'export MY_API_KEY="..."' > zsh/env.d/90_secrets.zsh
-# Encrypt it (creates 90_secrets.zsh.enc)
-./scripts/save-secrets.zsh
-# Restore plaintext later if needed
-./scripts/restore-secrets.zsh
+secrets-edit shell/90_secrets.yaml    # sops edit, then re-render this box
+git -C ~/.local/secrets commit -am "chore: add MY_API_KEY"
+git -C ~/.local/secrets push          # other boxes render it on their next pull
 ```
 
 **Key location**: `~/.config/sops/age/keys.txt` — **BACKUP THIS FILE** to your password manager!
-**Encrypted file pattern**: `zsh/env.d/9[0-9]_*.enc`, `zsh/rc.d/9[0-9]_*.enc`, `nvim/init/9[0-9]_*.enc`
-**Encryption**: `./scripts/save-secrets.zsh` skips overwriting a newer `.enc` (and skips when content already matches) unless `--force`
-**Decryption**: `./scripts/restore-secrets.zsh` writes plaintext from tracked `.enc`, but skips a plaintext that is newer than its `.enc` unless `--force` (so local edits aren't clobbered)
-**On deploy**: `scripts/deploy.d/65_secrets.zsh` renders every secret from the private `dotfiles-secrets` repo at `~/.local/secrets` — no date guard, no `.enc` involvement, and `--force`/`DEPLOY_FORCE` does not affect it. The tracked `.enc` files and the save/restore scripts above are legacy pending the Phase-5 cleanup (`plans/ralplan-secrets-repo-migration.md`)
+**On deploy**: `scripts/deploy.d/65_secrets.zsh` clones/pulls `~/.local/secrets` and drives `scripts/secrets-render.zsh`, which renders every target for this box. There are deliberately **no mtime/clobber guards** — re-rendering derived plaintext is always correct — so `--force`/`DEPLOY_FORCE` does not affect secrets at all.
+**Degraded mode**: a box missing the age key or GitHub read access prints an instruction block and mutates nothing; deploy stays green. `zsh/rc.d/33_secrets_staleness.zsh` warns in new interactive shells after 14 days without a render.
+**Never** edit a rendered file directly (`zsh/env.d/9*_secrets.zsh`, `ssh/*`) — the next deploy overwrites it.
 
 ## Runtime Management (mise)
 mise owns ALL runtimes — including Node/npm — plus non-npm CLIs. npm globals
@@ -77,7 +71,7 @@ crash-looped three services for a week in 2026-07.
 - **New submodule tool**: `git submodule add <url> tools/<name>`, add install logic to the matching `scripts/deploy.d/` fragment (e.g. `40_tools.zsh`)
 - **New nvim plugin**: submodule in `nvim/plugins/`, config in `nvim/init/NN_name.lua`
 - **Local overrides**: 90-99 prefix files are gitignored (zsh/env.d/, zsh/rc.d/, nvim/init/)
-- **New secret**: create `90_*.zsh`, run `dotfiles-encrypt zsh/env.d/90_name.zsh`, commit only the `.enc` file
+- **New secret**: add the key to the right `shell/*.yaml` in `~/.local/secrets` via `secrets-edit`, then commit+push there — **not** in this repo. A brand-new render *target* also needs a `_row` in `scripts/secrets-render.zsh`
 
 ## File Numbering Conventions
 | Range | Purpose |
@@ -100,8 +94,7 @@ crash-looped three services for a week in 2026-07.
 ```
 ├── deploy.zsh          # Main installer + git hooks
 ├── scripts/
-│   ├── save-secrets.zsh         # Manual secrets save into tracked .enc files
-│   ├── restore-secrets.zsh      # Manual secrets restore from tracked .enc files
+│   ├── secrets-render.zsh       # Renders ~/.local/secrets → this box's plaintext targets
 │   ├── deploy.d/                # NN_*.zsh install fragments (sourced in order)
 │   └── macos/                   # macOS settings: defaults + shortcut capture (README inside)
 ├── configs/
@@ -116,7 +109,7 @@ crash-looped three services for a week in 2026-07.
 │   ├── .zshenv         # Entry point, sets ZDOTDIR
 │   ├── env.d/          # ALL shells, BOTH zsh and bash (export PATH, XDG vars, mise shims)
 │   ├── rc.d/           # Interactive zsh only (plugins, completions, prompts)
-│   └── fpath/          # Autoloaded functions (evalcache, dotfiles-encrypt, etc.)
+│   └── fpath/          # Autoloaded functions (evalcache, secrets-edit, etc.; each needs a line in rc.d/04_autoload.zsh)
 ├── bash/               # Opt-in bash twin (zsh stays default; 21_bash_symlinks)
 │   ├── env.sh          # Shared env entrypoint: sources zsh/env.d/* + exports BASH_ENV
 │   ├── rc.d/           # Interactive bash only (history/setopt/gnubin/completion/paseo)

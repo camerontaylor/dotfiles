@@ -59,9 +59,9 @@ serve existing ones, so the failure is silent for up to ~60 days.
 
 ## Restore from bare metal
 
-1. `scripts/restore-secrets.zsh`, then
-   `source zsh/env.d/91_cloudflare_secrets.zsh` to get `CF_API_TOKEN` into the
-   environment.
+1. `./deploy.zsh --only 65_secrets` to render secrets from `~/.local/secrets`,
+   then `source zsh/env.d/91_cloudflare_secrets.zsh` to get `CF_API_TOKEN` into
+   the environment.
 2. Install portless (`mise use -g npm:portless`) and start the **user** unit
    `~/.config/systemd/user/portless.service` (`systemctl --user enable --now
    portless`; `loginctl enable-linger ctaylor` so it survives reboot).
