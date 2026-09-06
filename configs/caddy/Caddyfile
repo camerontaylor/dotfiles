@@ -102,5 +102,12 @@ usage.wedrifid.dev {
 	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
 	abort @external
 
-	reverse_proxy 127.0.0.1:8791
+	# CodexBar rejects any request whose Host is not its own bind address
+	# ({"error":"forbidden host"}) — a DNS-rebinding guard with no allowlist
+	# flag or env var. Rewrite Host to the dial target so it sees a loopback
+	# request. The remote_ip matcher above is unaffected: it reads the peer
+	# address, not this header, so the tailnet boundary still holds.
+	reverse_proxy 127.0.0.1:8791 {
+		header_up Host {upstream_hostport}
+	}
 }

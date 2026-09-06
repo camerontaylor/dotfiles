@@ -27,7 +27,14 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%h/.local/state/codexbar %h/.cache
+# ~/.config/codexbar is CodexBar's own config dir; it writes a cookie cache and
+# lock there. Omitting it made every fetch log "cookie-cache migration lock
+# failed: Read-only file system" against ProtectHome=read-only.
+# CodexBar's data dir is %h/.local/share/CodexBar (capital C) -- distinct from
+# the lowercase install dir above. It holds cookie-cache.lock; omitting it made
+# every upstream fetch log "cookie-cache migration lock failed: Read-only
+# file system" against ProtectHome=read-only.
+ReadWritePaths=%h/.local/state/codexbar %h/.config/codexbar %h/.local/share/CodexBar %h/.cache
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
