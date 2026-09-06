@@ -15,6 +15,7 @@
 #   55  evalcache_prune — purge poisoned 0-byte zsh evalcache files (recovery)
 #   60  git_hooks      — post-merge / pre-commit hooks
 #   65  sops           — age/sops setup, decrypt env secrets
+#   66  infra          — ensure ~/.local/infra sibling (clone/pull + its deploy)
 #   70  runtime_installs — curl-installed CLIs without a mise backend
 #   75  brew_setup     — brew formulae and casks
 #   80  nvim_post      — post-symlink nvim setup

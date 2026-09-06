@@ -215,6 +215,12 @@ done
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
+# converge drift-channel push topic (infra split, H2n's non-secret half):
+# ceres-only because the differ/renderer runs on ceres. HUMAN-ONLY H2n
+# provisions the blob in the secrets repo — encrypted in-place at
+# services/converge/ntfy-topic.enc, since .sops.yaml's creation rule matches
+# `\.enc$` on the INPUT path.
+_row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 ceres  ''
 # gjc (gajae-code): only .env is a secret (ZAI_API_KEY, OPENROUTER_API_KEY).
 # Gated `all`, not ceres: config.yml's modelRoles.default is zai/glm-5.3, so a
 # box without these keys starts gjc with a default model it cannot authenticate.
