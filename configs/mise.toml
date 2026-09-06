@@ -97,6 +97,26 @@ btop = { version = "1", os = ["linux"] }
 # CodeWhale is installed and upgraded from crates.io by
 # scripts/deploy.d/70_runtime_installs.zsh.
 
+# paseo CLI, Linux-only. The Macs get `paseo` from the app bundle (a symlink
+# into /Applications/Paseo.app/Contents/Resources/bin/paseo, installed by the
+# brew cask in 75_brew_setup.zsh), so an ungated entry would put a second,
+# competing paseo ahead of it on PATH — mise shims precede ~/.local/bin.
+#
+# This entry exists ONLY so the bare `paseo` shim resolves on Linux boxes.
+# mise shims resolve from config, never from what happens to be installed, so
+# `mise install` alone (which is all scripts/setup-paseo.sh does) leaves
+# `paseo ls` failing with "No version is set for shim" — as it did on ceres
+# from the 0.7.0 beta install until 2026-09-06. The paseo *skills* assume a
+# working bare `paseo`, and they were silently Mac-only without this.
+#
+# KEEP THIS PIN IN SYNC with the daemon's, which scripts/setup-paseo.sh writes
+# into paseo-daemon.service's ExecStart (`mise exec npm:@getpaseo/cli@<ver>`).
+# They are deliberately separate — the unit pins so a config change can never
+# perturb a running daemon — but a CLI newer than the daemon it talks to is a
+# skew bug, so bump both together. Do NOT loosen this to "beta": `mise upgrade`
+# on every deploy would then walk the CLI ahead of the pinned daemon unattended.
+"npm:@getpaseo/cli" = { version = "0.7.0-beta.2", os = ["linux"] }
+
 [settings]
 # Respect version files: .node-version, .tool-versions
 idiomatic_version_file = true
