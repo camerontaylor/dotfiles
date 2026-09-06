@@ -182,7 +182,7 @@ FIRST_RENDER=0
 #   field 2  kind  shellenv | dotenv | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | immich | libris
+#   field 5  gate  all | ceres | immich | libris | ollie-notes
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -228,6 +228,20 @@ _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.res
 # libris (book/serial archiver on ceres) backs up to its own restic repo on
 # saturn; same deploy-dir gate so the password lands only where libris lives.
 _row services/libris/restic-password.enc   blob   "$HOME/repos/deploy/libris/.restic-password" 600 libris ''
+# ollie_notes (the court register) backs up to a local restic repo on saturn AND
+# to B2 offsite. Gated on HOSTNAME, not on the corpus dir: ceres also carries a
+# 5,802-file working clone of ollie_notes but never runs the backup, so a
+# corpus-dir gate would land live B2 credentials on a box with no use for them.
+# saturn is the only executor (see ops/ollie-notes-backup-trigger.sh's header for
+# why). The renderer mkdir -p's the target dir, so a rebuilt saturn self-heals.
+#
+# These live here rather than only on saturn because restic-password is the ONLY
+# thing that can decrypt the B2 copy: if saturn dies with it, the offsite backup
+# is unreadable ciphertext and the court register has zero recoverable copies.
+# The ciphertext in this repo is the recovery path — decryptable by any of the
+# four fleet age keys, independent of whether it is rendered anywhere.
+_row services/ollie-notes/restic-password.enc blob   "$HOME/.config/ollie-notes-backup/restic-password" 600 ollie-notes ''
+_row services/ollie-notes/b2-env.yaml         dotenv "$HOME/.config/ollie-notes-backup/b2-env"          600 ollie-notes ''
 
 # ssh. Rendered into $DOTFILES/ssh/ with the historical 600/644 modes, then
 # symlinked into ~/.ssh/ (matching scripts/deploy.d/20_symlinks.zsh).
@@ -270,6 +284,7 @@ _gate_open() {
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
+        ollie-notes) [[ $(hostname -s 2>/dev/null) == saturn ]] ;;
         *)      return 1 ;;
     esac
 }
