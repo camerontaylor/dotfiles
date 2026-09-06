@@ -15,6 +15,13 @@ deploy_ln -sfn $SCRIPT_DIR/configs/gitattributes $XDG_CONFIG_HOME/git/attributes
 deploy_ln -sfn $SCRIPT_DIR/configs/gitignore $XDG_CONFIG_HOME/git/ignore
 deploy_ln -sfn $SCRIPT_DIR/configs/tigrc $XDG_CONFIG_HOME/tig/config
 deploy_ln -sfn $SCRIPT_DIR/configs/htoprc $XDG_CONFIG_HOME/htop/htoprc
+# btop rewrites this file wholesale on exit (save_config_on_exit defaults true),
+# regenerating every comment from its own current_config() — so configs/btop.conf
+# is kept verbatim in btop's emitted format, and hand-added commentary there would
+# be erased on first quit. The write is an in-place ofstream, so it follows this
+# symlink back into the repo exactly as htoprc does; see README "Local paths &
+# ignoring config churn" for the --assume-unchanged escape hatch.
+deploy_ln -sfn $SCRIPT_DIR/configs/btop.conf $XDG_CONFIG_HOME/btop/btop.conf
 deploy_ln -sfn $SCRIPT_DIR/configs/ranger $XDG_CONFIG_HOME/ranger/rc.conf
 deploy_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 deploy_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins

@@ -51,7 +51,7 @@ bootstrap.
 * **AI / LLM tooling** — [`configs/ai/`](configs/ai): Claude Code, Codex, CodeWhale,
   OpenCode, OMX, agent-orchestrator, and the Portkey / LiteLLM / CCR gateways.
   See [AI tooling](#ai--llm-tooling).
-* **Other configs** — [Git](configs/gitconfig), [tig](configs/tigrc), [htop](configs/htoprc), [bat](configs/bat), [quilt](configs/quiltrc), [starship](configs/starship.toml) (available as a p10k alternative).
+* **Other configs** — [Git](configs/gitconfig), [tig](configs/tigrc), [htop](configs/htoprc), [btop](configs/btop.conf), [bat](configs/bat), [quilt](configs/quiltrc), [starship](configs/starship.toml) (available as a p10k alternative).
 * **Runtime/tool management** — [mise](https://mise.jdx.dev/) for polyglot
   runtimes and CLIs ([`configs/mise.toml`](configs/mise.toml)), including Node
   and the npm globals in [`.default-npm-packages`](.default-npm-packages).
@@ -278,7 +278,7 @@ Neovim config tracks the latest released version (currently 0.11).
 ### Local paths & ignoring config churn
 
 Local binaries go in `$HOME/.local/bin` (on `PATH`); man pages in
-`$XDG_DATA_HOME/man`. For configs a tool rewrites itself (e.g. htop), stop git
+`$XDG_DATA_HOME/man`. For configs a tool rewrites itself (e.g. htop, btop), stop git
 from tracking local churn:
 
 ```sh

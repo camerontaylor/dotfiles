@@ -5,7 +5,7 @@ if [[ $DOTFILES_OS == Darwin ]]; then
 fi
 
 printf '%s\n' "Creating required directory tree..."
-deploy_mkdir -p $XDG_CONFIG_HOME/{ghostty,cmux,git/local,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi,bat}
+deploy_mkdir -p $XDG_CONFIG_HOME/{ghostty,cmux,git/local,btop,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi,bat}
 deploy_mkdir -p $XDG_CACHE_HOME/{zsh,tig}
 deploy_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv}/plugins,zsh,man/man1,nvim/site/pack/plugins}
 deploy_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator,aerospace,sway}
