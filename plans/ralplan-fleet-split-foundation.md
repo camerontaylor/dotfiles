@@ -85,6 +85,11 @@ bootstrap), secrets-before-infra (renders).
   symlinks (`~/.claude`, `~/.agents`, …) or `$DOTFILES` / `$AGENTS_DIR` / `$INFRA_DIR`.
   The ~12 path-bound agents files are fixed under this rule during the move.
 
+> **AMENDMENT 2026-09-06 (owner-directed, D3 escalation from domain plan 1 A7):** the infra
+> sibling-ensure fragment (`66_infra.zsh`) lands now under domain plan 1 rather than waiting
+> for rows 2/4; rows 2/4 retain the agents edge and chain hardening; the converge timer's
+> pull survives as defense-in-depth (both writers `--ff-only` + idempotent).
+
 ### C3 — Coverage matrix + offline convergence
 All 3 repos × all 5 hosts (ceres, makemake, saturn, neptune, quaoar) — all 15 cells deploy;
 differentiation happens *inside* manifests (quaoar's infra manifest ≈ syncthing + membership).

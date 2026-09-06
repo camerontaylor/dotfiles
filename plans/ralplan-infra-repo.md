@@ -87,6 +87,13 @@ Wave 1 = commands 1–4 (ceres+saturn); **soak ≥ 1 week log-only**; review pus
 
 **A7 — Phase-gate review + D3 ESCALATE.** Assemble PG1–PG4 evidence bundle (validator output; four zero-unmanifested outputs; timer timestamps; publish-clone-origin page revision; real push receipt or waiver); quaoar STALE/PENDING per C7. `docs/phase-a-signoff.md` records: **the C3 on-return decision** — (a) ESCALATE: foundation amendment authorizing the drafted `66_infra.zsh` now, or (b) owner-signed interim runbook (manual clone + H6-style enable on quaoar's return) — **[AM2] option (b) must carry an explicit expiry date or a recorded scope-reading (C3's chain-mechanism clause is rows-2/4-scoped); expiry lapse without resolution becomes a drift-channel finding**; the post-wiring coexistence decision (timer survives; both writers `--ff-only` + idempotent); H6 authorization; **[AM4]** the `/Library/LaunchAgents` C1-surface decision. **HUMAN-ONLY H3**: Phase B go/no-go.
 
+> **RESOLVED 2026-09-06 — D3/OQ5, option (a), owner-directed** (verbatim: "Move in to
+> dotfiles."): the drafted `66_infra.zsh` lands now in the dotfiles repo under this plan,
+> per the dated amendment in `plans/ralplan-fleet-split-foundation.md` §C2. The post-wiring
+> coexistence decision stands as written: the converge timer's pull survives as
+> defense-in-depth; both writers `--ff-only` + idempotent. Option (b)'s interim runbook
+> (and its [AM2] expiry clause) is moot.
+
 ### Phase B steps (only after A7 + soak)
 
 **B1 — `converge apply` (AUTO-APPLY only; reuses the deploy placement engine) + the 9 triples, scope-split.** Move the 9 dotfiles triples (immich, caddy, samba/ceres-share, office-lan, t3, openclaw-mcp, portless, eris-bootstrap, tailscale-runbook; `eris-macos-bootstrap.zsh` as hand-run script per C3) via **paired commits with provenance trailers** (infra add cites dotfiles SHA; dotfiles `git rm` cites infra commit; history never rewritten — the OQ2 ruling, recorded at B4). Placement: *user-scope* = symlink re-point via `apply` (AUTO-APPLY); *system-scope* (`/etc/systemd/system/caddy.service`, `t3-serve.service`, `/etc/samba/smb.conf`, office-lan config — root-owned, sudo-installed per `scripts/setup-caddy.sh`, `scripts/setup-ceres-share.sh:45`) = content-equality → DRIFTED only; installation is a listed human-run sudo step (**H7**), the moved `setup-*.sh` scripts remaining the sudo vehicles. **[rec]** `tmp-jit-clean.*` is NOT a dotfiles triple (zero repo hits) — it rides the unowned-bucket path (B3) with the same system-scope handling. SURFACE restarts human-run.
@@ -98,7 +105,7 @@ Wave 1 = commands 1–4 (ceres+saturn); **soak ≥ 1 week log-only**; review pus
 **B3 — Unowned-bucket adoption per H1 dispositions.** ceres system-scope six (+`tmp-jit-clean.*`) per the scope split; user-scope owner-less set; hart-domain handoffs; makemake incl. litellm dangling resolution per ledger; saturn/neptune glue (swap-watchdog misnaming, `com.webfront.reap`, omc-browser bridges). `retire` → `retire_pending` findings; executions **H5**; adopt placements via `apply` (user) or listed sudo (**H7**).
 *Acceptance*: fleet `--check` zero UNMANIFESTED (permanent gate); every former unowned artifact executed or visibly pending on the wiki.
 
-**B4 — G1 close-out.** Full G1 checklist vs live evidence; wiki refresh; completion note citing G1 only. Records the OQ2 paired-commits reading against G1.3. **G1 closes only with quaoar returned-and-green under the permanent gate, OR an explicit owner full-skip waiver per C7.**
+**B4 — G1 close-out.** Full G1 checklist vs live evidence; wiki refresh; completion note citing G1 only. Records the OQ2 paired-commits reading against G1.3. **G1 closes only with quaoar returned-and-green under the permanent gate, OR an explicit owner full-skip waiver per C7.** *(Owner ruling 2026-09-06, verbatim: "Proceed without quaoar." — the C7 full-skip waiver is on file; quaoar stays RETURN-PENDING on the wiki and the permanent gate binds on its return, but G1 close-out does not wait for it.)*
 
 ### Risks & mitigations
 
@@ -115,7 +122,7 @@ Id churn → push storms (goldens, label ids + replica rule, log-only soak, base
 
 ### HUMAN-ONLY checkpoints
 
-**H1** dispositions + exclusion-policy review (A3) · **H2n** ntfy topic — PG4 prerequisite (A5) · **H3** Phase B go/no-go (A7) · **H4** cross-repo absorptions (B2) · **H5** retire executions (B3) · **H6** first timer enables — the closed 8-command list (A6) · **H7** system-scope sudo installs (B1/B3) · A7 D3 decision + `/Library/LaunchAgents` surface decision.
+**H1** dispositions + exclusion-policy review (A3) · **H2n** ntfy topic — PG4 prerequisite (A5); *non-secret half pre-wired 2026-09-06: `scripts/secrets-render.zsh` carries the ceres-gated `services/converge/ntfy-topic.enc` render row; the owner provisions the blob in the secrets repo* · **H3** Phase B go/no-go (A7) · **H4** cross-repo absorptions (B2) · **H5** retire executions (B3) · **H6** first timer enables — the closed 8-command list (A6) · **H7** system-scope sudo installs (B1/B3) · A7 D3 decision — **RESOLVED 2026-09-06, option (a) ("Move in to dotfiles."), `66_infra.zsh` landed** — + `/Library/LaunchAgents` surface decision. *Quaoar: owner full-skip waiver on file 2026-09-06 ("Proceed without quaoar.") per C7 — see B4.*
 
 ## Traceability
 
@@ -144,4 +151,4 @@ No open assumptions were resolved by silent assumption: every decision the loop 
 
 - **Iter 1**: architect — architecture sound, all four options defensible; defects F1–F7 (stale counts, wrong compose golden, ownership mislabels, cron edge, sequencing cross-refs, codexbar undispositioned, wiki read-path hole) + 2 principle tensions. Critic — **ITERATE**: 3 CRITICALs (count-based stale acceptance criteria; orchestrator first-enables vs Principle 3/constraint 9; un-ESCALATEd C3 gap) + new HIGH (root-owned `/etc` artifacts unmanageable by unattended apply) + 14 deltas. All architect findings independently re-verified live by the critic.
 - **Iter 2** (planner resumed with consolidated feedback; all 14 deltas accepted, none rejected): fresh architect — all CRITICALs/HIGHs genuinely resolved (verified live); new N1 (phantom OpenClaw store layout — the store migrated mid-planning), N2 (saturn's one live crontab line), N3 (cosmetic). Fresh critic — **APPROVE** with 4 required finalization amendments (AM1 probe-normative OpenClaw/third-party goldens + `migration-residue` reason; AM2 D3(b) expiry/scope-reading; AM3 saturn crontab golden + hart-agent-homes pre-fill; AM4 `/Library/LaunchAgents` surface recorded at A7) + non-required recs (tmp-jit-clean reclassification; `.disabled-*` vocabulary flag; uv-managed interpreter note) — all folded into this document by the orchestrator per the critic's specifications.
-- **Unresolved objections**: none. Remaining owner decisions are OQ5 (A7: ESCALATE `66_infra.zsh` amendment vs bounded interim runbook) and OQ6 (ntfy provisioning timing relative to the soak — earlier lets the soak validate real deliveries).
+- **Unresolved objections**: none. Remaining owner decisions were OQ5 (A7: ESCALATE `66_infra.zsh` amendment vs bounded interim runbook) and OQ6 (ntfy provisioning timing relative to the soak — earlier lets the soak validate real deliveries). **OQ5 RESOLVED 2026-09-06: option (a), owner-directed (verbatim: "Move in to dotfiles.") — `66_infra.zsh` landed in dotfiles; foundation §C2 carries the dated amendment.**
