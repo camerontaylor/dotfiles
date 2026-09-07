@@ -28,6 +28,8 @@ relies on DNS for access control -- Caddy binds `*:443` and ceres has a public
 IP, so both blocks carry `@external not remote_ip 100.64.0.0/10 ...` + `abort`.
 That matcher is the actual boundary; a CGNAT address in DNS is only addressing.
 
+Two of these proxy to a loopback backend and treat `Host` differently, deliberately: `usage` rewrites it to the dial target because CodexBar refuses any request whose `Host` is not its own bind address, while `ntfy` passes it through because ntfy builds links from `base-url` plus the request host. Copying either block for a third service means deciding which case it is.
+
 | Site address | Caddyfile | Backend | Owner | Probe result when healthy |
 |---|---|---|---|---|
 | `t3.ceres.webfront.app` | `configs/caddy/Caddyfile:6-17` | `localhost:3773` — T3 Code web GUI, user unit `t3code.service` | machine | `200` |
@@ -36,7 +38,8 @@ That matcher is the actual boundary; a CGNAT address in DNS is only addressing.
 | `telemetry.webfront.app` | `configs/caddy/Caddyfile:38-47` | `localhost:3000` — langfuse-web container | `~/repos/telemetry` | `200` |
 | `mcp.ceres.webfront.app` | `configs/caddy/Caddyfile:49-68` | `localhost:3111` — openclaw-mcp bridge (default `handle`) and `localhost:3112` — hart wiki MCP (`@wiki` matcher) | `~/repos/hart` | `/mcp` -> `401` (OAuth, expected); `/wiki` -> `405` |
 | `immich.wedrifid.dev` | `configs/caddy/Caddyfile:77-88` | `100.82.17.115:2283` — immich container | `~/repos/deploy/immich` | `200` from the tailnet; connection refused elsewhere |
-| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-106` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service` | machine | `/health` -> `{"version":...,"status":"ok"}` |
+| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-113` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service` | [`docs/llm-quota.md`](llm-quota.md) | `/health` -> `{"version":...,"status":"ok"}` |
+| `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:119-134` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | [`docs/llm-quota.md`](llm-quota.md) | `/v1/health` -> `{"healthy":true}` |
 
 Two ordering facts hold this together and are the reason the file is **not**
 split across repos:

@@ -212,6 +212,7 @@ Not run by `deploy.zsh`. Run once per machine, by hand.
 | [`scripts/setup-caddy.sh`](../scripts/setup-caddy.sh) | Caddy reverse proxy + fleet ingress. See [`docs/caddy-ingress.md`](caddy-ingress.md). |
 | [`scripts/setup-paseo.sh`](../scripts/setup-paseo.sh) | Per-host Paseo daemon config. See [`docs/paseo.md`](paseo.md). |
 | [`scripts/setup-t3.sh`](../scripts/setup-t3.sh) | T3 Code server unit on port 3773. |
+| [`scripts/setup-llm-quota.sh`](../scripts/setup-llm-quota.sh) | LLM plan-quota collector (CodexBar on :8791), pacing-cue timer and ntfy (:2586). See [`docs/llm-quota.md`](llm-quota.md). |
 | [`scripts/setup-ceres-share.sh`](../scripts/setup-ceres-share.sh) | Samba share for `/srv/downloads` on ceres. |
 | [`scripts/setup-office-lan.sh`](../scripts/setup-office-lan.sh) | Static gateway-less `10.77.0.x` on the wired NIC. |
 | [`bin/install-agents-slice.sh`](../bin/install-agents-slice.sh) | systemd `agents.slice` with a memory cap. `bin/disable-agents-slice-hook` is the escape hatch. |

@@ -210,6 +210,7 @@ installer at `scripts/setup-<service>.sh`, a runbook in `docs/<service>.md`.
 | Immich (photo library + nightly restic backup, ceres) | [`scripts/setup-immich.sh`](scripts/setup-immich.sh) | [`docs/immich.md`](docs/immich.md) |
 | Caddy (TLS ingress, ceres) | [`scripts/setup-caddy.sh`](scripts/setup-caddy.sh) | [`docs/caddy-ingress.md`](docs/caddy-ingress.md) |
 | Paseo (agent orchestrator) | [`scripts/setup-paseo.sh`](scripts/setup-paseo.sh) | [`docs/paseo.md`](docs/paseo.md) |
+| LLM plan quota (usage collector + pacing cues + ntfy, ceres) | [`scripts/setup-llm-quota.sh`](scripts/setup-llm-quota.sh) | [`docs/llm-quota.md`](docs/llm-quota.md) |
 
 These are **hand-run**, never wired into `scripts/deploy.d/` — the fleet
 auto-deploys on every pull and two of three boxes are Macs with none of these

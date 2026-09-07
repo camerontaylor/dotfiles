@@ -1,0 +1,13 @@
+[Unit]
+Description=Evaluate quota pacing cues every 10 minutes
+
+[Timer]
+# 10 min matches the HTTP Shortcuts widget floor and the collector's cache TTL;
+# finer polling cannot surface anything sooner on the phone.
+OnBootSec=3min
+OnUnitActiveSec=10min
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

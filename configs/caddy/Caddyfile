@@ -111,3 +111,24 @@ usage.wedrifid.dev {
 		header_up Host {upstream_hostport}
 	}
 }
+
+# ntfy — quota cue delivery, tailnet-only (added 2026-09-06).
+# Grey-cloud A record at ceres's Tailscale IP, same as immich/usage above.
+# Host is deliberately NOT rewritten: ntfy builds links from base-url and the
+# request host, and its Android client subscribes over long-lived SSE.
+ntfy.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
+	# the DNS record alone — refuse anything not arriving over the tailnet.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+
+	reverse_proxy 127.0.0.1:2586 {
+		# ntfy subscriptions are long-lived SSE/WebSocket streams; disable
+		# response buffering so cues arrive immediately rather than in chunks.
+		flush_interval -1
+	}
+}
