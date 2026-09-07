@@ -5,8 +5,9 @@
 # runbook: docs/paseo.md.
 #
 # Auth: the CLI reads $PASEO_PASSWORD whenever the target host carries no
-# `password=` query of its own, so the encrypted zsh/env.d/90_secrets.zsh export
-# is all every helper below needs. A password spelled into a tcp:// URI still
+# `password=` query of its own, so the rendered
+# $XDG_STATE_HOME/secrets/zsh/90_secrets.zsh export is all every helper below
+# needs. A password spelled into a tcp:// URI still
 # wins, which is how you'd reach a box that has a different one.
 #
 # Targeting: $PASEO_HOST selects the daemon for ALL subcommands. Do not reach
@@ -17,15 +18,15 @@
 typeset -g _PASEO_PORT="${PASEO_PORT:-6767}"
 # Fleet daemons worth naming. Reached by their .webfront.app names, which
 # resolve to the boxes' Tailscale 100.x addresses.
-typeset -ga _PASEO_HOSTS=(ceres saturn neptune)
+typeset -ga _PASEO_HOSTS=(ceres saturn neptune makemake)
 
-# On Linux the CLI is a mise tool (npm:@getpaseo/cli@latest), not an npm global
-# and not a cask. mise plants a SHIM for it at ~/.local/share/mise/shims/paseo,
-# and that shim errors "No version is set for shim: paseo" until the tool is
-# activated in a mise config — which we deliberately don't do, because
-# ~/.config/mise/config.toml is a symlink into this repo and `mise use -g`
-# would dirty the working tree. Same trap setup-t3.sh documents; `mise exec`
-# resolves the installed tool directly and sidesteps it.
+# On Linux the CLI is a mise tool (npm:@getpaseo/cli), not an npm global
+# and not a cask. Since 7e9de8dc, configs/mise.toml pins it (os = ["linux"]),
+# so the ~/.local/share/mise/shims/paseo shim resolves; that pin must move in
+# lockstep with the version scripts/setup-paseo.sh writes into the unit's
+# ExecStart (see docs/paseo.md). Bump it by editing the tracked config —
+# `mise use -g` would dirty the working tree, because ~/.config/mise/config.toml
+# is a symlink into this repo (same trap setup-t3.sh documents).
 #
 # Detect the shim BY PATH, not by absence. A plain `(( ! ${+commands[paseo]} ))`
 # guard never fires on ceres: the broken shim is very much on PATH, so the
@@ -56,6 +57,7 @@ paseo-at() {
 paseo-ceres()   { paseo-at ceres "$@" }
 paseo-saturn()  { paseo-at saturn "$@" }
 paseo-neptune() { paseo-at neptune "$@" }
+paseo-makemake(){ paseo-at makemake "$@" }
 
 # paseo-hosts — which fleet daemons are up? /api/health is the one endpoint
 # exempt from password auth, so this needs no credentials.
