@@ -80,7 +80,12 @@ sops = "3"
 # The `os = [...]` key filters the tool out of resolution entirely on other
 # platforms — unlike the version-conditional trick used for delta/fd, which
 # still requires *some* installable version to exist everywhere.
-btop = { version = "1", os = ["linux"] }
+# Pinned exactly at 1.4.6: v1.4.7 ships only .tar.gz assets while the aqua
+# template still expects .tbz, so a fresh `version = "1"` install fails with
+# "no asset found" (bit makemake's 2026-09-07 bring-up; older boxes keep
+# their pre-1.4.7 install and never notice). Bump only after the aqua
+# registry carries a 1.4.7+ pattern that resolves.
+btop = { version = "1.4.6", os = ["linux"] }
 # bandwhich (per-process network) and samply (sampling profiler -> Firefox
 # Profiler UI) have no mise registry entry, so both use the github backend;
 # both publish darwin x86_64 + aarch64 and linux assets, so neither needs a
