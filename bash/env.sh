@@ -8,7 +8,7 @@
 # 21_bash_symlinks.zsh installs ~/.config/bash → this repo directory, so
 # "$HOME/.config/bash/env.sh" below is stable. DOTFILES resolves from
 # BASH_SOURCE through a symlink walk (readlink -f is GNU/macOS≥12.3 only —
-# the scripts/generate-commit-msg pattern).
+# the deploy.bash pattern).
 
 # Idempotent. Children of a shell that already ran env.sh inherit every
 # export, so the guard makes re-sourcing a no-op instead of a re-run.
@@ -41,7 +41,7 @@ done
 export DOTFILES=${_envdir%/*}
 
 # The shared layer keys off ZDOTDIR exactly like zsh does (.zshenv sets it
-# before its env.d loop): 03_paths' fpath guard, 09's portkey probe, and the
+# before its env.d loop): 03_paths' fpath guard, the agents env hook's portkey probe, and the
 # rc.d paths all read it.
 export ZDOTDIR=$DOTFILES/zsh
 
