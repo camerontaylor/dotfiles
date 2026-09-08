@@ -42,9 +42,8 @@ autoload -Uz add-zsh-hook
 # (lspath bag fgb fgd fgl psg moved to bin/ as bash twins — linked into
 # ~/.local/bin by 21_bash_symlinks; vpaste never had a file and is dropped.)
 autoload -z fz ineachdir evalcache compdefcache
-# (p cc yolo *-direct moved to bin/; the ccm/ccz non-direct wrappers keep
-# their zsh-only Portkey fallback, so they stay fpath functions.)
-autoload -Uz _webfront_root w ccm ccz ccm-happy ccz-happy
+# Agent wrappers are autoloaded by the agents reserved rc hook.
+autoload -Uz w
 # secrets-edit needs an explicit autoload: $ZDOTDIR/fpath is on $fpath
 # (env.d/03_paths.zsh) but that only makes a file autoload-ABLE. Its
 # predecessor dotfiles-encrypt was never listed here and so was never actually
