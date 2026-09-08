@@ -122,6 +122,32 @@ install_conf() {
     return 0
 }
 
+# Bring zram0 up on the new config. NOT `systemctl restart`: comp_algorithm is
+# read-only once disksize is set, so a device left initialised by an earlier run
+# (or by a setup that failed halfway) makes the next start die with EBUSY —
+# "Failed to configure compression algorithm ... Device or resource busy".
+# Resetting the device clears disksize and makes it writable again.
+zram_reload() {
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "  [dry-run] would swapoff+reset /dev/zram0, then start systemd-zram-setup@zram0"
+        return 0
+    fi
+    # Order matters: resetting a LIVE zram device discards whatever is swapped
+    # into it. swapoff first so those pages fault back into RAM — and if they
+    # do not fit, let it fail here rather than corrupt running processes.
+    if swapon --show=NAME --noheadings 2>/dev/null | grep -qx /dev/zram0; then
+        sudo systemctl stop dev-zram0.swap
+    fi
+    sudo systemctl stop "systemd-zram-setup@zram0.service" 2>/dev/null || true
+    if [ -e /sys/block/zram0/reset ]; then
+        echo 1 | sudo tee /sys/block/zram0/reset > /dev/null
+    fi
+    sudo systemctl start "systemd-zram-setup@zram0.service"
+    # The generator also emits dev-zram0.swap (the actual swapon); it is pulled
+    # in by swap.target at boot, but must be started by hand on a first run.
+    sudo systemctl start dev-zram0.swap
+}
+
 echo "setup-swap on $(hostname -s): ${ram_mib} MiB RAM, zram=${zram_mib} MiB, file=${file_mib} MiB"
 
 # --- tier 1: zram ------------------------------------------------------------
@@ -157,9 +183,7 @@ fs-type = swap
 "
     if install_conf "$ZRAM_CONF" "$zram_conf_body" 644; then
         run sudo systemctl daemon-reload
-        # The generator materialises systemd-zram-setup@zram0.service; restart
-        # picks up a size change (start alone is a no-op if already running).
-        run sudo systemctl restart systemd-zram-setup@zram0.service
+        zram_reload
     fi
 fi
 
