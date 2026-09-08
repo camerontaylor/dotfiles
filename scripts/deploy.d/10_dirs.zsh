@@ -8,8 +8,8 @@ printf '%s\n' "Creating required directory tree..."
 deploy_mkdir -p $XDG_CONFIG_HOME/{ghostty,cmux,git/local,btop,htop,ranger,gem,tig,gnupg,nvim/{plugin,after},yazi,bat}
 deploy_mkdir -p $XDG_CACHE_HOME/{zsh,tig}
 deploy_mkdir -p $XDG_DATA_HOME/{{goenv,jenv,luaenv,nodenv,phpenv,plenv,pyenv}/plugins,zsh,man/man1,nvim/site/pack/plugins}
-deploy_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,opencode,agent-orchestrator,aerospace,sway}
-deploy_mkdir -p $HOME/{.claude,.codex,.codewhale,.ssh,.agent-orchestrator,.worktrees,.gjc/agent}
+deploy_mkdir -p $XDG_CONFIG_HOME/{mise,systemd/user,aerospace,sway}
+deploy_mkdir -p $HOME/{.ssh,.worktrees}
 deploy_mkdir -p $XDG_STATE_HOME
 deploy_mkdir -p $HOME/.local/{bin,etc}
 deploy_chmod 700 $XDG_CONFIG_HOME/gnupg
