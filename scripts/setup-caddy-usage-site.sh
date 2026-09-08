@@ -12,8 +12,10 @@
 # *:443 and ceres has a public IP, so the site block carries a remote_ip guard.
 # That guard is the actual boundary.
 #
-# Run as root (the token lives in /etc/caddy/env, 0600 caddy:caddy -- you never
-# handle it):  sudo bash ~/.local/dotfiles/scripts/setup-caddy-usage-site.sh
+# Run as root (the CF token lives in /etc/caddy/env, 0600 caddy:caddy -- you
+# never handle it; this script also copies the CodexBar dashboard token there
+# so Caddy can inject it, see the Caddyfile's usage block):
+#   sudo bash ~/.local/dotfiles/scripts/setup-caddy-usage-site.sh
 
 set -euo pipefail
 
@@ -47,7 +49,7 @@ ZONE_ID=$(api "https://api.cloudflare.com/client/v4/zones?name=$ZONE" | jq -r '.
 EXISTING=$(api "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=$FQDN")
 REC_ID=$(printf '%s' "$EXISTING" | jq -r '.result[0].id // empty')
 REC_IP=$(printf '%s' "$EXISTING" | jq -r '.result[0].content // empty')
-REC_PROXIED=$(printf '%s' "$EXISTING" | jq -r '.result[0].proxied // empty')
+REC_PROXIED=$(printf '%s' "$EXISTING" | jq -r '.result[0].proxied // false')
 
 BODY=$(jq -nc --arg n "$FQDN" --arg c "$TS_IP" \
   '{type:"A",name:$n,content:$c,ttl:1,proxied:false,
@@ -64,7 +66,29 @@ else
   echo "DNS: $FQDN already correct ($TS_IP, grey cloud) — unchanged"
 fi
 
-# --- 2. Caddyfile: validate BEFORE installing -------------------------------
+# --- 2. Caddy env: dashboard token (token-free dashboard from the tailnet) ---
+# The Caddyfile's usage block injects `Authorization: Bearer
+# {env.CODEXBAR_DASHBOARD_TOKEN}` so tailnet browsers never need the token
+# (the dashboard UI only prompts when /dashboard/v1/snapshot answers 401).
+# The vhost's @external abort stays the boundary. Written like the CF tokens:
+# 0600 caddy:caddy, root never persists it anywhere else.
+DASH_SRC="/home/ctaylor/.local/state/codexbar/dashboard-token"
+[ -s "$DASH_SRC" ] || { echo "ERROR: $DASH_SRC missing — run scripts/setup-llm-quota.sh first." >&2; exit 1; }
+DASH_TOKEN=$(cat "$DASH_SRC")
+CURRENT=$(sed -n 's/^CODEXBAR_DASHBOARD_TOKEN=//p' "$CADDY_ENV")
+if [ "$CURRENT" = "$DASH_TOKEN" ]; then
+  echo "env: CODEXBAR_DASHBOARD_TOKEN already current"
+else
+  TMP_ENV=$(mktemp)
+  grep -v '^CODEXBAR_DASHBOARD_TOKEN=' "$CADDY_ENV" > "$TMP_ENV"
+  printf 'CODEXBAR_DASHBOARD_TOKEN=%s\n' "$DASH_TOKEN" >> "$TMP_ENV"
+  cat "$TMP_ENV" > "$CADDY_ENV"   # cat > keeps the inode: owner+mode survive
+  rm -f "$TMP_ENV"
+  ENV_CHANGED=1
+  echo "env: CODEXBAR_DASHBOARD_TOKEN synced to $CADDY_ENV"
+fi
+
+# --- 3. Caddyfile: validate BEFORE installing -------------------------------
 # caddy resolves {env.*} at validate time and the cloudflare module rejects an
 # empty token, so validation without /etc/caddy/env always fails spuriously.
 set -a
@@ -84,11 +108,22 @@ else
   cp -p "$CADDYFILE" "$BACKUP"
   install -m 644 -o root -g root "$TRACKED" "$CADDYFILE"
   echo "Caddy: installed (previous saved to $BACKUP)"
+  INSTALLED=1
+fi
+
+# Reload pushes a new config into the running process, but EnvironmentFile=
+# reaches that process only at start — an env change needs a restart to be
+# certain the {env.*} placeholders resolve from the new value. One restart
+# drops connections momentarily (ntfy SSE clients reconnect on their own).
+if [ "${ENV_CHANGED:-0}" = 1 ]; then
+  systemctl restart caddy
+  echo "Caddy: restarted (env file changed — EnvironmentFile is start-only)"
+elif [ "${INSTALLED:-0}" = 1 ]; then
   systemctl reload caddy
   echo "Caddy: reloaded"
 fi
 
-# --- 3. Verify --------------------------------------------------------------
+# --- 4. Verify --------------------------------------------------------------
 echo "Waiting for cert issuance (DNS-01 can take ~30-60s on first request)..."
 for _ in $(seq 1 24); do
   if body=$(curl -sS -m 10 "https://$FQDN/health" 2>/dev/null) && [ -n "$body" ]; then

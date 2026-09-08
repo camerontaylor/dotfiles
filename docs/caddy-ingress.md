@@ -21,11 +21,12 @@ every other `webfront.app` name is a CNAME onto it. Ingress is therefore
 reachable only from the tailnet, not the public internet, even though the
 certificates are public Let's Encrypt certs issued over DNS-01.
 
-The two `wedrifid.dev` routes are a different shape: each is its own grey-cloud
+The `wedrifid.dev` routes are a different shape: each is its own grey-cloud
 (DNS-only) A record straight at `100.82.17.115`, on a **separate Cloudflare
-account**, so they use `CF_WEDRIFID_TOKEN` rather than `CF_API_TOKEN`. Neither
-relies on DNS for access control -- Caddy binds `*:443` and ceres has a public
-IP, so both blocks carry `@external not remote_ip 100.64.0.0/10 ...` + `abort`.
+account**, so they use `CF_WEDRIFID_TOKEN` rather than `CF_API_TOKEN`. None of
+them relies on DNS for access control -- Caddy binds `*:443` and ceres has a
+public IP, so every `wedrifid.dev` block carries
+`@external not remote_ip 100.64.0.0/10 ...` + `abort`.
 That matcher is the actual boundary; a CGNAT address in DNS is only addressing.
 
 Two of these proxy to a loopback backend and treat `Host` differently, deliberately: `usage` rewrites it to the dial target because CodexBar refuses any request whose `Host` is not its own bind address, while `ntfy` passes it through because ntfy builds links from `base-url` plus the request host. Copying either block for a third service means deciding which case it is.
@@ -38,8 +39,9 @@ Two of these proxy to a loopback backend and treat `Host` differently, deliberat
 | `telemetry.webfront.app` | `configs/caddy/Caddyfile:38-47` | `localhost:3000` — langfuse-web container | `~/repos/telemetry` | `200` |
 | `mcp.ceres.webfront.app` | `configs/caddy/Caddyfile:49-68` | `localhost:3111` — openclaw-mcp bridge (default `handle`) and `localhost:3112` — hart wiki MCP (`@wiki` matcher) | `~/repos/hart` | `/mcp` -> `401` (OAuth, expected); `/wiki` -> `405` |
 | `immich.wedrifid.dev` | `configs/caddy/Caddyfile:77-88` | `100.82.17.115:2283` — immich container | `~/repos/deploy/immich` | `200` from the tailnet; connection refused elsewhere |
-| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-113` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service` | [`docs/llm-quota.md`](llm-quota.md) | `/health` -> `{"version":...,"status":"ok"}` |
-| `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:119-134` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | [`docs/llm-quota.md`](llm-quota.md) | `/v1/health` -> `{"healthy":true}` |
+| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-128` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service`; Caddy injects `Authorization: Bearer {env.CODEXBAR_DASHBOARD_TOKEN}` so tailnet browsers need no token (see the secret section below) | [`docs/llm-quota.md`](llm-quota.md) | `/health` -> `{"version":...,"status":"ok"}`; `/dashboard/v1/snapshot` -> `200` with no auth header |
+| `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:130-142` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | [`docs/llm-quota.md`](llm-quota.md) | `/v1/health` -> `{"healthy":true}` |
+| `appreciation.wedrifid.dev` | `configs/caddy/Caddyfile:156-174` | `unix//run/appreciation/app.sock` — SvelteKit/Bun app, user unit `appreciation.service`; the socket (not a port) is load-bearing for the app's X-Forwarded-For identity check | `~/repos/hart/appreciation` (unit tracked there; tmpfiles.d snapshot at `configs/appreciation/appreciation.conf`) | `200` from Cameron's devices; abort/reset elsewhere |
 
 Two ordering facts hold this together and are the reason the file is **not**
 split across repos:
@@ -57,15 +59,20 @@ See "Why one file" below.
 
 ## The secret
 
-`/etc/caddy/env` — 126 bytes, `caddy:caddy`, mode `600`. It contains **two**
+`/etc/caddy/env` — `caddy:caddy`, mode `600`. It contains **three**
 variables, loaded via `EnvironmentFile=/etc/caddy/env`
 (`configs/caddy/caddy.service:23`):
 
 - `CF_API_TOKEN` — the **webfront.app** Cloudflare account, used by the five
   `*.webfront.app` blocks for DNS-01.
-- `CF_WEDRIFID_TOKEN` — the **personal wedrifid.dev** account, used by
-  `immich.wedrifid.dev` and `usage.wedrifid.dev`. Different account entirely;
-  the two tokens are not interchangeable.
+- `CF_WEDRIFID_TOKEN` — the **personal wedrifid.dev** account, used by the
+  `wedrifid.dev` blocks for DNS-01. Different account entirely; the two tokens
+  are not interchangeable.
+- `CODEXBAR_DASHBOARD_TOKEN` — the CodexBar dashboard token, copied from
+  `~/.local/state/codexbar/dashboard-token` (which stays canonical and 0600) by
+  `scripts/setup-caddy-usage-site.sh`. Injected as a request header on
+  `usage.wedrifid.dev` only; losing it just restores the dashboard's
+  enter-a-token prompt, so it is the least sensitive of the three.
 
 ⚠ Neither wedrifid.dev credential has a canonical copy in `~/.local/secrets`.
 Verified 2026-09-04 by decrypting every `*.yaml` there: the only Cloudflare
@@ -115,7 +122,9 @@ serve existing ones, so the failure is silent for up to ~60 days.
    `telemetry.webfront.app` -> `ceres.webfront.app`. On the **personal**
    account, grey-cloud A records `immich.wedrifid.dev` and
    `usage.wedrifid.dev` -> `100.82.17.115`
-   (`scripts/setup-caddy-usage-site.sh` creates or corrects the latter).
+   (`scripts/setup-caddy-usage-site.sh` creates or corrects the latter, and
+   also syncs `CODEXBAR_DASHBOARD_TOKEN` into `/etc/caddy/env` — run it after
+   `setup-caddy.sh` so the usage dashboard is token-free again).
 4. Run `scripts/setup-caddy.sh`. It builds a Caddy binary with the
    `caddy-dns/cloudflare` plugin at `/usr/local/bin/caddy` (the distro package
    has no DNS provider modules), writes `/etc/caddy/env`, and installs the two
@@ -131,6 +140,10 @@ $EDITOR configs/caddy/Caddyfile
 sudo cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%F)
 sudo install -m 644 -o root -g root configs/caddy/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl reload caddy      # reload, not restart — no dropped connections
+                                 # EXCEPT after editing /etc/caddy/env: {env.*}
+                                 # resolve in the running process from its
+                                 # start-time environment, so env changes need
+                                 # `systemctl restart caddy`
 ```
 
 To prove an edit is behaviour-preserving, diff the adapted JSON rather than the
@@ -184,7 +197,9 @@ Both are fixed:
 - `write_caddy_env()` preserves every key it does not manage, so
   `CF_WEDRIFID_TOKEN` survives a re-run.
 - `configs/caddy/Caddyfile` has been resynced from `/etc/caddy/Caddyfile` and
-  now carries all seven routes.
+  carries every live route (resynced again 2026-09-08, when the installer's
+  adapt-diff caught that `appreciation.wedrifid.dev` had been added to `/etc`
+  only — installing the tracked file would have silently dropped it).
 
 Ownership is recorded in the routes table instead. `~/repos/hart` carries a
 pointer to this document in its `AGENTS.md`.

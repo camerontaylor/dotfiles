@@ -52,12 +52,24 @@ in `~/.local/secrets` — see **Gaps**.
 
 | URL | Auth | Use |
 |---|---|---|
-| `https://usage.wedrifid.dev/` | token, entered in-browser | web dashboard |
+| `https://usage.wedrifid.dev/` | none from the tailnet | web dashboard |
 | `.../health` | none | liveness |
 | `.../usage` | none | **the integration seam** — JSON for every enabled provider |
 | `.../usage?provider=zai` | none | one provider; also the only identity-free form (see Gaps) |
 | `.../cost` | none | spend estimates from local logs |
-| `.../dashboard/v1/snapshot` | `Authorization: Bearer` | redacted snapshot, `schemaVersion` + `staleAfterSeconds` |
+| `.../dashboard/v1/snapshot` | none from the tailnet | redacted snapshot, `schemaVersion` + `staleAfterSeconds` |
+
+The dashboard is token-free **because Caddy, not the browser, holds the
+bearer**: the `usage.wedrifid.dev` block injects
+`Authorization: Bearer {env.CODEXBAR_DASHBOARD_TOKEN}` (value synced from
+`~/.local/state/codexbar/dashboard-token` into `/etc/caddy/env` by
+`scripts/setup-caddy-usage-site.sh`). CodexBar's web UI only prompts for a
+token when `/dashboard/v1/snapshot` answers 401, and with the header injected
+it never does — browsers never see or store the token. The vhost's
+`@external` abort is what scopes this to tailnet peers; off-tailnet the
+connection is dropped before the proxy. A client that did store an old token
+is silently upgraded: `header_up` overwrites whatever it sends with the live
+value. Direct loopback access to `127.0.0.1:8791` still needs the token.
 | `https://ntfy.wedrifid.dev/quota` | none | cue topic; subscribe the ntfy Android app here |
 
 `--refresh-interval 180` is a **cache TTL, not a poll**: the collector reaches
@@ -127,7 +139,7 @@ Liveness alarms stay text-only.
 
 ```sh
 sh ~/.local/dotfiles/scripts/setup-llm-quota.sh          # user-space, idempotent
-sudo sh ~/.local/dotfiles/scripts/setup-caddy-usage-site.sh   # DNS + Caddy, once
+sudo sh ~/.local/dotfiles/scripts/setup-caddy-usage-site.sh   # DNS + Caddy env + Caddyfile, once
 ```
 
 Then subscribe the ntfy Android app (`io.heckel.ntfy`, F-Droid or Play) to
@@ -180,7 +192,9 @@ Updating is manual — CodexBar's Sparkle auto-updater is macOS-app-only. Bump
 
 ## Gaps
 
-- **No secret backup.** The dashboard token is regenerable, but the z.ai key in
+- **No secret backup.** The dashboard token is regenerable (and losing the
+  `/etc/caddy/env` copy just restores the browser token prompt — the canonical
+  file is `~/.local/state/codexbar/dashboard-token`), but the z.ai key in
   `~/.config/codexbar/config.json` is not, and neither `CF_WEDRIFID_TOKEN`
   (`/etc/caddy/env`) nor `CF_PROVISION_TOKEN`
   (`~/.config/hart-wiki-mcp/cf-provision.env`) has a canonical copy in
@@ -198,7 +212,9 @@ Updating is manual — CodexBar's Sparkle auto-updater is macOS-app-only. Bump
   The side effect is that CodexBar believes it is on loopback and therefore
   does not token-gate `/usage` and `/cost`. The `remote_ip` matcher in the
   Caddy block is the only boundary; it reads the peer address, not the header,
-  so it still holds.
+  so it still holds. Caddy additionally injects the dashboard bearer on every
+  request it proxies (see Endpoints) — harmless on the ungated paths, and it
+  never reaches CodexBar from a non-tailnet peer because of the same matcher.
 - ~~**Credential expiry is the likeliest failure**, and it is quiet.~~
   Closed 2026-09-06: the cue script now alarms when a previously-seen window
   is absent for ~30 min, and separately when the collector itself is

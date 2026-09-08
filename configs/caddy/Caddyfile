@@ -109,6 +109,17 @@ usage.wedrifid.dev {
 	# address, not this header, so the tailnet boundary still holds.
 	reverse_proxy 127.0.0.1:8791 {
 		header_up Host {upstream_hostport}
+		# Token-free dashboard for tailnet clients: CodexBar gates only
+		# /dashboard/v1/snapshot, and its web UI prompts for the token only
+		# when that endpoint answers 401 (it sends nothing when the browser
+		# has none stored). Injecting the bearer here means browsers never
+		# see or store it. The @external abort above is the boundary, and
+		# the snapshot is identity-redacted — strictly less than /usage
+		# already exposes on this vhost. Value synced from
+		# ~/.local/state/codexbar/dashboard-token into /etc/caddy/env by
+		# setup-caddy-usage-site.sh; if absent this becomes "Bearer " and
+		# the old token-prompt behaviour returns, so it fails safe.
+		header_up Authorization "Bearer {env.CODEXBAR_DASHBOARD_TOKEN}"
 	}
 }
 
@@ -131,4 +142,33 @@ ntfy.wedrifid.dev {
 		# response buffering so cues arrive immediately rather than in chunks.
 		flush_interval -1
 	}
+}
+
+# Appreciation — the private record of time with Ollie. Tailnet-only (added 2026-09-05).
+# Same shape as immich/usage/ntfy above: grey-cloud A record at ceres's Tailscale IP, DNS-01
+# cert (Let's Encrypt cannot reach 100.82.17.115), personal-account token.
+#
+# Backend is a unix socket, NOT a loopback port, and that is load-bearing. The app derives who
+# you are from X-Forwarded-For and only trusts that header when it arrives over the socket —
+# on a TCP port any process on ceres could set it and be admitted as Cameron. /run/appreciation
+# is 0750 ctaylor:caddy (tmpfiles.d) and the socket 0660, so the kernel decides who may connect.
+# The app refuses to start if either is wider. See appreciation/docs/adr/0005 and server.ts.
+appreciation.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on the DNS record alone —
+	# refuse anything not arriving over the tailnet. This is the outer of two gates: Caddy drops
+	# non-tailnet peers here, and the app then resolves the tailnet address to an identity and
+	# admits only Cameron's own devices, not tagged nodes.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+
+	# Phone photos. adapter-node's own BODY_SIZE_LIMIT is raised to match in the unit file.
+	request_body {
+		max_size 64MB
+	}
+
+	reverse_proxy unix//run/appreciation/app.sock
 }
