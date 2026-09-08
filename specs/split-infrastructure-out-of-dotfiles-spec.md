@@ -51,7 +51,7 @@ The trace reframed the original request: the felt pain was mis-attributed (ceres
 11. **Composition**: dotfiles deploy ensures sibling checkouts exist and chains their deploys (the `65_secrets.zsh` auto-clone precedent); the agents repo integrates via symlinked fragments in the existing gitignored 90–99 `rc.d`/`env.d` slots; all hooks no-op gracefully when siblings are absent.
 12. **Portability disciplines**: only dotfiles keeps the dual-shell bash-3.2/BSD bootstrap discipline; infra and agents repos run post-bootstrap and may assume the mise toolchain (recovery = re-run dotfiles bootstrap, which chains back).
 13. **Sequencing**: per-host manifests + `--check` land FIRST (baseline inventory on a live drift detector); content moves execute against it. No "move everything, then convert" phase.
-14. **Two-homed components split along the logic/wiring rule** — Portkey: zsh CLI + aliases + fleet wiring → agents repo; `portkey-gateway.service` + `config.json` + state → infra repo, manifest-gated to ceres (ending the current unconditional unit symlink onto systemd-less Macs, `20_symlinks.zsh:126`).
+14. **Two-homed components split along the logic/wiring rule** — Portkey: zsh CLI + aliases + fleet wiring → agents repo; `portkey-gateway.service` + `config.json` + state → infra repo, manifest-gated to ceres (ending the current unconditional unit symlink onto systemd-less Macs, `20_symlinks.zsh:126`). *Amended 2026-09-08 (owner ruling, `plans/agents-carveout-report.md` §7): the service half lives in the **agents repo** too — unit + config + state paths stay with their owning repo; infra keeps only the manifest/disposition entry gating placement to ceres. The unconditional-symlink fix stands: the agents deploy gates the unit per-host.*
 15. **Path indirection**: the ~12 files referencing `~/.local/dotfiles` inside the agents layer (worst: `cc-worker.sh`) are fixed during the move via stable well-known paths, never hardcoded repo locations.
 
 ## Non-Goals
@@ -72,7 +72,7 @@ The trace reframed the original request: the felt pain was mis-attributed (ceres
 **Agents repo (hard gate + service health)**
 - [ ] `configs/ai/` is gone from dotfiles except thin load hooks; no vendored/provider-shipped content is tracked anywhere, enforced by a pre-commit/CI check in the agents repo (adopt mechanism exempts deliberate adoptions).
 - [ ] A fresh box gets the full agent environment from agents repo + pinned skill manifest in one chained deploy.
-- [ ] Portkey/litellm/ccr service halves live in the infra repo and report healthy under `converge --check` (litellm/ccr may alternatively be `retire`d via their bring-up ledger decision).
+- [ ] *(Amended 2026-09-08, owner ruling)* Portkey's service lives in the **agents repo**, manifest-gated to ceres, and reports healthy under `converge --check`; litellm and ccr-router are **retired** with `retire` dispositions in the ledger.
 
 **Deploy system (detect + fix + surface)**
 - [ ] `--check` timers run per host with graduated autonomy; results aggregate to a machine-written status page in the hart wiki; new-drift transitions push (ntfy-class).

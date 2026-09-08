@@ -251,8 +251,21 @@ repos with no deployer. M2 proceeds.
   domain is conceptually distinct from dotfiles, some CLIs churn their own
   configs, and development skills/processes are not shell niceties. Where
   the line is drawn: see below.
+- **Retirements approved (2026-09-08, owner):** `ccr-router` (delete from
+  the agents repo), `bin/webfront-root` + `bin/p` (delete from dotfiles),
+  the webfront containers + postgres on ceres (archive the DB before volume
+  removal), and litellm stripped fleet-wide (makemake's dangling symlink and
+  any other remnants).
+- **Agents remote live:** `git@github.com:camerontaylor/agents.git`
+  (private, created 2026-09-08); `67_agents.zsh`'s clone leg now resolves on
+  every fleet host with the SSH key.
 
 ## The agents-repo line
+
+**Implemented 2026-09-08** on branch `agents-carveout` (pushed) plus
+`~/.local/agents` `main` (pushed) — see `plans/agents-carveout-report.md`
+for moves, consumers updated, and the live-ops sequence. The table below is
+the design record; the report is the as-built record.
 
 The test: **"If I stopped doing AI-agent work tomorrow, would I still want
 this?"** Yes → dotfiles. No → agents repo. Two refinements:
