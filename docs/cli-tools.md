@@ -106,7 +106,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `opencode` | npm | OpenCode terminal coding agent. |
 | `gemini` | npm | Google Gemini CLI. |
 | `gjc` | bun | gajae-code — coding/planning agent. See the `gjc-orchestration` skill. |
-| `codewhale` / `codewhale-tui` | mise | DeepSeek-backed coding agent, CLI and TUI forms (cargo backends in mise). |
+| `codewhale` / `codewhale-tui` | unmanaged | DeepSeek-backed coding agent, CLI and TUI forms. Not installed by this repo — the cargo build OOMs small hosts (removed from mise 2026-09-09; see note in `configs/mise.toml`). Pre-existing `~/.cargo/bin` copies keep working. |
 | `omp` | npm | `@oh-my-pi/pi-coding-agent` — coding agent with read/bash/edit/write tools and session management. |
 | `ao` | npm | `@aoagents/ao` — Agent Orchestrator CLI. |
 | `omc` / `oh-my-claudecode` | npm | `oh-my-claude-sisyphus` — multi-agent orchestration layer for Claude Code. |

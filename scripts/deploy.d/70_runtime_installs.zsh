@@ -11,7 +11,7 @@
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, rustup, linear-cli, claude/codewhale drift cleanup)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, rustup, linear-cli, claude drift cleanup)"
     return 0
 fi
 
@@ -37,18 +37,10 @@ if [[ -L $HOME/.local/bin/claude ]]; then
 fi
 unset _claude_target
 
-# CodeWhale is mise-managed (cargo:codewhale-cli / cargo:codewhale-tui).
-# Drift-correct the rustup-installed copies the former cargo block here
-# planted: mise shims precede ~/.cargo/bin (env.d order), so they are inert,
-# but they would shadow mise's codewhale on any PATH without shims.
-for _cw_bin in codewhale codewhale-tui; do
-    if [[ -e $HOME/.cargo/bin/$_cw_bin ]]; then
-        printf '%s\n' "Removing cargo-installed $_cw_bin (mise owns it now)..."
-        rm -f $HOME/.cargo/bin/$_cw_bin
-        printf '%s\n' "  ...done"
-    fi
-done
-unset _cw_bin
+# CodeWhale is unmanaged (removed from mise 2026-09-09 — the cargo build
+# OOM-killed makemake; see the note in configs/mise.toml). Whatever
+# ~/.cargo/bin copies hosts still carry are theirs to keep: no install, no
+# drift-correction, nothing touches them.
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 

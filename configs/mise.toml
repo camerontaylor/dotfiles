@@ -113,10 +113,12 @@ btop = { version = "1.4.6", os = ["linux"] }
 # stale 0.4.0; majors are pinned per the CLAUDE.md rule instead. Caught
 # 2026-09-08 when the fleet-m234 deploy reached makemake.
 "aqua:anthropics/claude-code" = "2"
-# CodeWhale (was: the cargo block in 70_runtime_installs.zsh). Major 0,
-# so "0" is genuinely the right prefix here.
-"cargo:codewhale-cli" = "0"
-"cargo:codewhale-tui" = "0"
+# CodeWhale: deliberately NOT mise-managed (removed 2026-09-09). The cargo:
+# backends build from source and a single codewhale-tui rustc peaked at
+# 11.9 GB RSS — kernel-OOM-killed on makemake (16 GB soldered, no swap, and
+# now a service host). Hosts that still carry the pre-M4 rustup install in
+# ~/.cargo/bin keep working; do NOT re-add cargo:codewhale-* rows without
+# solving the build-memory problem (or a prebuilt backend) first.
 # moor (was: scripts/install-moor.sh curl of the release binary). Upstream
 # ships darwin x64/arm64 + linux assets, so no per-host conditional needed.
 "ubi:walles/moor" = "2"
