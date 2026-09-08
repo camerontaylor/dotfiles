@@ -17,4 +17,4 @@
 - `env.d/` runs for ALL zsh (including scripts) — no interactive commands, keep fast
 - `fpath/` files: filename IS the function name, no `.zsh` extension, add `# vim: ft=zsh` at bottom
 - `evalcache`/`compdefcache` cache slow init commands for 20h — invalidate by deleting `~/.cache/zsh/evalcache/`
-- Plugins dir is all submodules — don't edit
+- Plugins dir contents are pinned clones (plugins.lock, fetched by `scripts/deploy.d/30_plugins.zsh`) — don't edit

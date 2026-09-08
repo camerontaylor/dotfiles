@@ -12,8 +12,8 @@
 # every brew-dependent step take its no-brew path. mise/cargo/npm installs
 # are skipped by the drivers' own --dry-run gates.
 #
-# Kept minutes-fast: submodules come from the checkout (30_submodules'
-# update is then a no-op), and every leg is a parse/print exercise.
+# Kept minutes-fast: no network in CI (plugin fetch never runs under
+# --dry-run), and every leg is a parse/print exercise.
 name: shells
 
 on:
@@ -34,8 +34,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Report shell fleet
         run: |
@@ -74,8 +72,8 @@ jobs:
           scripts/tests/shell-syntax-gate.sh --staged
           git read-tree HEAD
 
-      # (c) both drivers' --dry-run. GITHUB_TOKEN keeps 30_submodules and
-      # any incidental fetches inside GitHub's rate budget.
+      # (c) both drivers' --dry-run. GITHUB_TOKEN keeps any incidental
+      # fetches inside GitHub's rate budget.
       - name: Driver dry-run (zsh)
         env:
           DOTFILES_SKIP_BREW: '1'

@@ -27,7 +27,7 @@
 # Modes:
 #   --staged  files staged under scripts/ (pre-commit path; zero exemptions
 #             — the bootstrap layer is fully dual by policy)
-#   --all     whole tree except submodules; files that are zsh-only by
+#   --all     whole tree except vendored plugin clones; files that are zsh-only by
 #             design are listed in _zsh_only() with a reason and skip only
 #             the bash -n leg (zsh -n still runs — a zsh-only file that
 #             fails zsh -n is a real bug)
@@ -156,10 +156,11 @@ if [ "$mode" = staged ]; then
         exit 1
     fi
 else
-    # Tree-wide: bootstrap layer + interactive layers. Submodules (tools/,
-    # plugins/, zsh/plugins/) are foreign code and out of scope; .git noise
-    # excluded. Roots that may not exist on a platform (raycast is mac-ish,
-    # but it is tracked everywhere) are tolerated via find's implicit skip.
+    # Tree-wide: bootstrap layer + interactive layers. Vendored plugin
+    # clones (plugins/, zsh/plugins/) are foreign code pinned by plugins.lock
+    # and out of scope; .git noise excluded. Roots that may not exist on a
+    # platform (raycast is mac-ish, but it is tracked everywhere) are
+    # tolerated via find's implicit skip.
     find deploy.zsh deploy.bash scripts zsh bash bin raycast \
          \( -name .git -o -name plugins -o -name node_modules \) -prune -o \
          -type f -print > "$list" 2>/dev/null || true

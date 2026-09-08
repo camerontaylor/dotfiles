@@ -2,7 +2,7 @@
 
 # dotfiles
 
-XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80). Solarized Dark everywhere. Vim configuration was removed — Neovim is the only editor.
+XDG-compliant zsh/neovim/tmux dotfiles. External code is vendored as pinned plugin clones (48 dirs, `plugins.lock`). Solarized Dark everywhere. Vim configuration was removed — Neovim is the only editor.
 
 ## Commands
 - `./deploy.zsh` — full install dispatcher; sources fragments from `scripts/deploy.d/NN_*.zsh` in numeric order
@@ -24,7 +24,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | CLI tool with mise registry backend | `configs/mise.toml` → `[tools]` (preferred — aqua/cargo backends covered for ~13 common CLIs already) |
 | Cargo CLI without mise backend (e.g. linear-cli) | `scripts/deploy.d/70_runtime_installs.zsh` |
 | Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
-| Tool as git submodule | `tools/` → add submodule, link in `scripts/deploy.d/40_tools.zsh` |
+| Editor/plugin/shell plugin (vendored) | add a `<sha> <path> <clone-url>` row to `plugins.lock` (fetch by `scripts/deploy.d/30_plugins.zsh`) |
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
@@ -94,8 +94,7 @@ crash-looped three services for a week in 2026-07.
 - **New zsh rc config**: `zsh/rc.d/NN_name.zsh` (interactive only)
 - **New zsh function**: create file in `zsh/fpath/`, add `autoload -Uz name` in `rc.d/04_autoload.zsh`
 - **New cargo tool**: add to the cargo block in `scripts/deploy.d/70_runtime_installs.zsh` (no mise backend? same place; if pkg name ≠ binary name, add a `case` mapping)
-- **New submodule tool**: `git submodule add <url> tools/<name>`, add install logic to the matching `scripts/deploy.d/` fragment (e.g. `40_tools.zsh`)
-- **New nvim plugin**: submodule in `nvim/plugins/`, config in `nvim/init/NN_name.lua`
+- **New nvim plugin**: add a row to `plugins.lock` (dir under `nvim/plugins/`), config in `nvim/init/NN_name.lua`
 - **Local overrides**: 90-99 prefix files are gitignored (zsh/env.d/, zsh/rc.d/, nvim/init/)
 - **New secret**: add the key to the right `shell/*.yaml` in `~/.local/secrets` via `secrets-edit`, then commit+push there — **not** in this repo. A brand-new render *target* also needs a `_row` in `scripts/secrets-render.zsh`
 
@@ -114,7 +113,7 @@ crash-looped three services for a week in 2026-07.
 - Non-critical zsh plugins deferred via `zsh-defer` (rc.d/24-27)
 - Slow inits cached via `evalcache` (20h TTL, see `zsh/fpath/evalcache`)
 - All configs symlinked to XDG locations by `deploy.zsh`; never place files directly in `~/.config/`. (Agent CLI configs are symlinked by the **agents repo's** deploy — see [Agents sibling repo](#agents-sibling-repo).)
-- Don't edit anything under `plugins/` or `tools/` — those are submodules
+- Don't edit anything inside the vendored plugin dirs (`nvim/plugins/`, `zsh/plugins/`, `tmux/plugins/`, `yazi/`, `configs/ranger-plugins/archives`) — they are pinned clones (see `plugins.lock`); repo-owned siblings in those trees are fine
 
 ## Structure
 ```
@@ -146,7 +145,7 @@ crash-looped three services for a week in 2026-07.
 ├── tmux/               # Solarized, vim-aware pane nav
 ├── yazi/               # Yazi file manager config + plugins
 ├── raycast/            # macOS: Raycast script commands (add dir in Raycast settings)
-└── tools/              # git-diff-pager + vendored submodules
+└── plugins.lock        # pinned revs + clone URLs for the vendored plugin dirs
 ```
 (Vim was removed — Neovim is the only editor.)
 

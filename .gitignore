@@ -31,3 +31,21 @@ configs/portless/logs/proxy.log
 
 # Agents own reserved shell hooks 96–99; 90–95 remain human overrides.
 bash/rc.d/9[0-9]_*
+
+# Vendored plugin clones — pinned row-per-dir in plugins.lock, converged by
+# scripts/deploy.d/30_plugins.zsh (fleet-consolidation M3). Repo-owned content
+# sharing these trees is negated back in.
+nvim/plugins/*
+tmux/plugins/*
+zsh/plugins/*
+!zsh/plugins/abbreviations-store/
+!zsh/plugins/pnpm-shell-completion/
+yazi/plugins/*
+# tracked symlinks into the yazi-rs-plugins clone (no trailing slash —
+# these are links, not directories)
+!yazi/plugins/git.yazi
+!yazi/plugins/smart-enter.yazi
+yazi/yazi-rs-plugins/
+configs/ranger-plugins/*
+!configs/ranger-plugins/ipc.py
+!configs/ranger-plugins/z.py

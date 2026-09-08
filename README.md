@@ -29,8 +29,10 @@ that hardcode their own dotfile paths: the AI CLIs (`~/.claude`, `~/.codex`,
 entries, symlinked back into their owning repo by deploy — the AI CLI entries
 by the agents sibling (`~/.local/agents`), the rest by this repo.
 
-All external code is vendored as **git submodules** (~48 of them — Neovim
-plugins, zsh plugins, tmux/yazi/ranger plugins), so there's no plugin manager to
+All external code is vendored as **pinned plugin clones** — 48 of them
+(Neovim plugins, zsh plugins, tmux/yazi/ranger plugins), one `<sha> <path>
+<clone-url>` row each in [`plugins.lock`](plugins.lock), converged on every
+deploy by `scripts/deploy.d/30_plugins.zsh` — no plugin manager to
 bootstrap.
 
 ## Features
@@ -41,7 +43,7 @@ bootstrap.
   * [zsh-completions](https://github.com/zsh-users/zsh-completions), [async autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [syntax highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
   * [autopair](https://github.com/hlissner/zsh-autopair), [zsh-z](https://github.com/agkozak/zsh-z) (+ zoxide), [fzf-tab](https://github.com/Aloxaf/fzf-tab), [zsh-abbr](https://github.com/olets/zsh-abbr), [you-should-use](https://github.com/MichaelAquilina/zsh-you-should-use), history-substring-search
   * non-critical plugins lazy-loaded via [zsh-defer](https://github.com/romkatv/zsh-defer); slow inits cached via `evalcache`
-* **Neovim** — [`nvim/`](nvim) Lua config (0.11+): the [mini.nvim](https://github.com/echasnovski/mini.nvim) ecosystem, [blink.cmp](https://github.com/Saghen/blink.cmp) completion, [mason](https://github.com/williamboman/mason.nvim) + LSP, treesitter, [conform](https://github.com/stevearc/conform.nvim), Solarized, and [CodeCompanion](https://github.com/olimorris/codecompanion.nvim) (Claude in-editor). Plugins are submodules under [`nvim/plugins/`](nvim/plugins) loaded via native `packpath` — no plugin manager.
+* **Neovim** — [`nvim/`](nvim) Lua config (0.11+): the [mini.nvim](https://github.com/echasnovski/mini.nvim) ecosystem, [blink.cmp](https://github.com/Saghen/blink.cmp) completion, [mason](https://github.com/williamboman/mason.nvim) + LSP, treesitter, [conform](https://github.com/stevearc/conform.nvim), Solarized, and [CodeCompanion](https://github.com/olimorris/codecompanion.nvim) (Claude in-editor). Plugins are pinned clones under [`nvim/plugins/`](nvim/plugins) (rows in [`plugins.lock`](plugins.lock)) loaded via native `packpath` — no plugin manager.
 * **Tmux** — [`tmux/`](tmux) Solarized, vim-aware pane nav, resurrect + continuum for session persistence across restarts.
 * **Terminals** — [Ghostty](configs/ghostty) (primary) and [Waveterm](configs/waveterm).
 * **File managers** — [Yazi](yazi) (primary) and [ranger](configs/ranger).
@@ -137,7 +139,7 @@ One manager owns runtimes (see [`AGENTS.md`](AGENTS.md) for the full table):
 ### Requirements
 
 * `zsh` 5.9 or newer strongly recommended
-* `git` — all external components are git submodules
+* `git` — vendored plugins are converged as pinned clones from `plugins.lock`
 
 ### Install
 
@@ -158,9 +160,9 @@ as before (opt-in knob, not a silent switch). A bash twin of the driver,
 [`deploy.bash`](deploy.bash), runs the same fragments; both are preceded by
 a `/bin/bash` ≥ 3.2 version assert.
 
-[`deploy.zsh`](deploy.zsh) sets up symlinks, inits submodules, installs git
-hooks, runs `mise install`, wires brew (macOS), schedules a daily `git
-pull`, and chains the sibling repos (`65_secrets.zsh` → `66_infra.zsh` →
+[`deploy.zsh`](deploy.zsh) sets up symlinks, converges pinned plugins
+(`plugins.lock`), installs git hooks, runs `mise install`, wires brew
+(macOS), schedules a daily `git pull`, and chains the sibling repos (`65_secrets.zsh` → `66_infra.zsh` →
 `67_agents.zsh`: clone/pull + deploy `~/.local/{secrets,infra,agents}`,
 warn-not-fail when absent). It dispatches into [`scripts/deploy.d/NN_*.zsh`](scripts/deploy.d)
 fragments (sourced in numeric order), each handling one install concern; shared
@@ -179,7 +181,7 @@ with `DOTFILES_SKIP_POSTMERGE=1`).
 | `--upgrade` / `-u` | run brew/mise/cargo upgrades in addition to installs |
 | `--dry-run` / `-n` | fragments print intentions via `[dry-run]` without mutating |
 | `--force` / `-f` | bypass fragment safety guards — no fragment currently reads it |
-| `--only NAME` | run only fragments whose basename matches NAME (e.g. `--only 30_submodules`); repeatable |
+| `--only NAME` | run only fragments whose basename matches NAME (e.g. `--only 30_plugins`); repeatable |
 | `--help` / `-h` | show flag summary |
 
 ### macOS bootstrap (Day 0, before clone)

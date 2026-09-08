@@ -9,8 +9,8 @@
 #   05  bash           — hoist a modern brew bash ahead of fragments ≤74 (§E)
 #   10  dirs           — XDG dirs, $HOME scaffolding
 #   20  symlinks       — link zsh/git/tmux/nvim configs into $HOME
-#   30  submodules     — `git submodule update --init`
-#   40  tools          — build/install submoduled tools (fzf, diff-so-fancy, …)
+#   30  plugins        — converge pinned plugin clones (plugins.lock)
+#   40  tools          — build/install non-mise CLI tools (fzf, diff-so-fancy, …)
 #   50  mise           — bootstrap mise, install all `configs/mise.toml` tools
 #   55  evalcache_prune — purge poisoned 0-byte zsh evalcache files (recovery)
 #   60  git_hooks      — post-merge / pre-commit hooks
@@ -93,7 +93,7 @@ while (( $# > 0 )); do
             print "  --force      bypass fragment safety guards (no fragment reads it"
             print "               today; secrets rendering is unconditional)"
             print "  --only NAME  run only fragments whose basename matches NAME"
-            print "               (e.g., --only 30_submodules); repeat for multiple"
+            print "               (e.g., --only 30_plugins); repeat for multiple"
             exit 0
             ;;
         *)
