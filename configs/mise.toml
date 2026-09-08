@@ -147,7 +147,7 @@ btop = { version = "1.4.6", os = ["linux"] }
 # perturb a running daemon — but a CLI newer than the daemon it talks to is a
 # skew bug, so bump both together. Do NOT loosen this to "beta": `mise upgrade`
 # on every deploy would then walk the CLI ahead of the pinned daemon unattended.
-"npm:@getpaseo/cli" = { version = "0.7.0-beta.2", os = ["linux"] }
+"npm:@getpaseo/cli" = { version = "0.8.0-beta.1", os = ["linux"] }
 
 [env]
 # Claude Code's built-in auto-updater would rewrite its install out from
