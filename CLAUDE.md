@@ -1,5 +1,23 @@
 # dotfiles — agent instructions
 
+## Where does a new thing go?
+
+One declared owner per artifact class — if a new tool fits no row below,
+that's a design conversation (full tree, invariants, rationale:
+[`docs/fleet-consolidation.md`](docs/fleet-consolidation.md)), not an
+eighteenth installer.
+
+- user CLI tool or runtime → mise (`configs/mise.toml`), pin the major
+- npm global → mise npm backend / `.default-npm-packages` (exception:
+  openclaw — service-guard owned)
+- macOS app, font, GNU userland → brew (`scripts/deploy.d/75_brew_setup.zsh`)
+- shell/editor/terminal config → dotfiles `configs/` + symlink fragment
+- secret → secrets repo (sops/age), rendered at deploy
+- daemon or service → unit in the OWNING repo + manifest entry +
+  `services.toml` placement; root steps stay human-run
+- agent CLI/skill/provider config → the agents repo (`~/.local/agents`)
+- host-specific quirk → host-scoped fragment + manifest entry
+
 ## Shell-script portability (strict)
 
 Scripts under `scripts/`, `scripts/deploy.d/`, `zsh/`, `bash/`, `bin/`, and
@@ -39,7 +57,7 @@ must stay BSD-clean.
 | `sed -e '/x/{cmd1;cmd2}'` (block on one command) | BSD sed needs `{` and `}` on separate `-e`s | split `-e '…{'` `-e '…'` `-e '}'`, or use awk |
 | `sed -i …` without arg | BSD requires `-i ''`; GNU rejects the empty arg | write to temp + `mv`, or guard per-OS |
 | `date -d 'tomorrow'` / `date -d @1234` | GNU-only | BSD: `date -v +1d` / `date -r 1234`; or branch on `$OSTYPE` |
-| `readlink -f path` | only on macOS ≥ 12.3 | hand-rolled symlink walk (see `scripts/generate-commit-msg:20-26`) |
+| `readlink -f path` | only on macOS ≥ 12.3 | hand-rolled symlink walk (see `deploy.bash`) |
 | `realpath --relative-to=…` | GNU-only flag | compute manually with `${path#$prefix/}` |
 | `stat -c '%a'` / `stat -f '%Lp'` | totally different flags per OS | branch on `$(uname -s)` (see `scripts/setup-caddy.sh:147-155`) |
 | `getopt --long foo bar` | BSD `getopt` has no long-option support | hand-roll a `while/case` parser |
@@ -88,7 +106,7 @@ Every row below was hit and verified during the port (commits
 | Don't write | Reason | Portable alternative |
 |---|---|---|
 | `{ cmd }` / `fn() { … cmd }` — last command not `;`-terminated | zsh accepts `}` as a command terminator; bash wants `…; }` — and `zsh -n` cannot catch it, only the gate's bash leg does | end the body `…; }` (16 sites fixed across scripts/ and the interactive tree) |
-| `${x:h}` / `:t` / `:r` / `:A` / `:l` history modifiers | never error under bash — pass through unchanged or come back empty (`${x:l}` no-op'd the linux gate in `50_mise.zsh`, silently skipping the mise install) | `dirname`/`basename`/`${p%.*}`; the symlink walk at `scripts/generate-commit-msg:20-26`; `tr` for case-folding |
+| `${x:h}` / `:t` / `:r` / `:A` / `:l` history modifiers | never error under bash — pass through unchanged or come back empty (`${x:l}` no-op'd the linux gate in `50_mise.zsh`, silently skipping the mise install) | `dirname`/`basename`/`${p%.*}`; the symlink walk at `deploy.bash`; `tr` for case-folding |
 | `(( ${+commands[x]} ))` | parses AND runs under bash — expands to `(( 0 ))`, always false, so every install/skip gate silently inverts | `have x` (`command -v` wrapper; `scripts/deploy.d/lib/helpers.zsh:7`) |
 | `path=(new $path)` / `typeset -U path PATH` | bash parses it as a scalar `path=` assignment — PATH never changes, and each assignment clobbers the previous | `path_prepend DIR…` (`zsh/env.d/00_path_prepend.zsh:23` — zsh tied-array semantics, identical in both shells) |
 | `${a[0]}`; `for (( i=1; i <= ${#a}; i++ ))` | zsh arrays are 1-based (slot 0 reads empty); bash is 0-based (looping from 1 skips row 0 — the secrets scripts skipped the primary credential env file and still wrote the success marker) | element iteration `for x in "${arr[@]}"`; restructure parallel arrays into `src\|dst` rows |
@@ -140,7 +158,7 @@ The Rust replacements have identical behavior on macOS and Linux.
 Three options, in this order of preference:
 
 1. **Rewrite to be portable** — usually awk or pure-shell. See
-   `scripts/generate-commit-msg:47-61` (`strip_fences`) for the canonical
+   `~/.local/agents/scripts/generate-commit-msg` (`strip_fences`) for the canonical
    pattern: an awk block replaces a sed pipeline that broke on BSD.
 2. **Branch on `$(uname -s)`** — only when behavior genuinely differs. See
    `scripts/setup-caddy.sh:147-155` for the model.
