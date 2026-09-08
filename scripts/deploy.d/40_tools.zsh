@@ -4,7 +4,7 @@
 # This fragment: (1) symlinks vendored scripts that must live on PATH, (2)
 # best-effort installs tools that need a package manager (git-extras,
 # git-restore-mtime, testssl), then (3) runs the pre-existing wtp /
-# gh-prreview / moor setup.
+# gh-prreview setup.
 
 # git-quick-stats must be on PATH so `git quick-stats` subcommand dispatch finds
 # it. httpstat/spark/spectre are reached via aliases in zsh/rc.d, so they need no
@@ -125,7 +125,11 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     fi
 fi
 
-if ! have wtp; then
+# wtp, macOS only — Linux is mise-managed (ubi:satococoa/wtp,
+# configs/mise.toml). Upstream publishes no darwin-x86_64 release asset, so
+# the Intel Macs can't take the mise route (same trap as delta/fd/age) and
+# the script's brew-tap-first logic stays.
+if [[ $DOTFILES_OS == Darwin ]] && ! have wtp; then
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would: scripts/install-wtp.zsh"
     else
@@ -140,18 +144,5 @@ if have gh; then
         gh extension list 2>/dev/null | grep -q chmouel/gh-prreview \
             || gh extension install chmouel/gh-prreview 2>/dev/null \
             || true
-    fi
-fi
-
-if ! have moor; then
-    if (( DEPLOY_DRY_RUN )); then
-        printf '%s\n' "  [dry-run] would: install moor (scripts/install-moor.sh)"
-    else
-        printf '%s\n' "Installing moor..."
-        if bash $SCRIPT_DIR/scripts/install-moor.sh > /dev/null 2>&1; then
-            printf '%s\n' "  ...done"
-        else
-            printf '%s\n' "  ...failed to install moor, skipping"
-        fi
     fi
 fi

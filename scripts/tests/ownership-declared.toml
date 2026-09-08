@@ -124,8 +124,8 @@ mechanisms = ["apt", "pacman"]
 reason = "per-distro recipes (40_tools.zsh): apt on Debian/Ubuntu, pacman on Arch. Never concurrent"
 
 [dual_install.wtp]
-mechanisms = ["brew", "curl"]
-reason = "per-arch split inside install-wtp.zsh: upstream ships no darwin-x64 binary, so brew (tap) covers Intel Macs and the release-asset curl covers Linux + Apple Silicon. Never concurrent"
+mechanisms = ["mise", "brew", "curl"]
+reason = "per-OS/arch split: Linux is mise (ubi:satococoa/wtp, os=[linux] in configs/mise.toml); macOS keeps install-wtp.zsh — brew tap covers Intel Macs (upstream ships no darwin-x64 release asset), the release-asset curl is the Apple-Silicon brew-failure fallback. Never concurrent on one host"
 
 # ── service artifacts ───────────────────────────────────────────────────────
 

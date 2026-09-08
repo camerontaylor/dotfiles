@@ -74,6 +74,12 @@ fi
 
 log "Installing broad baseline tools"
 brew update || true
+# Baseline is deliberately MINIMAL: brew covers only what mise cannot deliver
+# (GNU userland, casks) plus mise itself — every CLI mise manages
+# (ripgrep/fd/gh/glab/awscli/sops/age/neovim/ast-grep/moor/…) arrives when
+# the deploy that follows this script runs 50_mise.zsh. Dual-installing them
+# here would recreate exactly the duplicate-ownership the fleet gate
+# (scripts/tests/ownership-gate.py) exists to prevent.
 brew install \
     git \
     zsh \
@@ -88,19 +94,9 @@ brew install \
     wget \
     unzip \
     gnupg \
-    sops \
-    age \
-    gh \
-    glab \
-    awscli \
     mise \
-    moor \
     caddy \
     jq \
-    ripgrep \
-    fd \
-    ast-grep \
-    neovim \
     tmux \
     || true
 

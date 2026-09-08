@@ -1,7 +1,9 @@
-# curl/cargo installs for CLIs without a mise backend (Claude Code,
-# rustup/cargo, linear-cli, CodeWhale), npm globals through the mise-managed
-# node (pinned in configs/mise.toml, installed by 50_mise.zsh), and gjc as a
-# bun global (bun-only package; see its block below).
+# curl/cargo installs for CLIs without a mise backend (rustup/cargo,
+# linear-cli), npm globals through the mise-managed node (pinned in
+# configs/mise.toml, installed by 50_mise.zsh), and gjc as a bun global
+# (bun-only package; see its block below). Claude Code / CodeWhale / moor /
+# wtp-Linux moved to mise backends (configs/mise.toml) — the drift-correctors
+# below retire what this fragment used to install by hand.
 #
 # Dry-run contract (AGENTS.md): same story as 50_mise.zsh — the npm and gjc
 # blocks below had per-step gates, but the curl/rustup/cargo blocks did not,
@@ -9,18 +11,44 @@
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: Claude Code, npm globals, gjc, rustup, linear-cli, CodeWhale, moor)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, rustup, linear-cli, claude/codewhale drift cleanup)"
     return 0
 fi
 
-if ! have claude; then
-    printf '%s\n' "Installing Claude Code..."
-    if curl -fsSL https://claude.ai/install.sh | bash > /dev/null 2>&1; then
-        printf '%s\n' "  ...done"
-    else
-        printf '%s\n' "  ...failed to install Claude Code"
-    fi
+# Claude Code is mise-managed (aqua:anthropics/claude-code). Drift-correct
+# hosts that still carry the native installer's layout (claude.ai/install.sh
+# era): a ~/.local/bin/claude symlink into ~/.local/share/claude plus its
+# versions dir. mise shims precede ~/.local/bin on PATH, so the drift never
+# wins interactively — this is hygiene plus reclaiming the duplicate bytes.
+# Only remove the symlink when it really points into the native install,
+# never a real binary someone put there; ~/.claude (config) is a different
+# tree and untouched.
+if [[ -L $HOME/.local/bin/claude ]]; then
+    _claude_target=$(readlink $HOME/.local/bin/claude)
+    case $_claude_target in
+        "$HOME"/.local/share/claude/*)
+            printf '%s\n' "Removing native-install Claude Code (mise owns claude now)..."
+            rm -f $HOME/.local/bin/claude
+            rm -rf $HOME/.local/share/claude
+            hash -r
+            printf '%s\n' "  ...done"
+            ;;
+    esac
 fi
+unset _claude_target
+
+# CodeWhale is mise-managed (cargo:codewhale-cli / cargo:codewhale-tui).
+# Drift-correct the rustup-installed copies the former cargo block here
+# planted: mise shims precede ~/.cargo/bin (env.d order), so they are inert,
+# but they would shadow mise's codewhale on any PATH without shims.
+for _cw_bin in codewhale codewhale-tui; do
+    if [[ -e $HOME/.cargo/bin/$_cw_bin ]]; then
+        printf '%s\n' "Removing cargo-installed $_cw_bin (mise owns it now)..."
+        rm -f $HOME/.cargo/bin/$_cw_bin
+        printf '%s\n' "  ...done"
+    fi
+done
+unset _cw_bin
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
@@ -188,7 +216,9 @@ if ! have cargo; then
     fi
 fi
 
-# linear-cli: git-only upstream, no mise/aqua backend exists.
+# linear-cli: git-only upstream, no mise/aqua/ubi backend exists (the crates
+# release is stale; only the git master branch builds) — the one deliberate
+# cargo-of-git install left (documented exception, docs/cli-tools.md).
 if have cargo; then
     if ! have linear-cli; then
         printf '%s\n' "Installing linear-cli via cargo..."
@@ -205,40 +235,6 @@ if have cargo; then
             printf '%s\n' "  ...failed to upgrade linear-cli"
         fi
     fi
-fi
-
-# CodeWhale: crates.io is the most direct update source for both the CLI and TUI.
-if have cargo; then
-    codewhale_spec= codewhale_package= codewhale_binary= codewhale_action=
-    codewhale_cargo_packages=(
-        codewhale-cli:codewhale
-        codewhale-tui:codewhale-tui
-    )
-
-    for codewhale_spec in "${codewhale_cargo_packages[@]}"; do
-        codewhale_package=${codewhale_spec%%:*}
-        codewhale_binary=${codewhale_spec#*:}
-
-        if ! have "$codewhale_binary"; then
-            codewhale_action=install
-        elif $upgrade_mode; then
-            codewhale_action=upgrade
-        else
-            continue
-        fi
-
-        if [[ $codewhale_action == install ]]; then
-            printf '%s\n' "Installing $codewhale_package via cargo..."
-        else
-            printf '%s\n' "Upgrading $codewhale_package via cargo..."
-        fi
-        if cargo install "$codewhale_package" --locked --force > /dev/null 2>&1; then
-            hash -r
-            printf '%s\n' "  ...done"
-        else
-            printf '%s\n' "  ...failed to $codewhale_action $codewhale_package"
-        fi
-    done
 fi
 
 # ghx (GitHub CLI caching layer) retired 2026-08: gh is mise-managed again
