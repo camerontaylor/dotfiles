@@ -285,8 +285,9 @@ fi
 #   bash-completion@2 — zsh is the daily driver and ~/.bashrc is unmanaged,
 #     so the completion files would just sit on disk inert.
 #   zsh-completions (brew formula) — redundant; zsh/plugins/completions is the
-#     same zsh-users/zsh-completions repo vendored as a submodule and already
-#     wired into fpath by zsh/rc.d/15_completion.zsh:19.
+#     same zsh-users/zsh-completions repo vendored as a pinned clone
+#     (plugins.lock) and already wired into fpath by
+#     zsh/rc.d/15_completion.zsh:19.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     printf '%s\n' "Installing Linux-script compat helpers via brew..."
     brew_formula_install_or_upgrade moreutils || true

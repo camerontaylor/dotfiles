@@ -1,13 +1,5 @@
 version: 2
 updates:
-- package-ecosystem: "gitsubmodule"
-  directory: "/"
-  schedule:
-    interval: "daily"
-  groups:
-    submodules:
-      dependency-type: "production"
-  open-pull-requests-limit: 10000
 - package-ecosystem: "github-actions"
   directory: "/"
   schedule:

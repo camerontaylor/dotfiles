@@ -499,6 +499,29 @@ write_caddy_env() {
 
 setup_caddy_systemd() {
   echo "Configuring Caddy systemd service..."
+
+  # configs/caddy/caddy.service is the tracked source of truth for the unit
+  # (docs/caddy-ingress.md "Tracked unit" row). TRACKED_CADDY_UNIT was
+  # declared but never used until 2026-09-08 — the live unit was effectively
+  # hand-maintained (fleet-census-units.md, scattered #1), and the doc
+  # promised an install step that never ran. Same backup-then-install
+  # contract as write_caddyfile's tracked branch: a differing live file is
+  # backed up beside the target (a live divergence means someone hand-edited
+  # /etc and must port the change back into the repo or lose it on the next
+  # run — deliberately loud, not silent).
+  if [[ -f "$TRACKED_CADDY_UNIT" ]]; then
+    if [[ -f /etc/systemd/system/caddy.service ]] \
+      && ! cmp -s "$TRACKED_CADDY_UNIT" /etc/systemd/system/caddy.service; then
+      UNIT_CHANGED=1
+      sudo cp -p /etc/systemd/system/caddy.service \
+        /etc/systemd/system/caddy.service.bak-$(date +%Y%m%d-%H%M%S)
+      echo "  NOTE: live caddy.service differed from the tracked unit; backup saved"
+      echo "        (port any wanted hand-edits into configs/caddy/caddy.service)"
+    fi
+    sudo install -m 644 -o root -g root "$TRACKED_CADDY_UNIT" \
+      /etc/systemd/system/caddy.service
+  fi
+
   write_caddy_env
   sudo chown caddy:caddy "$CADDY_ENV_PATH"
 

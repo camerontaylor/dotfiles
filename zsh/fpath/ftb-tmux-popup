@@ -12,7 +12,7 @@
 #      computing status-bar offset for `status-position top`.
 #   4. Defensive cleanup with `rm -f`.
 #
-# When updating the fzf-tab submodule, re-diff lib/ftb-tmux-popup vs
+# When bumping the fzf-tab pin (plugins.lock), re-diff lib/ftb-tmux-popup vs
 # this file and re-apply the four patches above.
 
 emulate -L zsh -o extended_glob

@@ -1,5 +1,4 @@
-# Smoke-test that key CLI tools deployed via mise / brew / submodules actually
-# run. Catches the silent-binary scenario where a tool ends up on PATH (e.g.
+# Smoke-test that key CLI tools deployed via mise / brew actually run. Catches the silent-binary scenario where a tool ends up on PATH (e.g.
 # via a mise shim) but the underlying install is broken or partial, which the
 # rest of deploy.zsh has no way to detect.
 #

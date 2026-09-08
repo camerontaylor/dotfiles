@@ -1,0 +1,58 @@
+# plugins.lock — pinned plugin checkouts (fleet-consolidation M3).
+#
+# One row per vendored plugin directory: <sha> <repo-relative-path> <clone-url>.
+# The directories themselves are gitignored clones; this file is the
+# committed source of truth 30_plugins.zsh converges them to. SHAs were
+# lifted verbatim from the gitlinks they replace (submodule era, 2026-09-08)
+# so the transition is behavior-neutral by construction.
+#
+# Edit discipline: bump a SHA only after testing the plugin on a dev box;
+# keep rows sorted by path.
+0b1cfa9a77412c3b51da5b1b213c672227f9fbb4 configs/ranger-plugins/archives https://github.com/maximtrp/ranger-archives.git
+e116ff9c5c1c2ed6bcdb2e0a6e547099876a8116 nvim/plugins/blink.cmp https://github.com/Saghen/blink.cmp.git
+6fb43a1754956198f94df141de5e185a12a52c4d nvim/plugins/codecompanion https://github.com/olimorris/codecompanion.nvim.git
+eae7abc8ba13d2e13605a601c8508c759f20bfc8 nvim/plugins/codecompanion-spinner https://github.com/franco-ruggeri/codecompanion-spinner.nvim.git
+c8c0f255e8090ed90dd9d5dd2e8672994f8e3671 nvim/plugins/committia https://github.com/rhysd/committia.vim.git
+016802de402556da54c36bd7359b441266b01cdd nvim/plugins/conform https://github.com/stevearc/conform.nvim.git
+b6346946d10d07998efee029fb0f7a593806d0cd nvim/plugins/flash https://github.com/folke/flash.nvim.git
+6fd2f5ba63828e5c4fd59bb1b75ef7525a5ce39f nvim/plugins/git-rebase-auto-diff https://github.com/yutkat/git-rebase-auto-diff.nvim.git
+20df43509b02a3ce3c6b3eee254d6e2bffa9a370 nvim/plugins/helm-ls https://github.com/qvalentin/helm-ls.nvim.git
+ff2cbcba459b637ec3fd165a2be59b7bbaeedf0d nvim/plugins/lazydev https://github.com/folke/lazydev.nvim.git
+5d9fc2aa6dd1c2fbdc7a68bc79b300e9967b21ff nvim/plugins/markview https://github.com/OXY2DEV/markview.nvim.git
+2a6940af80375532e5e9e7c1f2fc6319a1b7a69d nvim/plugins/mason https://github.com/williamboman/mason.nvim.git
+9d28935aa95fa6c1dc7c4d6747f101a72a8a4bec nvim/plugins/mason-lspconfig https://github.com/williamboman/mason-lspconfig.nvim.git
+e58ad4b0c9e9376096b9704f98fc00d4c9448870 nvim/plugins/mini https://github.com/nvim-mini/mini.nvim.git
+221c43884319e791519f0d6c94a7f2fbcd653278 nvim/plugins/nvim-lspconfig https://github.com/neovim/nvim-lspconfig.git
+b2aadda94b107480c48e548d6db51c6840b7b33c nvim/plugins/nvim-tree https://github.com/nvim-tree/nvim-tree.lua.git
+074aa4422bf029908338e855d0c0f71470a971bb nvim/plugins/nvim-treesitter https://github.com/nvim-treesitter/nvim-treesitter.git
+898ee307df58f854d11cd7edd06472574d48014e nvim/plugins/nvim-treesitter-textobjects https://github.com/nvim-treesitter/nvim-treesitter-textobjects.git
+74b06c6c75e4eeb3108ec01852001636d85a932b nvim/plugins/plenary https://github.com/nvim-lua/plenary.nvim.git
+201da44c95c634ae9d99414ec3cf8fc582fb323b nvim/plugins/precognition https://github.com/tris203/precognition.nvim.git
+72cd360845a4cc83108d880554548ed7c6a83156 nvim/plugins/reticle https://github.com/tummetott/reticle.nvim.git
+b55ca0d99036950b71344d179af0499d8cfa7719 nvim/plugins/schema-companion https://github.com/cenk1cenk2/schema-companion.nvim.git
+73e89eb3e536a4dd8f991c963bd37189520c9919 nvim/plugins/schemastore https://github.com/b0o/SchemaStore.nvim.git
+a8085e29883ddcfb39bd46197eb32ef00df05368 nvim/plugins/solarized https://github.com/maxmx03/solarized.nvim.git
+32ceaf2793582955ef9576809730878c4d2d9426 nvim/plugins/tmux https://github.com/aserowy/tmux.nvim.git
+4d07f3cc1ce2bdc0c8391290c5b0cf098abddddc tmux/plugins/colors-solarized https://github.com/seebi/tmux-colors-solarized.git
+0698e8f4b17d6454c71bf5212895ec055c578da0 tmux/plugins/continuum https://github.com/tmux-plugins/tmux-continuum.git
+06cbb4ecd3a0a918ce355c70dc56d79debd455c7 tmux/plugins/prefix-highlight https://github.com/tmux-plugins/tmux-prefix-highlight.git
+cff343cf9e81983d3da0c8562b01616f12e8d548 tmux/plugins/resurrect https://github.com/tmux-plugins/tmux-resurrect.git
+317d09f728928943f0af72ff6ce31ea335351202 yazi/plugins/githead.yazi https://github.com/llanosrocas/githead.yazi.git
+4848aac40731a852a5c39661037aec0d41eb7391 yazi/yazi-rs-plugins https://github.com/yazi-rs/plugins.git
+889f4772c12b9dbe4965bbd56f2572af0a28fa3b zsh/plugins/abbr https://github.com/olets/zsh-abbr.git
+41e03a0bd1d6bfd614142f1776b1ca2c5f7ab1a1 zsh/plugins/archive https://github.com/romkatv/archive.git
+449a7c3d095bc8f3d78cf37b9549f8bb4c383f3d zsh/plugins/autopair https://github.com/hlissner/zsh-autopair.git
+85919cd1ffa7d2d5412f6d3fe437ebdbeeec4fc5 zsh/plugins/autosuggestions https://github.com/zsh-users/zsh-autosuggestions.git
+3ce24713e4a49f9a5060d9016d35f3cd048d1c74 zsh/plugins/autosuggestions-abbreviations-strategy https://github.com/olets/zsh-autosuggestions-abbreviations-strategy.git
+3b421204600edae60403a2bbc8b6740bde626827 zsh/plugins/claude-code-zsh-completion https://github.com/1160054/claude-code-zsh-completion
+8cd3bd78e8b1f17271cfdd8269074e5557d8d7b8 zsh/plugins/completions https://github.com/zsh-users/zsh-completions.git
+53a26e287fbbe2dcebb3aa1801546c6de32416fa zsh/plugins/defer https://github.com/romkatv/zsh-defer.git
+21718c6a841adb6a041e14a7227dbabaaba159bc zsh/plugins/docker-zsh-completion https://github.com/greymd/docker-zsh-completion.git
+24105b15714bfec37989ed5c5b6e60f572253019 zsh/plugins/fzf-tab https://github.com/Aloxaf/fzf-tab.git
+48bad7dbd3110f9c6a5d624e8bf7a78bf731fc69 zsh/plugins/git-completion https://github.com/felipec/git-completion.git
+14c8d2e0ffaee98f2df9850b19944f32546fdea5 zsh/plugins/history-substring-search https://github.com/zsh-users/zsh-history-substring-search.git
+195281b1557531acc61af5f0bce56ecb6b3fe293 zsh/plugins/iterm2-shell-integration https://github.com/gnachman/iTerm2-shell-integration.git
+3308262dfbd743b6e1d3956a2b5572f7a049d692 zsh/plugins/powerlevel10k https://github.com/romkatv/powerlevel10k.git
+2fc57d63067c18b1100ecdbf684fa5baf49459d1 zsh/plugins/syntax-highlighting https://github.com/zsh-users/zsh-syntax-highlighting.git
+5f3d129864ee4505043d88c3486224f1d75b692e zsh/plugins/you-should-use https://github.com/MichaelAquilina/zsh-you-should-use.git
+102fb78036ed76feedf623907483691777a1d510 zsh/plugins/z https://github.com/agkozak/zsh-z.git

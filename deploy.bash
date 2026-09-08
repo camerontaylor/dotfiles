@@ -81,7 +81,7 @@ while (( $# > 0 )); do
             printf '%s\n' "  --force      bypass fragment safety guards (no fragment reads it"
             printf '%s\n' "               today; secrets rendering is unconditional)"
             printf '%s\n' "  --only NAME  run only fragments whose basename matches NAME"
-            printf '%s\n' "               (e.g., --only 30_submodules); repeat for multiple"
+            printf '%s\n' "               (e.g., --only 30_plugins); repeat for multiple"
             exit 0
             ;;
         *)

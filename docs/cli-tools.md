@@ -14,7 +14,7 @@ Sources, and the file that owns each:
 | `npm` | [`.default-npm-packages`](../.default-npm-packages) | Installed through **mise's** node by [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh). |
 | `cargo` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh) | For crates with no mise/aqua backend. |
 | `bun` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh) | Only `gjc` (bun-only package), symlinked into `~/.local/bin`. |
-| `curl` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh), [`install-moor.sh`](../scripts/install-moor.sh) | Vendor install scripts. |
+| `curl` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh), [`install-wtp.zsh`](../scripts/install-wtp.zsh) | Vendor install scripts (rustup, linear-cli; wtp's release-asset fallback). |
 | `pkg` | [`40_tools.zsh`](../scripts/deploy.d/40_tools.zsh), [`41_net_tools.zsh`](../scripts/deploy.d/41_net_tools.zsh) | Platform package manager (brew / apt / pacman / AUR), best-effort. |
 | `repo` | [`20_symlinks.zsh`](../scripts/deploy.d/20_symlinks.zsh), [`21_bash_symlinks.zsh`](../scripts/deploy.d/21_bash_symlinks.zsh) | Scripts from this repo, symlinked into `~/.local/bin`. |
 | `agents` | `~/.local/agents` ([camerontaylor/agents](https://github.com/camerontaylor/agents)) | Agent-domain scripts and routing wrappers, at the same relative `scripts/` + `bin/` paths inside the sibling. Cloned + deployed by [`67_agents.zsh`](../scripts/deploy.d/67_agents.zsh); the sibling's own deploy links its wrappers into `~/.local/bin`. |
@@ -38,7 +38,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `fzf` | mise | Interactive fuzzy finder; the engine behind `bag`, `fgb`, `fgd`, `fgl`, `fz`. |
 | `zoxide` | mise | Frecency-ranked `cd`. `z <partial>` jumps to a directory you've visited. |
 | `yq` | mise | YAML/JSON/XML processor (`jq` for YAML). |
-| `moor` | curl | Pager — a friendlier `less`. Installed by `scripts/install-moor.sh`. |
+| `moor` | mise | Pager — a friendlier `less`. |
 | `htop` | pkg | Interactive process viewer. Config symlinked from this repo. |
 | `sponge`, `ts`, `chronic`, `vipe` | brew (moreutils) | Pipeline helpers: in-place rewrite, timestamp lines, silence-unless-failure, edit-mid-pipe. |
 | `flock` | brew | File locking for cron/lock scripts. macOS has none natively. |
@@ -60,7 +60,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `gh prreview` | pkg (gh ext) | `chmouel/gh-prreview` — TUI for reviewing PRs. |
 | `delta` | mise / brew | Syntax-highlighting diff pager. Wired in as git's pager via `git-diff-pager`. |
 | `git-diff-pager` | repo | Thin dispatcher: `delta` if present, else plain. Used by `[pager]` in gitconfig. |
-| `wtp` | pkg | Git **w**ork**t**ree **p**lus — create/switch/remove worktrees. `w` and `p` wrap it. |
+| `wtp` | mise (Linux) / brew tap (macOS) | Git **w**ork**t**ree **p**lus — create/switch/remove worktrees. `w` wraps it. |
 | `git-extras` | pkg | 80+ extra `git` subcommands (`git summary`, `git ignore`, `git undo`, …). |
 | `git-restore-mtime` | pkg | Rewrites file mtimes to their last-commit time after a fresh clone. |
 | `git quick-stats` | vendor | Interactive repo statistics (contributors, churn, activity). |
@@ -101,12 +101,12 @@ smoke-tests ~24 of these at the end of every deploy.
 
 | Tool | Source | What it does |
 |---|---|---|
-| `claude` | curl | Claude Code CLI. |
+| `claude` | mise | Claude Code CLI (aqua backend; auto-updater disabled so mise is the only writer). |
 | `codex` | npm | OpenAI Codex CLI. |
 | `opencode` | npm | OpenCode terminal coding agent. |
 | `gemini` | npm | Google Gemini CLI. |
 | `gjc` | bun | gajae-code — coding/planning agent. See the `gjc-orchestration` skill. |
-| `codewhale` / `codewhale-tui` | cargo | DeepSeek-backed coding agent, CLI and TUI forms. |
+| `codewhale` / `codewhale-tui` | mise | DeepSeek-backed coding agent, CLI and TUI forms (cargo backends in mise). |
 | `omp` | npm | `@oh-my-pi/pi-coding-agent` — coding agent with read/bash/edit/write tools and session management. |
 | `ao` | npm | `@aoagents/ao` — Agent Orchestrator CLI. |
 | `omc` / `oh-my-claudecode` | npm | `oh-my-claude-sisyphus` — multi-agent orchestration layer for Claude Code. |
@@ -209,7 +209,7 @@ Not run by `deploy.zsh`. Run once per machine, by hand.
 
 | Script | What it provisions |
 |---|---|
-| [`scripts/eris-macos-bootstrap.zsh`](../scripts/eris-macos-bootstrap.zsh) | Fresh-Mac baseline: brew itself plus git, zsh, bash, GNU userland, make, curl, wget, unzip, gnupg, sops, age, gh, glab, awscli, mise, moor, caddy, jq, ripgrep, fd, ast-grep, neovim, tmux, iTerm2. |
+| [`scripts/eris-macos-bootstrap.zsh`](../scripts/eris-macos-bootstrap.zsh) | Fresh-Mac baseline: brew itself plus git, zsh, bash, GNU userland, make, curl, wget, unzip, gnupg, mise, caddy, jq, tmux, iTerm2. Every other CLI arrives with the deploy's mise step (`50_mise.zsh`). |
 | [`scripts/install-niri-stack.sh`](../scripts/install-niri-stack.sh) | niri Wayland desktop stack (Arch only) — waybar, mako, fuzzel, hypr configs. |
 | [`scripts/setup-caddy.sh`](../scripts/setup-caddy.sh) | Caddy reverse proxy + fleet ingress. See [`docs/caddy-ingress.md`](caddy-ingress.md). |
 | `~/.local/agents/scripts/setup-paseo.sh` | Per-host Paseo daemon config (agents repo). Runbook: `~/.local/agents/docs/paseo.md`. |

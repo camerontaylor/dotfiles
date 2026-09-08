@@ -1,0 +1,230 @@
+# ownership-declared.toml — the declared-exception registry consumed by
+# scripts/tests/ownership-gate.py (fleet-consolidation M2).
+#
+# Every entry here is a deliberate, owner-reviewed exception to the
+# "one declared owner per artifact" invariant — not a TODO list. The gate
+# fails on multi-mechanism tools / shipped-or-written service artifacts that
+# lack an entry here, AND on entries that have gone stale (artifact now
+# single-mechanism, or gone entirely). When M3/M4 removes a duplication,
+# delete its entry in the same commit.
+#
+# [dual_install.TOOL]
+#   mechanisms = [...]      # mechanisms the gate will observe; subset match
+#   reason     = "..."      # required — the audit trail for the exception
+#
+# [service_artifact.NAME]   # NAME = repo path (tracked) or unit/plist basename
+#   manifest_ids = [...]    # infra manifest artifact ids attesting it
+#                           # (verified in full mode; absent on CI by design)
+#   reason       = "..."    # required when manifest_ids is empty
+#   writers      = [...]    # files that write/generate it — required when the
+#                           # artifact has more than one possible writer, to
+#                           # pin the known set (a NEW writer site fails)
+
+# ── dual installs: mise primary + brew fallback (50_mise.zsh fallback loop) ──
+# The loop runs only on macOS and only when a tool is still missing post-mise
+# (aqua release-URL drift). It is a hedge that has actually fired on the
+# fleet, not a dead branch — declared, not removed.
+
+[dual_install.awscli]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.bat]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.eza]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.gh]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.glab]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.neovim]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.ripgrep]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.sd]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install."tree-sitter"]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install.zoxide]
+mechanisms = ["mise", "brew"]
+reason = "brew is the macOS-only post-mise fallback (50_mise.zsh loop) when aqua drifts; never concurrent on Linux"
+
+[dual_install."ast-grep"]
+mechanisms = ["mise", "brew", "npm-global"]
+reason = "npm-global (@ast-grep/cli) is the interactive CLI; the mise entry additionally provides the library/napi artifact to non-node environments; brew is the macOS fallback loop. Same upstream, deliberately split surfaces"
+
+# ── dual installs: per-OS splits (never concurrent on one host) ────────────
+
+[dual_install.age]
+mechanisms = ["mise", "brew"]
+reason = "upstream releases dropped x86_64-apple-darwin, so Intel Macs can't get age via mise; brew bottles ship both arches (75_brew_setup.zsh darwin block). Concurrent on Intel macOS by design, absent on Linux"
+
+[dual_install.btop]
+mechanisms = ["mise", "brew"]
+reason = "per-OS split: mise entry is os=[linux]; brew installs on macOS. Never concurrent"
+
+[dual_install.delta]
+mechanisms = ["mise", "brew"]
+reason = "upstream releases dropped x86_64-apple-darwin, so Intel Macs can't get git-delta via mise; brew bottles ship both arches (75_brew_setup.zsh darwin block). Concurrent on Intel macOS by design, absent on Linux"
+
+[dual_install.fd]
+mechanisms = ["mise", "brew"]
+reason = "upstream releases dropped x86_64-apple-darwin, so Intel Macs can't get fd via mise; brew bottles ship both arches (75_brew_setup.zsh darwin block). Concurrent on Intel macOS by design, absent on Linux"
+
+[dual_install."git-extras"]
+mechanisms = ["apt", "aur"]
+reason = "per-distro recipes (40_tools.zsh): apt on Debian/Ubuntu, aur helper on Arch. Never concurrent"
+
+[dual_install.htop]
+mechanisms = ["brew", "pacman"]
+reason = "per-OS split (75_brew_setup.zsh): brew on macOS, pacman on Arch. Never concurrent"
+
+[dual_install.mise]
+mechanisms = ["brew", "curl"]
+reason = "bootstrap order, not duplication: brew first on macOS, GitHub release-asset curl as fallback (and Linux primary). One survives; both paths kept so a fresh machine can always bootstrap"
+
+[dual_install.mosh]
+mechanisms = ["apt", "brew", "pacman"]
+reason = "per-OS split (75_brew_setup.zsh): brew on macOS, pacman on Arch, apt on Debian. Never concurrent"
+
+[dual_install.paseo]
+mechanisms = ["brew-cask", "mise"]
+reason = "per-OS split: brew cask delivers stable on macOS; the mise npm entry (os=[linux]) exists only so the bare `paseo` shim resolves on Linux boxes (see configs/mise.toml notes). Never concurrent"
+
+[dual_install.portless]
+mechanisms = ["mise", "npm-global"]
+reason = "npm-global owns the dev-shell binary; the mise npm: entry lets `mise exec` environments resolve it without a system node (configs/mise.toml). Same npm package installed through two managers into the same prefix — do-not-uninstall note lives in mise.toml"
+
+[dual_install.rust]
+mechanisms = ["mise", "curl"]
+reason = "one system, two touchpoints: rustup (curl bootstrap, 70_runtime_installs.zsh) is the designated toolchain owner; mise's rust = \"1\" is a symlink through rustup so shims resolve"
+
+[dual_install.tailscale]
+mechanisms = ["brew-cask", "curl", "pacman"]
+reason = "per-OS split (73_tailscale.zsh): cask on macOS, pacman on Arch, tailscale.com/install.sh only on other Linux. Never concurrent"
+
+[dual_install."testssl.sh"]
+mechanisms = ["apt", "pacman"]
+reason = "per-distro recipes (40_tools.zsh): apt on Debian/Ubuntu, pacman on Arch. Never concurrent"
+
+[dual_install.wtp]
+mechanisms = ["mise", "brew", "curl"]
+reason = "per-OS/arch split: Linux is mise (ubi:satococoa/wtp, os=[linux] in configs/mise.toml); macOS keeps install-wtp.zsh — brew tap covers Intel Macs (upstream ships no darwin-x64 release asset), the release-asset curl is the Apple-Silicon brew-failure fallback. Never concurrent on one host"
+
+# ── service artifacts ───────────────────────────────────────────────────────
+
+[service_artifact."agents.slice"]
+reason = "generated per-host (RAM-dependent MemoryMax umbrella, bin/install-agents-slice.sh, run-once). Probed 2026-09-08: absent on every reachable host (ceres/makemake/saturn/neptune) — the generator has never been run, so no manifest entry is warranted until one does"
+
+[service_artifact."atop.service"]
+reason = "package-shipped unit (42_monitoring.zsh): the repo enables whichever atop units the distro package provided; it never writes the unit file itself. atopacct.service / atop-rotate.timer same"
+
+[service_artifact."atopacct.service"]
+reason = "package-shipped unit; enable-only reference, no artifact written (42_monitoring.zsh)"
+
+[service_artifact."atop-rotate.timer"]
+reason = "package-shipped unit; enable-only reference, no artifact written (42_monitoring.zsh)"
+
+[service_artifact."com.ctaylor.dotfiles.maxfiles.plist"]
+manifest_ids = ["launchd:daemon:com.ctaylor.dotfiles.maxfiles"]
+writers = ["scripts/deploy.d/77_maxfiles_limit.zsh"]
+
+[service_artifact."com.ctaylor.dotfiles.prune-tmpdir.plist"]
+manifest_ids = ["launchd:agent:com.ctaylor.dotfiles.prune-tmpdir"]
+writers = ["scripts/deploy.d/56_tmpdir_prune.zsh"]
+
+[service_artifact."com.ctaylor.dotfiles.pull.plist"]
+manifest_ids = ["launchd:agent:com.ctaylor.dotfiles.pull"]
+writers = ["scripts/deploy.d/99_periodic.zsh"]
+
+[service_artifact."configs/caddy/caddy.service"]
+manifest_ids = ["systemd-unit:system:caddy.service"]
+writers = ["scripts/setup-caddy.sh"]
+
+[service_artifact."configs/immich/docker-compose.yaml"]
+manifest_ids = [
+    "container:docker:immich/database",
+    "container:docker:immich/immich-machine-learning",
+    "container:docker:immich/immich-server",
+    "container:docker:immich/redis",
+]
+writers = ["scripts/setup-immich.sh"]
+reason = "dotfiles is the tracked source of truth; setup-immich.sh installs a copy into ~/repos/deploy/immich and the stack runs from there (containers are human-started by policy)"
+
+[service_artifact."configs/wake-peers/com.github.ctaylor.wake-peers.plist"]
+manifest_ids = ["launchd:agent:com.github.ctaylor.wake-peers"]
+writers = ["scripts/deploy.d/76_wake_peers.zsh"]
+reason = "tracked template, rendered copy (awk @HOME@/@SLEEPWATCHER_PATH@ substitution) into ~/Library/LaunchAgents on macOS peers only"
+
+[service_artifact."hart-immich-backup.service"]
+manifest_ids = ["systemd-unit:user:hart-immich-backup.service"]
+writers = ["scripts/setup-immich.sh"]
+reason = "dotfiles deploys photo-steward's template (rendered with the Immich API key — the one real, non-symlinked file in ~/.config/systemd/user); hart/photo-steward own the content"
+
+[service_artifact."hart-immich-backup.timer"]
+manifest_ids = ["systemd-unit:user:hart-immich-backup.timer"]
+writers = ["scripts/setup-immich.sh"]
+reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
+
+[service_artifact."hart-immich-prune.service"]
+manifest_ids = ["systemd-unit:user:hart-immich-prune.service"]
+writers = ["scripts/setup-immich.sh"]
+reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
+
+[service_artifact."hart-immich-prune.timer"]
+manifest_ids = ["systemd-unit:user:hart-immich-prune.timer"]
+writers = ["scripts/setup-immich.sh"]
+reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
+
+[service_artifact."local.caddy.plist"]
+manifest_ids = ["launchd:daemon:local.caddy"]
+writers = ["scripts/setup-caddy.sh"]
+
+[service_artifact."local.portless-proxy.plist"]
+manifest_ids = ["launchd:daemon:local.portless-proxy"]
+writers = ["scripts/setup-caddy.sh"]
+
+[service_artifact."local.t3-serve.plist"]
+manifest_ids = ["launchd:daemon:local.t3-serve"]
+writers = ["scripts/setup-t3.sh"]
+
+[service_artifact."portless-proxy.service"]
+reason = "generated by setup-caddy.sh (systemd shape, Linux); no infra manifest carries the system shape yet — the manifests record the launchd daemon and a different user-level portless.service. Follow-up on the m2-manifest-census branch"
+writers = ["scripts/setup-caddy.sh"]
+
+[service_artifact."prune-tmpdir.service"]
+manifest_ids = ["systemd-unit:user:prune-tmpdir.service"]
+writers = ["scripts/deploy.d/56_tmpdir_prune.zsh"]
+
+[service_artifact."prune-tmpdir.timer"]
+manifest_ids = ["systemd-unit:user:prune-tmpdir.timer"]
+writers = ["scripts/deploy.d/56_tmpdir_prune.zsh"]
+
+[service_artifact."pull-dotfiles.service"]
+manifest_ids = ["systemd-unit:user:pull-dotfiles.service"]
+writers = ["scripts/deploy.d/99_periodic.zsh"]
+reason = "systemd user shape (root writes /etc/systemd/system variant per 99_periodic.zsh); macOS uses the com.ctaylor.dotfiles.pull plist declared separately"
+
+[service_artifact."pull-dotfiles.timer"]
+manifest_ids = ["systemd-unit:user:pull-dotfiles.timer"]
+writers = ["scripts/deploy.d/99_periodic.zsh"]
+
+[service_artifact."t3-serve.service"]
+manifest_ids = ["systemd-unit:system:t3-serve.service"]
+writers = ["scripts/setup-t3.sh"]
