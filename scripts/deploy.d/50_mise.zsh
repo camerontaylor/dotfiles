@@ -136,6 +136,48 @@ if have mise; then
     # and silent everywhere else.
     node_prefix_before=$(mise where node 2>/dev/null)
 
+    # Drop stale npm dist-tag pointers BEFORE install/upgrade resolve anything.
+    #
+    # mise keeps TWO caches per npm tool, with different lifetimes:
+    # remote_versions-*.msgpack.z (the version list) and latest_version-*.msgpack.z
+    # (what `@latest` or a dist-tag points AT). The `fetch_remote_versions_cache`
+    # setting (1h) governs only the FIRST. Nothing bounds the second short of
+    # cache_prune_age, which is 30 days.
+    #
+    # On 2026-09-09 that downgraded ceres's live paseo daemon from 0.7.0-beta.2
+    # to 0.4.0. A hand-started `@latest` resolved through a pointer last written
+    # 18 days earlier — with the network up, and no error anywhere — installing a
+    # three-week-old daemon that then wedged.
+    #
+    # Exact pins never read these files (configs/mise.toml pins every tool exactly,
+    # which is the real defence). This is the backstop for floating refs that
+    # survive elsewhere. Cheap: one find over one small directory.
+    mise_tagcache_dir=${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}
+    if [[ -d $mise_tagcache_dir ]]; then
+        stale_tags=()
+        while IFS= read -r _tag_file; do
+            stale_tags+=("$_tag_file")
+        # `|| true`: same ERR-trap-in-process-substitution guard as
+        # 55_evalcache_prune.zsh. -mtime +0 is "older than 24h".
+        done < <(find "$mise_tagcache_dir" -type f -name 'latest_version-*' -mtime +0 2>/dev/null | sort || true)
+
+        if (( ${#stale_tags[@]} > 0 )); then
+            printf '%s\n' "Dropping ${#stale_tags[@]} stale mise dist-tag cache file(s)..."
+            if (( DEPLOY_DRY_RUN )); then
+                t=
+                for t in "${stale_tags[@]}"; do
+                    printf '%s\n' "  [dry-run] would remove $t"
+                done
+            else
+                t=
+                for t in "${stale_tags[@]}"; do
+                    deploy_rm -f "$t"
+                done
+                printf '%s\n' "  ...done"
+            fi
+        fi
+    fi
+
     printf '%s\n' "Installing mise tools (node, bun, python, etc.)..."
     run_mise_step "mise install" 30 mise install
 
