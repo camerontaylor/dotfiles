@@ -28,3 +28,6 @@ proxy.tld
 .conflicts/
 configs/portless/logs/proxy.err
 configs/portless/logs/proxy.log
+
+# Agents own reserved shell hooks 96–99; 90–95 remain human overrides.
+bash/rc.d/9[0-9]_*

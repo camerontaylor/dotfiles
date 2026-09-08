@@ -49,6 +49,9 @@ jobs:
       - name: Tree-wide dual-shell syntax sweep
         run: scripts/tests/shell-syntax-gate.sh --all
 
+      - name: Agents sibling failure semantics
+        run: python3 scripts/tests/test-agents-chain.py
+
       # (b) pre-commit gate logic — run the hook's exact --staged path over
       # the whole bootstrap layer. A fresh checkout has nothing staged, and
       # `git add -A` alone stages nothing (index == HEAD), which would pass
