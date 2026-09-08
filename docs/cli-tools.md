@@ -178,8 +178,6 @@ Symlinked into `~/.local/bin` from [`bin/`](../bin); shared by both shells.
 | `fgl` | fzf git-log browser with commit preview. |
 | `psg` | `ps` grep that keeps the header and pages when long. |
 | `lspath` | Lists every directory component of a path — finds the one denying access. |
-| `p` | Pick a plan branch and cd into its worktree (webfront-compatible repos). |
-| `webfront-root` | Prints the root of the enclosing *webfront-compatible* repo (detected by its `scripts/run-agent-alias.sh` + `scripts/wt-archive` markers), or fails. The webfront app itself was retired 2026-09-08 — this is layout-convention compatibility for the repos that still carry the markers, not a running app. |
 
 ## zsh-only functions
 
