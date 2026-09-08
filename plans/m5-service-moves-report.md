@@ -171,6 +171,24 @@ intact) and `/etc/caddy/Caddyfile.bak-2026-09-08` restores the old upstream.
 - This report on dotfiles main. Infra branch `m5-services-toml` pushed with
   `services.toml` as-built + manifest drafts (both services).
 
+## Post-cutover incident: concurrent session re-upped ceres RSS (resolved)
+
+At **19:59:02** — mid-immich-move, ~3.5 h after the Phase-1 cutover — a
+concurrent agent session on ceres (4 claude + 2 codex processes were live on
+the box; no interactive shell history in the window) ran `docker compose up`
+on the ceres rss tree and re-enabled `rss-digest.timer`. That re-lit the
+rollback copy against its own retained database: a split-brain (two live
+stacks, two DBs, the old ceres URL answering, state forking). Detected during
+the final verification sweep at ~20:32; ceres re-downed and the timer
+re-disabled within minutes of detection; makemake's stack never wavered
+(200 throughout). **Countermeasure:** `~/repos/deploy/rss/MOVED.md` now sits
+on the ceres copy telling any local actor the stack lives on makemake and
+that a running ceres copy is a split-brain to re-down. Root cause worth
+noting for M6: nothing in the ceres-local state said "this moved" — the
+manifests live on an unreviewed branch, so a session without fleet context
+had no way to know. The marker file is the interim guard; merging the
+dispositions is the real fix.
+
 ## Owner follow-ups (deliberately not done by the agent)
 
 1. **Re-point RSS clients**: Capy Reader (GReader URL) and any phone
