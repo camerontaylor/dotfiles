@@ -17,7 +17,7 @@ for arg in "$@"; do
 done
 
 # Resolve the repo root from this script's real location: a hand-rolled
-# symlink walk (the repo's canonical pattern, scripts/generate-commit-msg).
+# symlink walk (the repo's canonical pattern, deploy.bash).
 # zsh's ${0:A:h:h} has no bash spelling; cd -P yields the same physical path.
 _self=$0
 while [[ -L $_self ]]; do

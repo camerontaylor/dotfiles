@@ -1,5 +1,5 @@
 #!/bin/sh
-# Enforce stable generated config defaults before commit.
+# Validate staged shell changes before commit.
 # Runs on: git commit (pre-commit hook)
 #
 # This hook does NOT touch secrets. It once chained save-secrets.zsh --git-add,
@@ -16,7 +16,7 @@
 set -e
 
 # Hand-rolled symlink walk (the repo's canonical pattern, see
-# scripts/generate-commit-msg) — zsh's ${0:A:h} has no POSIX spelling.
+# deploy.bash) — zsh's ${0:A:h} has no POSIX spelling.
 _self=$0
 while [ -L "$_self" ]; do
     _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
@@ -39,4 +39,5 @@ if ! "$SCRIPT_DIR/tests/shell-syntax-gate.sh" --staged; then
     exit 1
 fi
 
-exec "$SCRIPT_DIR/enforce-codex-defaults.zsh" --git-add
+# Provider-specific config enforcement belongs to the agents repo.
+exit 0

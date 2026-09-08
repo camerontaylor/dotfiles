@@ -51,7 +51,7 @@ if have brew && $upgrade_mode; then
     # Casks cannot be pinned (`brew pin` is formulae-only), so the exclusion has
     # to happen here: upgrade everything outdated EXCEPT $brew_upgrade_skip.
     # Ownership of Paseo upgrades belongs to the app's own beta updater
-    # (Settings -> About -> Release channel) and to docs/paseo.md's DMG
+    # (Settings -> About -> Release channel) and to ~/.local/agents/docs/paseo.md's DMG
     # procedure — neither of which deploy can second-guess from a Caskroom
     # receipt. Anything added here needs the same justification: a channel brew
     # cannot express.
@@ -422,7 +422,7 @@ fi
 # on one PATH is the Vite+ split-brain all over again (see 70_runtime_installs).
 # ceres, headless and without a cask, gets the CLI as a mise tool instead.
 # Per-host daemon config (bind address, password, web UI) is applied by
-# scripts/setup-paseo.sh — one-shot, not part of deploy. See docs/paseo.md.
+# agents repo scripts/setup-paseo.sh — hand-run only. See ~/.local/agents/docs/paseo.md.
 #
 # DELIBERATELY INSTALL-ONLY — there is no upgrade branch (removed 2026-08-29).
 # The cask tracks Paseo's STABLE channel and the Macs run BETA, so every deploy
@@ -433,7 +433,7 @@ fi
 # also named in $brew_upgrade_skip above, which is what keeps the bare
 # `brew upgrade` off it; both guards are needed, they cover different callers.
 # Upgrades are the app's own job (Settings -> About -> Release channel = beta),
-# or the DMG procedure in docs/paseo.md. This branch only bootstraps a Mac that
+# or the DMG procedure in ~/.local/agents/docs/paseo.md. This branch only bootstraps a Mac that
 # has no Paseo at all — and lands stable, which the app then updates itself.
 # The app-bundle test is not redundant with the receipt test: a box that got
 # its beta straight from the DMG has /Applications/Paseo.app but NO Caskroom

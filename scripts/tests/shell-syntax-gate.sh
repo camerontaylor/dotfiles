@@ -53,17 +53,11 @@ _zsh_only() {
         zsh/rc.d/07_semantic_integration.zsh) return 0 ;; # zsh-defer'd plugin hooks
         zsh/rc.d/09_colors.zsh) return 0 ;;           # zsh color arrays/attributes
         zsh/rc.d/10_file_managers.zsh) return 0 ;;    # yazi + zsh glob-qualified wrappers
-        zsh/rc.d/11_portkey.zsh) return 0 ;;          # autoload + zle prompt fn
-        zsh/rc.d/12_paseo.zsh) return 0 ;;            # ${+commands[...]} + emulate -L
         zsh/rc.d/13_grc.zsh) return 0 ;;              # zsh-specific alias wrapping
         zsh/rc.d/15_completion.zsh) return 0 ;;       # compinit/zstyle/fpath wiring
         zsh/rc.d/17_fzf_tab.zsh) return 0 ;;          # fzf-tab zle plugin glue
         zsh/rc.d/19_ssh_auth_sock.zsh) return 0 ;;    # zsh-only socket update hook
         zsh/rc.d/20_cursor_shape.zsh) return 0 ;;     # zle escape sequences per-keymap
-        zsh/fpath/ccm) return 0 ;;                    # stateful portkey wrapper, zsh constructs
-        zsh/fpath/ccm-happy) return 0 ;;              # stateful portkey wrapper, zsh constructs
-        zsh/fpath/ccz) return 0 ;;                    # stateful portkey wrapper, zsh constructs
-        zsh/fpath/ccz-happy) return 0 ;;              # stateful portkey wrapper, zsh constructs
         zsh/fpath/evalcache) return 0 ;;              # ${(@f)...}/zparseopts internals
         zsh/fpath/compdefcache) return 0 ;;           # compdef/compadd wrappers
         zsh/fpath/ftb-tmux-popup) return 0 ;;         # zle widget + zsh parameter flags

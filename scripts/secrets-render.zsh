@@ -121,7 +121,7 @@ done
 # ── Self-location and environment defaults ─────────────────────────────────
 
 # Resolve the repo root from this script's real location: a hand-rolled
-# symlink walk (the repo's canonical pattern, scripts/generate-commit-msg).
+# symlink walk (the repo's canonical pattern, deploy.bash).
 # zsh's ${0:A:h:h} has no bash spelling; cd -P yields the same physical path.
 _self=$0
 while [[ -L $_self ]]; do
@@ -225,8 +225,9 @@ _row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topi
 # Gated `all`, not ceres: config.yml's modelRoles.default is zai/glm-5.3, so a
 # box without these keys starts gjc with a default model it cannot authenticate.
 # The secret-free gjc files (models.yml, AGENTS.md, config.yml) live in the
-# public repo under configs/ai/gjc/ and are symlinked onto every box by
-# deploy.d/20_symlinks.zsh. config.yml was rendered here until the Discord
+# agents repo under configs/ai/gjc/ and are symlinked onto every box by that
+# sibling's deploy (manifests/links.conf, chained via 67_agents.zsh).
+# config.yml was rendered here until the Discord
 # notifications block (bot token, no env indirection) was dropped.
 _row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''

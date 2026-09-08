@@ -2,6 +2,13 @@
 
 *Theoretical exploration, September 2026. Fleet manifest as of the split-infrastructure spec: ceres (Arch/CachyOS hub), makemake (Ubuntu headless), saturn (Mac Studio), neptune (2019 iMac), quaoar (Arch laptop). Tailscale mesh + office wired LAN; secrets in a private sops/age repo rendered at deploy. Already-decided near-term plan (the baseline): an infra repo with a per-host manifest and a `converge --check` loop.*
 
+> **Update 2026-09-08:** the **webfront app is retired** (owner ruling —
+> `docs/fleet-consolidation.md`, "Owner decisions"); its postgres `16.3` +
+> tds_fdw instance goes with it, pending live-ops cleanup on ceres. Container
+> and postgres counts below that include webfront are the pre-retirement
+> snapshot — they are labeled historical where they appear. The
+> `*.webfront.app` DNS zone is unaffected (still live fleet naming).
+
 ---
 
 ## 0. Framing: the real design space is two axes, not one
@@ -71,7 +78,7 @@ One flake repo becomes the source of truth for every host:
 
 | What exists today | Nix translation | Friction |
 |---|---|---|
-| 18 Docker containers (Immich, RSS, Langfuse+SeaweedFS, webfront pg) | `virtualisation.oci-containers` (docker backend), or **compose2nix** generating that module from the existing compose files, or **arion** (run compose natively) | Low if compose2nix; you keep compose as source. Volumes must migrate from `/var/lib/docker` |
+| 18 Docker containers (Immich, RSS, Langfuse+SeaweedFS, webfront pg) — *count as of survey time; webfront pg retired 2026-09-08, ~17 live since* | `virtualisation.oci-containers` (docker backend), or **compose2nix** generating that module from the existing compose files, or **arion** (run compose natively) | Low if compose2nix; you keep compose as source. Volumes must migrate from `/var/lib/docker` |
 | Miniflux + its db, langfuse postgres | could *de-containerize*: first-class NixOS modules + native postgres | Medium; optional |
 | ~48 systemd **user** units, each owned by its project repo | `systemd.user.services` via home-manager, or project repos become flake inputs exporting NixOS modules (preserves federation) | **High — this is the biggest cultural change.** Unit source-of-truth moves from project repo to flake (unless every project adopts flakes) |
 | Caddy config, Samba, btrfs subvols + snapper | `services.caddy`, `services.samba`, **disko** declares partitions/subvolumes, snapper config in nix | Medium; the /srv/downloads subvol maps cleanly |
@@ -147,7 +154,7 @@ The tiers behave so differently that the growth scenario below is run per-tool.
 
 ### 2.4 Cross-cutting realities
 
-**Storage gravity.** Postgres does not float. The fleet's actual weight is its state: three postgres instances (Immich, langfuse on :5433, webfront), ClickHouse, SeaweedFS, Syncthing trees, the `/srv/downloads` btrfs subvol. Options, worst to best: (a) shared storage — NFS from ceres reintroduces ceres-gravity, you renamed the dependency instead of moving it; (b) replication — CNPG operator (k8s) or PG streaming, real complexity for 1–2 replicas across 2 nodes, no quorum; (c) **pin the stateful services and only move stateless ones** — what homelabs actually do, and it's most of the mobility value anyway: ad-block DNS, rss-bridge, digest-web, portkey are genuinely floatable; Immich is not.
+**Storage gravity.** Postgres does not float. The fleet's actual weight is its state: three postgres instances at survey time (Immich, langfuse on :5433, webfront — webfront retired 2026-09-08, leaving two), ClickHouse, SeaweedFS, Syncthing trees, the `/srv/downloads` btrfs subvol. Options, worst to best: (a) shared storage — NFS from ceres reintroduces ceres-gravity, you renamed the dependency instead of moving it; (b) replication — CNPG operator (k8s) or PG streaming, real complexity for 1–2 replicas across 2 nodes, no quorum; (c) **pin the stateful services and only move stateless ones** — what homelabs actually do, and it's most of the mobility value anyway: ad-block DNS, rss-bridge, digest-web, portkey are genuinely floatable; Immich is not.
 
 **The Mac exclusion.** No kubelet on macOS; Swarm and Nomad have theoretical macOS stories nobody runs. saturn's Immich ML offload and neptune's browserless/socat bridges **cannot join any scheduler** — they stay launchd/colima forever. Structural fact: every scheduler in Part 2 covers ceres+makemake (plus quaoar when awake, which makes it a bad cluster member — sleeping laptops and Raft don't mix). The baseline manifest is the only model in this document that treats saturn/neptune services as first-class entries; full Nix is the only one that *configures* them declaratively (without mobility). Komodo/Dockge can *reach* a colima docker socket on a Mac, but through a VM layer — second-class.
 

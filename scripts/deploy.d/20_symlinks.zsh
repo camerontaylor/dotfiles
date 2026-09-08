@@ -40,10 +40,6 @@ deploy_ln -sfn $SCRIPT_DIR/configs/aerospace/aerospace.toml $XDG_CONFIG_HOME/aer
 # never starts Sway) the link is an inert dangling file. The Caps→Esc/Hyper half
 # is delivered system-wide by keyd, installed separately in 79_keyd.zsh.
 deploy_ln -sfn $SCRIPT_DIR/configs/sway/config $XDG_CONFIG_HOME/sway/config
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $XDG_CONFIG_HOME/agent-orchestrator/config.yaml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator/config.yaml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/agent-orchestrator/config.yaml $HOME/.agent-orchestrator.yaml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/agents $HOME/.agents
 deploy_mkdir -p $XDG_CONFIG_HOME/waveterm
 deploy_ln -sfn $SCRIPT_DIR/configs/waveterm/settings.json $XDG_CONFIG_HOME/waveterm/settings.json
 deploy_mkdir -p $XDG_CONFIG_HOME/gtk-3.0
@@ -74,88 +70,9 @@ else
     have gpgconf && gpgconf --reload gpg-agent 2> /dev/null || true
 fi
 deploy_ln -sfn $SCRIPT_DIR/tools/git-diff-pager $HOME/.local/bin/git-diff-pager
-deploy_ln -sfn $SCRIPT_DIR/scripts/commit-conventional $HOME/.local/bin/commit-conventional
-deploy_ln -sfn $SCRIPT_DIR/scripts/generate-commit-msg $HOME/.local/bin/generate-commit-msg
-# Claude Code
-claude_code_config_dir=$SCRIPT_DIR/configs/ai/claude-code
-deploy_ln -sfn $claude_code_config_dir/CLAUDE.md $HOME/.claude/CLAUDE.md
-# RTK was nuked. Actively remove any stale link left by prior deploys so the
-# removal propagates to every machine on its next deploy (idempotent no-op once gone).
-if [[ -L $HOME/.claude/RTK.md || -e $HOME/.claude/RTK.md ]]; then
-    if (( DEPLOY_DRY_RUN )); then
-        printf '%s\n' "  [dry-run] rm -f $HOME/.claude/RTK.md (stale RTK link)"
-    else
-        rm -f $HOME/.claude/RTK.md && printf '%s\n' "  removed stale ~/.claude/RTK.md"
-    fi
-fi
-deploy_ln -sfn $claude_code_config_dir/settings.json $HOME/.claude/settings.json
-deploy_ln -sfn $claude_code_config_dir/settings.local.json $HOME/.claude/settings.local.json
-deploy_ln -sfn $claude_code_config_dir/statusline-command.sh $HOME/.claude/statusline-command.sh
-deploy_ln -sfn $claude_code_config_dir/hooks $HOME/.claude/hooks
-deploy_ln -sfn $claude_code_config_dir/skills $HOME/.claude/skills
-deploy_ln -sfn $claude_code_config_dir/commands $HOME/.claude/commands
-deploy_ln -sfn $claude_code_config_dir/agents $HOME/.claude/agents
-deploy_ln -sfn $claude_code_config_dir/mcp.json $HOME/.claude/.mcp.json
-# Codex CLI
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codex/config.toml $HOME/.codex/config.toml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codex/agents $HOME/.codex/agents
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codex/prompts $HOME/.codex/prompts
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codex/rules $HOME/.codex/rules
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codex/skills $HOME/.codex/skills
-# CodeWhale
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/config.toml $HOME/.codewhale/config.toml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/settings.toml $HOME/.codewhale/settings.toml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/codewhale/skills $HOME/.codewhale/skills
-# OpenCode
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/opencode/opencode.json $XDG_CONFIG_HOME/opencode/opencode.json
-# gjc (gajae-code). Only the secret-free files live here; .env (provider keys)
-# is rendered from the private secrets repo by 65_secrets — see
-# scripts/secrets-render.zsh services/gjc row. config.yml used to be rendered
-# too (it carried a Discord bot token); notifications are gone, so it is now a
-# plain symlink and lands on every box. `gjc config set` resolves the symlink
-# and writes through it, so in-app config edits show up as a repo diff — commit
-# them rather than letting the next deploy look like drift.
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/gjc/models.yml $HOME/.gjc/agent/models.yml
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/gjc/AGENTS.md $HOME/.gjc/agent/AGENTS.md
-# config.yml points skills.customDirectories at ~/.agents/skills (line 39, the
-# shared agent-agnostic skills dir) rather than gjc's own ~/.gjc/agent/paseo-skills
-# bridge: the bridge is built by an explicit `gjc setup` run, is not tracked here,
-# and so would be MISSING on a fresh box. gjc tilde-expands the entry itself.
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/gjc/config.yml $HOME/.gjc/agent/config.yml
-# gjc workflow companion skills (ultragoal-prep, gjc-orchestration) need no
-# per-skill link: they live in configs/ai/agents/skills/, which reaches gjc
-# through the ~/.agents symlink above plus config.yml's
-# skills.customDirectories entry. Do NOT plant same-named skills under
-# ~/.gjc/skills — user scope outranks the custom dir and would shadow the
-# tracked copies (gjc logs a "higher-precedence location" diagnostic).
-# Portless
+# Agent configuration, workflow commands and units are owned by the agents
+# sibling (67_agents.zsh). Portless remains general development tooling.
 deploy_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
-deploy_ln -sfn $SCRIPT_DIR/configs/ai/portkey/portkey-gateway.service $XDG_CONFIG_HOME/systemd/user/portkey-gateway.service
-# OpenClaw MCP bridge (mcp.ceres.webfront.app -> :3111). ceres ONLY: it is the
-# box the DNS name points at, and the ExecStart path (~/apps/openclaw-mcp) does
-# not exist anywhere else. Linking the unit on another host would put a
-# startable service on a machine that cannot run it.
-# The unit is tracked and symlinked; its EnvironmentFile is a rendered copy at
-# ~/.config/openclaw-mcp/env written by scripts/secrets-render.zsh (the
-# services/openclaw row, ceres-gated) — never a symlink into this repo, since
-# plaintext must not land in the working tree.
-if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
-    deploy_ln -sfn $SCRIPT_DIR/configs/openclaw-mcp/openclaw-mcp.service $XDG_CONFIG_HOME/systemd/user/openclaw-mcp.service
-fi
-# LLM plan-quota collector, cue engine and ntfy delivery. ceres ONLY, for the
-# same reason as the bridge above: usage/ntfy.wedrifid.dev are A records at
-# ceres's Tailscale IP, and both backends bind 127.0.0.1 there. The units are
-# tracked and symlinked; the dashboard token at ~/.local/state/codexbar/env and
-# the provider keys in ~/.config/codexbar/config.json are generated by
-# scripts/setup-llm-quota.sh, never symlinked out of this repo.
-# See docs/llm-quota.md.
-if [[ $(hostname -s 2>/dev/null) == ceres ]]; then
-    for _unit in codexbar-serve.service ntfy-server.service \
-                 codexbar-quota-cues.service codexbar-quota-cues.timer; do
-        deploy_ln -sfn $SCRIPT_DIR/configs/ai/codexbar/$_unit $XDG_CONFIG_HOME/systemd/user/$_unit
-    done
-    unset _unit
-fi
 # npm globals list: mise's node backend reads ~/.default-npm-packages and
 # reinstalls the listed globals automatically whenever it installs a node
 # version, so a node bump can't silently drop the globals.

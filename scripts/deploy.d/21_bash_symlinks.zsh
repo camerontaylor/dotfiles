@@ -20,10 +20,8 @@ deploy_ln -sfn $SCRIPT_DIR/bash/.bashrc $HOME/.bashrc
 # webfront-root goes first as a sibling: the wrappers resolve it via
 # $(dirname "$0") so repo bin/ and ~/.local/bin stay self-consistent pairs.
 deploy_ln -sfn $SCRIPT_DIR/bin/webfront-root $HOME/.local/bin/webfront-root
-for _bash_wrapper in cc yolo p ccd ccd-happy \
-                      ccm-direct ccm-direct-happy ccd-direct ccd-direct-happy \
-                      ccfw-direct ccz-direct ccz-direct-happy \
-                      lspath bag fgb fgd fgl psg; do
+# Agent-routing wrappers are linked by the agents sibling deploy.
+for _bash_wrapper in p lspath bag fgb fgd fgl psg; do
     deploy_ln -sfn $SCRIPT_DIR/bin/$_bash_wrapper $HOME/.local/bin/$_bash_wrapper
 done
 unset _bash_wrapper

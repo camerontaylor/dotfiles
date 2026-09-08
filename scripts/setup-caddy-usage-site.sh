@@ -73,7 +73,7 @@ fi
 # The vhost's @external abort stays the boundary. Written like the CF tokens:
 # 0600 caddy:caddy, root never persists it anywhere else.
 DASH_SRC="/home/ctaylor/.local/state/codexbar/dashboard-token"
-[ -s "$DASH_SRC" ] || { echo "ERROR: $DASH_SRC missing — run scripts/setup-llm-quota.sh first." >&2; exit 1; }
+[ -s "$DASH_SRC" ] || { echo "ERROR: $DASH_SRC missing — run ~/.local/agents/scripts/setup-llm-quota.sh first." >&2; exit 1; }
 DASH_TOKEN=$(cat "$DASH_SRC")
 CURRENT=$(sed -n 's/^CODEXBAR_DASHBOARD_TOKEN=//p' "$CADDY_ENV")
 if [ "$CURRENT" = "$DASH_TOKEN" ]; then

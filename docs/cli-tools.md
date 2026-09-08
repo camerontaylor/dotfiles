@@ -1,8 +1,9 @@
 # CLI tools installed by this repo
 
-A quick "what does what" index of every command this repo puts on your PATH, and
-where it comes from. Grouped by purpose; the **Source** column tells you which
-installer owns it (and therefore where to go when it's missing or wrong).
+A quick "what does what" index of every command this repo — and its agents
+sibling — puts on your PATH, and where it comes from. Grouped by purpose; the
+**Source** column tells you which installer owns it (and therefore where to go
+when it's missing or wrong).
 
 Sources, and the file that owns each:
 
@@ -16,6 +17,7 @@ Sources, and the file that owns each:
 | `curl` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh), [`install-moor.sh`](../scripts/install-moor.sh) | Vendor install scripts. |
 | `pkg` | [`40_tools.zsh`](../scripts/deploy.d/40_tools.zsh), [`41_net_tools.zsh`](../scripts/deploy.d/41_net_tools.zsh) | Platform package manager (brew / apt / pacman / AUR), best-effort. |
 | `repo` | [`20_symlinks.zsh`](../scripts/deploy.d/20_symlinks.zsh), [`21_bash_symlinks.zsh`](../scripts/deploy.d/21_bash_symlinks.zsh) | Scripts from this repo, symlinked into `~/.local/bin`. |
+| `agents` | `~/.local/agents` ([camerontaylor/agents](https://github.com/camerontaylor/agents)) | Agent-domain scripts and routing wrappers, at the same relative `scripts/` + `bin/` paths inside the sibling. Cloned + deployed by [`67_agents.zsh`](../scripts/deploy.d/67_agents.zsh); the sibling's own deploy links its wrappers into `~/.local/bin`. |
 | `vendor` | [`tools/vendor/`](../tools/vendor) | Vendored scripts, reached via a zsh alias (not on PATH). |
 | `manual` | one-shot scripts under [`scripts/`](../scripts) | Never run by `deploy.zsh`; you run them by hand, once per box. |
 
@@ -62,9 +64,9 @@ smoke-tests ~24 of these at the end of every deploy.
 | `git-extras` | pkg | 80+ extra `git` subcommands (`git summary`, `git ignore`, `git undo`, …). |
 | `git-restore-mtime` | pkg | Rewrites file mtimes to their last-commit time after a fresh clone. |
 | `git quick-stats` | vendor | Interactive repo statistics (contributors, churn, activity). |
-| `commit-conventional` | repo | Stages + commits with a Conventional Commits message. |
-| `generate-commit-msg` | repo | Generates a commit message from the staged diff (LLM-backed). |
-| `rewrite-commits-conventional` | repo (`scripts/`) | Bulk-rewrites existing history into Conventional Commits form. |
+| `commit-conventional` | agents | Stages + commits with a Conventional Commits message. `~/.local/agents/scripts/commit-conventional`. |
+| `generate-commit-msg` | agents | Generates a commit message from the staged diff (LLM-backed). `~/.local/agents/scripts/generate-commit-msg`. |
+| `rewrite-commits-conventional` | agents | Bulk-rewrites existing history into Conventional Commits form. `~/.local/agents/scripts/rewrite-commits-conventional`. |
 | `linear-cli` | cargo | Linear issue tracker from the terminal. |
 
 ## Secrets, crypto, cloud
@@ -116,14 +118,16 @@ smoke-tests ~24 of these at the end of every deploy.
 | `engram` | brew (tap) | Persistent memory store for agents. Save bugfixes/decisions/gotchas here. |
 | `portless` | mise + npm | Replaces port numbers with stable named `.localhost` URLs. |
 | `happy-dom` | npm | *(library, not a CLI)* Headless DOM implementation, available to the global node. |
-| `paseo` | cask / mise | Self-hosted agent orchestrator (app ships its own CLI). Install-only via brew — upgrades belong to the app. See [`docs/paseo.md`](paseo.md). |
+| `paseo` | cask / mise | Self-hosted agent orchestrator (app ships its own CLI). Install-only via brew — upgrades belong to the app. Runbook: `~/.local/agents/docs/paseo.md`. |
 
 ### Claude Code routing wrappers
 
-Thin `env` wrappers that launch `claude` against a specific provider. Bash twins
-live in [`bin/`](../bin) (symlinked to `~/.local/bin`); zsh gets richer versions
-in `zsh/env.d/09_claude_code_aliases.zsh`. Full roster and model tiers:
-[`configs/ai/claude-code/skills/agent-orchestration/reference/aliases.md`](../configs/ai/claude-code/skills/agent-orchestration/reference/aliases.md).
+Thin `env` wrappers that launch `claude` against a specific provider. They are
+agent-domain and live in the **agents repo** (`~/.local/agents`): bash twins in
+its `bin/` (linked to `~/.local/bin` by its deploy), richer zsh versions in its
+fpath functions, the alias layer in a reserved `zsh/env.d/96–99_*` fragment.
+Full roster and model tiers:
+`~/.local/agents/configs/ai/claude-code/skills/agent-orchestration/reference/aliases.md`.
 
 | Wrapper | Route |
 |---|---|
@@ -135,7 +139,6 @@ in `zsh/env.d/09_claude_code_aliases.zsh`. Full roster and model tiers:
 | `ccz` / `ccd` / `ccm` | Portkey-gateway-routed twins of the above. |
 | `*-happy` | Same route, launched through `happy yolo` instead of `claude`. |
 | `yolo` | `happy yolo` against real Anthropic. |
-| `webfront-root` | Helper: prints the enclosing webfront repo root, or fails. |
 
 ## Networking & remote
 
@@ -175,7 +178,8 @@ Symlinked into `~/.local/bin` from [`bin/`](../bin); shared by both shells.
 | `fgl` | fzf git-log browser with commit preview. |
 | `psg` | `ps` grep that keeps the header and pages when long. |
 | `lspath` | Lists every directory component of a path — finds the one denying access. |
-| `p` | Pick a plan branch and cd into its worktree (webfront repos). |
+| `p` | Pick a plan branch and cd into its worktree (webfront-compatible repos). |
+| `webfront-root` | Prints the root of the enclosing *webfront-compatible* repo (detected by its `scripts/run-agent-alias.sh` + `scripts/wt-archive` markers), or fails. The webfront app itself was retired 2026-09-08 — this is layout-convention compatibility for the repos that still carry the markers, not a running app. |
 
 ## zsh-only functions
 
@@ -210,9 +214,9 @@ Not run by `deploy.zsh`. Run once per machine, by hand.
 | [`scripts/eris-macos-bootstrap.zsh`](../scripts/eris-macos-bootstrap.zsh) | Fresh-Mac baseline: brew itself plus git, zsh, bash, GNU userland, make, curl, wget, unzip, gnupg, sops, age, gh, glab, awscli, mise, moor, caddy, jq, ripgrep, fd, ast-grep, neovim, tmux, iTerm2. |
 | [`scripts/install-niri-stack.sh`](../scripts/install-niri-stack.sh) | niri Wayland desktop stack (Arch only) — waybar, mako, fuzzel, hypr configs. |
 | [`scripts/setup-caddy.sh`](../scripts/setup-caddy.sh) | Caddy reverse proxy + fleet ingress. See [`docs/caddy-ingress.md`](caddy-ingress.md). |
-| [`scripts/setup-paseo.sh`](../scripts/setup-paseo.sh) | Per-host Paseo daemon config. See [`docs/paseo.md`](paseo.md). |
+| `~/.local/agents/scripts/setup-paseo.sh` | Per-host Paseo daemon config (agents repo). Runbook: `~/.local/agents/docs/paseo.md`. |
 | [`scripts/setup-t3.sh`](../scripts/setup-t3.sh) | T3 Code server unit on port 3773. |
-| [`scripts/setup-llm-quota.sh`](../scripts/setup-llm-quota.sh) | LLM plan-quota collector (CodexBar on :8791), pacing-cue timer and ntfy (:2586). See [`docs/llm-quota.md`](llm-quota.md). |
+| `~/.local/agents/scripts/setup-llm-quota.sh` | LLM plan-quota collector (CodexBar on :8791), pacing-cue timer and ntfy (:2586) — agents repo. Runbook: `~/.local/agents/docs/llm-quota.md`. |
 | [`scripts/setup-ceres-share.sh`](../scripts/setup-ceres-share.sh) | Samba share for `/srv/downloads` on ceres. |
 | [`scripts/setup-office-lan.sh`](../scripts/setup-office-lan.sh) | Static gateway-less `10.77.0.x` on the wired NIC. |
 | [`bin/install-agents-slice.sh`](../bin/install-agents-slice.sh) | systemd `agents.slice` with a memory cap. `bin/disable-agents-slice-hook` is the escape hatch. |

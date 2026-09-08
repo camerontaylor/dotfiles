@@ -8,7 +8,7 @@ have() { command -v -- "$1" >/dev/null 2>&1; }
 isfunc() { typeset -f -- "$1" >/dev/null 2>&1; }
 
 # Absolute, symlink-resolved path of $1 — zsh's ${var:A} in portable form
-# (the same walker as scripts/generate-commit-msg; `readlink -f` only exists
+# (the same walker as deploy.bash; `readlink -f` only exists
 # on macOS >= 12.3 and `realpath` is not universal). Callers comparing an
 # not-yet-existing path should tolerate failure: pipe stderr to /dev/null and
 # treat an empty result as "differs from any existing path".
