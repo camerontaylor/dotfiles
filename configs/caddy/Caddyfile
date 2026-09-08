@@ -84,7 +84,14 @@ immich.wedrifid.dev {
 	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
 	abort @external
 
-	reverse_proxy 100.82.17.115:2283
+	# Backend moved to makemake 2026-09-08 (M5). Wired office LAN first
+	# (10.77.0.97 — same switch, line rate), makemake's tailnet IP as
+	# fallback if the cable is out. lb_policy first sends all traffic to
+	# the wired upstream; fail_duration marks it down for 30s on failure.
+	reverse_proxy 10.77.0.97:2283 100.87.185.24:2283 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # CodexBar LLM plan-quota collector — tailnet-only (added 2026-09-04).
