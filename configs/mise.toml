@@ -106,19 +106,26 @@ btop = { version = "1.4.6", os = ["linux"] }
 # does. The CLI's built-in auto-updater is disabled via [env] below so mise
 # stays the only writer; 70_runtime_installs.zsh drift-corrects away the
 # old native install (~/.local/bin/claude symlink + ~/.local/share/claude).
-"aqua:anthropics/claude-code" = "0"
-# CodeWhale (was: the cargo block in 70_runtime_installs.zsh).
+# NB: "0" is NOT mise's track-latest — it's a semver prefix that only
+# tracks the leading edge for major-0 tools (neovim et al below). For
+# claude-code/moor/wtp (major 2) an "0" row 404s at install time
+# (`.../claude-code-releases/0/linux-x64/...`) and wtp even resolved a
+# stale 0.4.0; majors are pinned per the CLAUDE.md rule instead. Caught
+# 2026-09-08 when the fleet-m234 deploy reached makemake.
+"aqua:anthropics/claude-code" = "2"
+# CodeWhale (was: the cargo block in 70_runtime_installs.zsh). Major 0,
+# so "0" is genuinely the right prefix here.
 "cargo:codewhale-cli" = "0"
 "cargo:codewhale-tui" = "0"
 # moor (was: scripts/install-moor.sh curl of the release binary). Upstream
 # ships darwin x64/arm64 + linux assets, so no per-host conditional needed.
-"ubi:walles/moor" = "0"
+"ubi:walles/moor" = "2"
 # wtp, Linux leg only (was: the release-asset curl in install-wtp.zsh).
 # Upstream publishes no darwin-x86_64 asset, so an ungated entry would
 # hard-fail `mise install` on the Intel Macs (neptune) the way delta/fd/age
 # once did; macOS keeps install-wtp.zsh (brew tap, arm64 release asset as
 # brew-failure fallback) — declared in ownership-declared.toml.
-"ubi:satococoa/wtp" = { version = "0", os = ["linux"] }
+"ubi:satococoa/wtp" = { version = "2", os = ["linux"] }
 
 # paseo CLI, Linux-only. The Macs get `paseo` from the app bundle (a symlink
 # into /Applications/Paseo.app/Contents/Resources/bin/paseo, installed by the
