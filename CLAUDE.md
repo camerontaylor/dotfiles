@@ -258,6 +258,31 @@ gotchas there — see the global memory protocol for cadence.
   to the mise rule; quaoar dials ceres's static wired/wifi/tailscale
   addresses, so it syncs from anywhere; `.stignore` keeps in-progress
   browser downloads out).
+- Swap: [`scripts/setup-swap.sh`](scripts/setup-swap.sh) (Linux, human-run, needs
+  sudo, idempotent) sets up two tiers — zram at priority 100
+  (`/etc/systemd/zram-generator.conf`) and a disk swapfile at priority 10
+  (`/swapfile` + an `/etc/fstab` line), plus `vm.swappiness`/`vm.page-cluster` in
+  `/etc/sysctl.d/60-swap.conf`. The kernel drains the higher priority first, so
+  the file stays cold until zram fills. Ubuntu's installer creates NO swap when
+  root is btrfs, which is why makemake ran 16 GB with none and kept OOM-killing;
+  8G + 8G applied 2026-09-09. Precedents for the two priorities: ceres (zram
+  only, CachyOS default) and pluto (file only). Re-running is a no-op — but note
+  `comp_algorithm` is read-only once a zram device has a `disksize`, so the
+  script swapoffs and resets zram0 rather than `systemctl restart`-ing it.
+  makemake's btrfs root also gained `compress=zstd:1` at the same time (it had
+  no compression at all; `zstd:1` not `:3` because it is a 15 W N97 fronting a
+  SATA SSD). The swapfile is NOCOW, and btrfs never compresses NOCOW extents, so
+  filesystem compression can never touch it. Only new writes are compressed;
+  backfilling the existing data is
+  [`scripts/btrfs-compress-backfill.sh`](scripts/btrfs-compress-backfill.sh)
+  (run detached under `systemd-run`, hours). Do NOT reach for a bare
+  `btrfs filesystem defragment -r /`: it descends into other mounted
+  filesystems (makemake's 1.1T externals), rewrites already-compressed media
+  for no gain, compresses files deliberately marked NOCOW (systemd journals
+  set `+C`), and breaks ref-links — the script prunes and guards for all four.
+  ceres, for contrast, has always had a compressed root; note its fstab was
+  changed to `zstd:3` on 2026-09-06 but the live mount is still `zstd:1` from
+  before that edit, so a reboot will change its compression level.
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
