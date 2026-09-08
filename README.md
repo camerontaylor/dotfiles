@@ -25,8 +25,9 @@ configs live under `~/.config` (symlinked from the repo) and the **shell keeps a
 near-zero `$HOME` footprint** — with `ZDOTDIR` set, not even `~/.zshenv` is
 needed (see [Zero home presence](#zero-home-presence)). The exceptions are tools
 that hardcode their own dotfile paths: the AI CLIs (`~/.claude`, `~/.codex`,
-`~/.codewhale`, `~/.omx`, …) and a handful of app configs get their own `$HOME`
-entries, all symlinked back into the repo by deploy.
+`~/.codewhale`, …) and a handful of app configs get their own `$HOME`
+entries, symlinked back into their owning repo by deploy — the AI CLI entries
+by the agents sibling (`~/.local/agents`), the rest by this repo.
 
 All external code is vendored as **git submodules** (~48 of them — Neovim
 plugins, zsh plugins, tmux/yazi/ranger plugins), so there's no plugin manager to
@@ -48,9 +49,12 @@ bootstrap.
   machine: macOS via Karabiner + AeroSpace, Linux via keyd + Sway. See
   **[`docs/keybindings/README.md`](docs/keybindings/README.md)** (with a
   printable cheat sheet).
-* **AI / LLM tooling** — [`configs/ai/`](configs/ai): Claude Code, Codex, CodeWhale,
-  OpenCode, OMX, agent-orchestrator, and the Portkey / LiteLLM / CCR gateways.
-  See [AI tooling](#ai--llm-tooling).
+* **AI / LLM tooling** — the agent CLIs install through this repo's tool layer
+  (mise / npm globals), but their **config lives in the sibling agents repo**
+  (`~/.local/agents`, [camerontaylor/agents](https://github.com/camerontaylor/agents)):
+  Claude Code, Codex, CodeWhale, OpenCode, agent-orchestrator, the Portkey /
+  CCR gateways, the `cc*` routing wrappers, and the Paseo daemon setup. See
+  [AI tooling](#ai--llm-tooling).
 * **Other configs** — [Git](configs/gitconfig), [tig](configs/tigrc), [htop](configs/htoprc), [btop](configs/btop.conf), [bat](configs/bat), [quilt](configs/quiltrc), [starship](configs/starship.toml) (available as a p10k alternative).
 * **Runtime/tool management** — [mise](https://mise.jdx.dev/) for polyglot
   runtimes and CLIs ([`configs/mise.toml`](configs/mise.toml)), including Node
@@ -73,23 +77,42 @@ Full write-up, per-binding tables, and a printable cheat sheet:
 
 ## AI / LLM tooling
 
-[`configs/ai/`](configs/ai) holds configs for the AI CLIs and gateways used
-across the fleet, each symlinked to the `$HOME`/XDG path its tool expects:
+Agent CLIs (`claude`, `codex`, `opencode`, …) are ordinary tools to this repo:
+they install via [mise](configs/mise.toml) and
+[`.default-npm-packages`](.default-npm-packages) like any other CLI. Their
+**configuration** is agent-domain and lives in the sibling agents repo —
+`~/.local/agents` ([camerontaylor/agents](https://github.com/camerontaylor/agents)),
+keeping the same `configs/ai/<tool>/` relative paths — with each dir symlinked
+to the `$HOME`/XDG path its tool expects by that repo's own deploy:
 
-| Tool | Config dir | Lands at |
+| Tool | Config dir (under `~/.local/agents`) | Lands at |
 |------|-----------|----------|
 | Claude Code (+ oh-my-claudecode) | `configs/ai/claude-code/` | `~/.claude/` |
-| Codex (+ OMX) | `configs/ai/codex/` | `~/.codex/` |
+| Codex | `configs/ai/codex/` | `~/.codex/` |
 | CodeWhale | `configs/ai/codewhale/` | `~/.codewhale/` |
-| OMX | `configs/ai/omx/` | `~/.omx/` |
 | OpenCode | `configs/ai/opencode/` | `~/.config/opencode/` |
 | agent-orchestrator | `configs/ai/agent-orchestrator/` | `~/.agent-orchestrator*` |
 | Portkey gateway | `configs/ai/portkey/` | systemd user service |
-| LiteLLM / CCR router | `configs/ai/litellm/`, `configs/ai/ccr-router/` | shell-integrated |
+| CCR router | `configs/ai/ccr-router/` | legacy config, currently unreferenced — retirement candidate |
+| Paseo provider templates | `configs/ai/paseo/` | merged into `~/.paseo/config.json` (never symlinked) |
+| CodexBar quota units | `configs/ai/codexbar/` | `~/.config/systemd/user/` (ceres-gated) |
+
+LiteLLM was retired 2026-09-08 (replaced by the Portkey gateway) — its config
+is deleted, not moved.
+
+Deploy chains the sibling: [`67_agents.zsh`](scripts/deploy.d/67_agents.zsh)
+(the `66_infra.zsh` pattern) clones/pulls `~/.local/agents` and runs its
+deploy, tolerating its absence. Shell integration rides the gitignored
+reserved slots — the agents repo's deploy drops fragments into `zsh/env.d/`,
+`zsh/rc.d/`, `bash/rc.d/` `96–99_*`, which the normal numbered loaders pick
+up; dotfiles never sources `~/.local/agents` directly (90–95 stay
+human-local).
+
+To add a new AI tool: install the CLI in the tool layer **here** (mise /
+`.default-npm-packages`), and put its config under `configs/ai/<tool>/`
+**in the agents repo** — dotfiles no longer links agent configs.
 
 In Neovim, [CodeCompanion](nvim/init/17_llm.lua) provides Claude in-editor.
-Add a new AI tool config under `configs/ai/<tool>/` and a symlink in
-[`20_symlinks.zsh`](scripts/deploy.d/20_symlinks.zsh).
 
 ## Runtime management
 
@@ -136,8 +159,10 @@ as before (opt-in knob, not a silent switch). A bash twin of the driver,
 a `/bin/bash` ≥ 3.2 version assert.
 
 [`deploy.zsh`](deploy.zsh) sets up symlinks, inits submodules, installs git
-hooks, runs `mise install`, wires brew (macOS), and schedules a daily `git
-pull`. It dispatches into [`scripts/deploy.d/NN_*.zsh`](scripts/deploy.d)
+hooks, runs `mise install`, wires brew (macOS), schedules a daily `git
+pull`, and chains the sibling repos (`65_secrets.zsh` → `66_infra.zsh` →
+`67_agents.zsh`: clone/pull + deploy `~/.local/{secrets,infra,agents}`,
+warn-not-fail when absent). It dispatches into [`scripts/deploy.d/NN_*.zsh`](scripts/deploy.d)
 fragments (sourced in numeric order), each handling one install concern; shared
 helpers live in
 [`scripts/deploy.d/lib/helpers.zsh`](scripts/deploy.d/lib/helpers.zsh). The
@@ -201,20 +226,23 @@ interactive shells if this box has not rendered for 14 days.
 
 ## Deployed services
 
-Beyond shell/editor config, this repo also carries the deploy artifacts for a
-few self-hosted services: tracked files in `configs/<service>/`, an idempotent
-installer at `scripts/setup-<service>.sh`, a runbook in `docs/<service>.md`.
+Beyond shell/editor config, the fleet's self-hosted services follow the
+`configs/<service>/` + `scripts/setup-<service>.sh` + `docs/<service>.md`
+triple — with the tracked files living in the repo that owns the domain
+(agent-serving services belong to the agents repo, per the owning-repo rule):
 
 | Service | Installer | Runbook |
 |---|---|---|
-| Immich (photo library + nightly restic backup, ceres) | [`scripts/setup-immich.sh`](scripts/setup-immich.sh) | [`docs/immich.md`](docs/immich.md) |
-| Caddy (TLS ingress, ceres) | [`scripts/setup-caddy.sh`](scripts/setup-caddy.sh) | [`docs/caddy-ingress.md`](docs/caddy-ingress.md) |
-| Paseo (agent orchestrator) | [`scripts/setup-paseo.sh`](scripts/setup-paseo.sh) | [`docs/paseo.md`](docs/paseo.md) |
-| LLM plan quota (usage collector + pacing cues + ntfy, ceres) | [`scripts/setup-llm-quota.sh`](scripts/setup-llm-quota.sh) | [`docs/llm-quota.md`](docs/llm-quota.md) |
+| Immich (photo library + nightly restic backup, ceres) | dotfiles [`scripts/setup-immich.sh`](scripts/setup-immich.sh) | [`docs/immich.md`](docs/immich.md) |
+| Caddy (TLS ingress, ceres) | dotfiles [`scripts/setup-caddy.sh`](scripts/setup-caddy.sh) | [`docs/caddy-ingress.md`](docs/caddy-ingress.md) |
+| Paseo (agent orchestrator) | agents repo `~/.local/agents/scripts/setup-paseo.sh` | agents repo `~/.local/agents/docs/paseo.md` |
+| LLM plan quota (usage collector + pacing cues + ntfy, ceres) | agents repo `~/.local/agents/scripts/setup-llm-quota.sh` | agents repo `~/.local/agents/docs/llm-quota.md` |
 
 These are **hand-run**, never wired into `scripts/deploy.d/` — the fleet
 auto-deploys on every pull and two of three boxes are Macs with none of these
-stacks. Each supports `--check` / `--dry-run` first.
+stacks. Each supports `--check` / `--dry-run` first. The agents-repo rows are
+reachable because deploy chains that sibling; on a box where it hasn't landed,
+`git clone https://github.com/camerontaylor/agents.git ~/.local/agents` first.
 
 > **Interim home.** Infra is slated to move out of dotfiles into its own repo,
 > the way secrets were carved out into `camerontaylor/dotfiles-secrets`. See

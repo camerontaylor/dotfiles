@@ -14,6 +14,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 - `secrets-edit <path>` — edit a secret in the private secrets repo, then re-render this box (autoloaded function; `secrets-edit` with no args lists what is editable)
 - Deploy runs automatically on `git pull` via `scripts/post-merge` (prefers `deploy.zsh`, falls back to `deploy.bash` — each `-n`-checked before running, loud failure when neither is runnable; `timeout 300`, `DOTFILES_SKIP_POSTMERGE=1` opt-out)
 - CI: `.github/workflows/shells.yml` — macOS + Ubuntu matrix running the tree-wide dual `-n` sweep (`scripts/tests/shell-syntax-gate.sh`, the same gate `scripts/pre-commit` runs over staged files), and both drivers' `--dry-run` with `DOTFILES_SKIP_BREW=1` (no brew installs on hosted runners; macOS `/bin/bash` 3.2 is the floor leg)
+- Sibling repos: `65_secrets.zsh`, `66_infra.zsh`, `67_agents.zsh` clone/pull and deploy `~/.local/{secrets,infra,agents}` in that order — each warn-not-fail when the sibling is absent
 
 ## Where to Add Commands/Tools
 | Want to add... | Location |
@@ -29,11 +30,36 @@ XDG-compliant zsh/neovim/tmux dotfiles. All external code is git submodules (~80
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
 | cross-shell CLI wrapper (bash+zsh) | `bin/` → executable; link in `scripts/deploy.d/21_bash_symlinks.zsh` (~/.local/bin) |
 | bash function (must cd the caller) | `bash/fpath.d/` → sourced by `.bashrc` (w, fz, ineachdir) |
-| AI/LLM tool config | `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, omx, ccr-router, portkey, litellm, agent-orchestrator) |
+| AI/LLM tool config (skills, providers, gateways, routing) | **agents repo** — `~/.local/agents` → `configs/ai/<tool>/` (claude-code, codex, codewhale, opencode, ccr-router, portkey, codexbar, paseo, gjc, agent-orchestrator). Never dotfiles. Installing the CLI itself stays here: mise / `.default-npm-packages` / `70_runtime_installs.zsh` — see [Agents sibling repo](#agents-sibling-repo) |
 | Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
 | macOS App Shortcuts / Finder `defaults` / default-app associations | `scripts/macos/macos-defaults.sh` (shortcuts + Finder prefs + `duti` file-type→VS Code; change-aware, backs up to `$XDG_STATE_HOME/macos-defaults/`; applied on deploy by `77_macos_defaults.zsh`, needs `duti` from brew). Capture hand-set shortcuts with `capture-shortcuts.sh`. See [`scripts/macos/README.md`](scripts/macos/README.md) |
 | macOS Raycast script command | drop a `*.sh` in `raycast/` (version-controlled; add the dir once in Raycast settings). See [`raycast/README.md`](raycast/README.md) |
-| Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-paseo.sh`, `setup-immich.sh`. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
+| Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-immich.sh`, `setup-ceres-share.sh`. Agent-serving services (paseo, llm-quota) keep the whole triple — configs + installers + units **and runbooks** — in the **agents repo** per the owning-repo rule. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
+
+## Agents sibling repo
+
+Agent-domain config lives in its own repo — `~/.local/agents`
+([camerontaylor/agents](https://github.com/camerontaylor/agents)), carved out
+of dotfiles 2026-09-08. The line test: *"if I stopped doing AI-agent work
+tomorrow, would I still want this?"* No → agents repo. That covers the
+`configs/ai/` tree, the `cc*`/`yolo` routing wrappers (bin + zsh fpath
+twins), the LLM git workflow (`commit-conventional`,
+`generate-commit-msg`), and the paseo / llm-quota service triples — setup
+scripts, units and runbooks (`docs/paseo.md`, `docs/llm-quota.md` there).
+**Installing the CLIs themselves stays in dotfiles** — mise /
+`.default-npm-packages` / `70_runtime_installs.zsh`; the agents repo owns
+config and skills, never a second installer.
+
+- `scripts/deploy.d/67_agents.zsh` clones/pulls the sibling and runs its
+  deploy (the `66_infra.zsh` pattern; sibling order dotfiles → secrets →
+  infra → agents; warn-not-fail when absent).
+- Shell integration rides the gitignored reserved slots: the agents repo's
+  deploy drops fragments into `zsh/env.d/`, `zsh/rc.d/`, `bash/rc.d/`
+  `96–99_*`, which the normal numbered loaders pick up. Dotfiles never
+  sources `~/.local/agents` directly, and `90–95` stay human-local
+  overrides.
+- Litellm was retired (replaced by portkey) — its config is deleted, not
+  moved.
 
 ## Secrets Encryption (SOPS + Age)
 **No secret material lives in this repo.** Ciphertext is canonical, plaintext is derived: encrypted material lives in the private repo `camerontaylor/dotfiles-secrets`, cloned to `~/.local/secrets`. Rendered shell exports live *outside* every worktree at `$XDG_STATE_HOME/secrets/zsh/9*.zsh` (600), sourced by the tracked `zsh/env.d/89_secrets_loader.zsh` — which is numbered 89 so a deliberate local `90-99` override still sorts after it and wins.
@@ -87,7 +113,7 @@ crash-looped three services for a week in 2026-07.
 - Feature detection: `have tool` (the `command -v` wrapper in `scripts/deploy.d/lib/helpers.zsh` — parses AND runs in both shells, unlike `${+commands[tool]}` which is always-false under bash) with modern-first fallbacks (eza>ls, zoxide>z, bat>cat, delta>diff-so-fancy, fd>find, nvim>vim)
 - Non-critical zsh plugins deferred via `zsh-defer` (rc.d/24-27)
 - Slow inits cached via `evalcache` (20h TTL, see `zsh/fpath/evalcache`)
-- All configs symlinked to XDG locations by `deploy.zsh`; never place files directly in `~/.config/`
+- All configs symlinked to XDG locations by `deploy.zsh`; never place files directly in `~/.config/`. (Agent CLI configs are symlinked by the **agents repo's** deploy — see [Agents sibling repo](#agents-sibling-repo).)
 - Don't edit anything under `plugins/` or `tools/` — those are submodules
 
 ## Structure
@@ -112,10 +138,10 @@ crash-looped three services for a week in 2026-07.
 │   └── fpath/          # Autoloaded functions (evalcache, secrets-edit, etc.; each needs a line in rc.d/04_autoload.zsh)
 ├── bash/               # Opt-in bash twin (zsh stays default; 21_bash_symlinks)
 │   ├── env.sh          # Shared env entrypoint: sources zsh/env.d/* + exports BASH_ENV
-│   ├── rc.d/           # Interactive bash only (history/setopt/gnubin/completion/paseo)
+│   ├── rc.d/           # Interactive bash only (history/setopt/gnubin/completion)
 │   ├── fpath.d/        # Sourced functions that cd the caller (w, fz, ineachdir)
 │   └── inputrc         # readline config ($INPUTRC, zero home presence)
-├── bin/                # Cross-shell CLI wrappers (cc, psg, lspath, …) → ~/.local/bin
+├── bin/                # Cross-shell CLI wrappers (psg, lspath, bag, …) → ~/.local/bin (agent cc*/yolo wrappers live in the agents repo)
 ├── nvim/               # Lua config (0.11.0+): mini.nvim, mason, blink.cmp
 ├── tmux/               # Solarized, vim-aware pane nav
 ├── yazi/               # Yazi file manager config + plugins

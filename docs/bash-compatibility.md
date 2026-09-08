@@ -59,6 +59,15 @@ Deliberate deviations from the sequencing below:
   (`496e2b4b`).
 - Line numbers below are research-time (2026-08-31 tree) and have drifted;
   read them as findings, not live references.
+- Paths below are likewise historical: the 2026-09-08 agents carve-out moved
+  several cited files to the sibling agents repo (`~/.local/agents`,
+  [camerontaylor/agents](https://github.com/camerontaylor/agents)) —
+  `scripts/generate-commit-msg`, `scripts/commit-conventional`,
+  `scripts/rewrite-commits-conventional`, `scripts/agent-aliases.zsh`,
+  `zsh/env.d/09_claude_code_aliases.zsh`, the `cc*`/`yolo` bin + fpath
+  wrappers, and everything under `configs/ai/`. A dotfiles-relative citation
+  of one of those now resolves under `~/.local/agents/`; the findings
+  themselves stand.
 
 Findings the implementation disproved or sharpened:
 

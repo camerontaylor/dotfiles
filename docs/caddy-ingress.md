@@ -38,8 +38,8 @@ Two of these proxy to a loopback backend and treat `Host` differently, deliberat
 | `telemetry.webfront.app` | `configs/caddy/Caddyfile:38-47` | `localhost:3000` — langfuse-web container | `~/repos/telemetry` | `200` |
 | `mcp.ceres.webfront.app` | `configs/caddy/Caddyfile:49-68` | `localhost:3111` — openclaw-mcp bridge (default `handle`) and `localhost:3112` — hart wiki MCP (`@wiki` matcher) | `~/repos/hart` | `/mcp` -> `401` (OAuth, expected); `/wiki` -> `405` |
 | `immich.wedrifid.dev` | `configs/caddy/Caddyfile:77-88` | `100.82.17.115:2283` — immich container | `~/repos/deploy/immich` | `200` from the tailnet; connection refused elsewhere |
-| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-113` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service` | [`docs/llm-quota.md`](llm-quota.md) | `/health` -> `{"version":...,"status":"ok"}` |
-| `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:119-134` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | [`docs/llm-quota.md`](llm-quota.md) | `/v1/health` -> `{"healthy":true}` |
+| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:95-113` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service` | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/health` -> `{"version":...,"status":"ok"}` |
+| `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:119-134` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/v1/health` -> `{"healthy":true}` |
 
 Two ordering facts hold this together and are the reason the file is **not**
 split across repos:

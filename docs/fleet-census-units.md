@@ -92,6 +92,15 @@ No installer script for most units; the "house convention is symlinks" and the `
 
 ## 4. deploy — `/home/ctaylor/repos/deploy`
 
+> **Update 2026-09-08 (post-snapshot):** the **webfront app is retired**
+> (owner ruling — `docs/fleet-consolidation.md`, "Owner decisions"). Its
+> container/postgres cleanup on ceres is pending live-ops; the `*.webfront.app`
+> rows below are historical evidence of the pre-retirement state, preserved
+> as cited. The `*.webfront.app` **DNS zone itself remains live** — it still
+> names fleet hosts (paseo daemons per `zsh/rc.d/12_paseo.zsh`, the Portkey
+> gateway at `ceres.webfront.app` per `zsh/rc.d/11_portkey.zsh`) and is
+> unaffected by the app's retirement.
+
 No systemd/launchd/caddy artifacts at all — compose only. **The root is not a git repo; only `rss/` has a `.git`** (cf. `dotfiles/scripts/setup-immich.sh:6-9`). All compose files run **in place** — nothing is copied or symlinked out of this repo.
 
 | Path | Service | Deploy mechanism (file:line) | Notes |

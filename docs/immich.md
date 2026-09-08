@@ -136,9 +136,9 @@ Candidates to move when that happens, i.e. everything in this repo that is
 
 - `configs/immich/` + `scripts/setup-immich.sh` (this document)
 - `configs/caddy/` + `scripts/setup-caddy.sh` + `docs/caddy-ingress.md`
-- `scripts/setup-paseo.sh`, `scripts/paseo-watchdog`, `docs/paseo.md`
+- Paseo moved to the agents sibling on 2026-09-08: `~/.local/agents/scripts/setup-paseo.sh`, `scripts/paseo-watchdog`, and `docs/paseo.md` there.
 - `scripts/setup-t3.sh`, `scripts/setup-ceres-share.sh`, `scripts/setup-office-lan.sh`
-- `configs/samba/`, `configs/portless/`, `configs/openclaw-mcp/`
+- `configs/samba/`, `configs/portless/` (openclaw-mcp moved to the agents sibling)
 
 Also unversioned and in scope for that repo when it exists: `~/repos/deploy/rss`
 (a git repo with **no remote** — Miniflux + RSSHub + rss-bridge + the digest

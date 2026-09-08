@@ -87,7 +87,7 @@ Cross-check: `docs/cli-tools.md:9-20` defines the same source taxonomy (mise / b
 
 | Tool | Mechanism A | Mechanism B | Status |
 |---|---|---|---|
-| `portless` | npm global — `.default-npm-packages:15` | mise `"npm:portless"` — `configs/mise.toml:60` | **Deliberate**: the webfront runner needs it via `mise exec` in a non-interactive env; explicit do-not-uninstall note at `70_runtime_installs.zsh:33-35` and `mise.toml:55-59` |
+| `portless` | npm global — `.default-npm-packages:15` | mise `"npm:portless"` — `configs/mise.toml:60` | **Deliberate** (at census time): the webfront runner needed it via `mise exec` in a non-interactive env; explicit do-not-uninstall note at `70_runtime_installs.zsh:33-35` and `mise.toml:55-59`. **Update 2026-09-08:** webfront retired (owner ruling, `docs/fleet-consolidation.md`); portless stays dual-installed as generic dev tooling, do-not-uninstall unchanged |
 | `fd` | mise (version-templated) — `mise.toml:52` | brew `fd` on Darwin — `75_brew_setup.zsh:315` | Both land on Macs; mise shims precede `~/.local/bin`, brew lives in `/opt(homebrew)/bin`. Documented as "mise / brew" in `docs/cli-tools.md:32` |
 | `delta` | mise aqua — `mise.toml:49` | brew `git-delta` on Darwin — `75:317` | Same shape as fd (`docs/cli-tools.md:59`) |
 | `age` | mise github backend — `mise.toml:73` | brew `age` on Darwin — `75:319` | Same shape (`docs/cli-tools.md:75`) |

@@ -27,12 +27,13 @@ npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would install npm globals through mise node's npm"
 elif have mise; then
-    # Drop mise installs that other installers own now. NOTE: node/npm and the
+    # Drop mise installs that other installers own now. NOTE: node/npm, the
     # npm: backend tools that systemd units resolve through mise (npm:t3 for
-    # t3-serve.service, npm:portless for the webfront runner + the pin in
-    # mise.toml) must NEVER be listed here — a previous version of this list
-    # uninstalled node itself on every deploy, which severed every unit that
-    # execs through mise and crash-looped them for a week (2026-07).
+    # t3-serve.service), and npm:portless (retained in mise.toml as generic
+    # dev tooling — its webfront-runner consumer was retired 2026-09-08) must
+    # NEVER be listed here — a previous version of this list uninstalled node
+    # itself on every deploy, which severed every unit that execs through mise
+    # and crash-looped them for a week (2026-07).
     obsolete_mise_tools=(
         # Old npm: backend installs replaced by the npm globals below.
         npm:happy
@@ -124,7 +125,7 @@ fi
 # `engines: { bun: ">=1.4.0" }` and bin/gjc.js runs under `#!/usr/bin/env bun`
 # — so it CANNOT ride the npm globals sweep above; installing it with npm
 # yields a binary that won't start. Tracked at @latest: the CLI moves fast and
-# the config we ship for it (configs/ai/gjc/, linked in 20_symlinks.zsh)
+# its config in the agents sibling (configs/ai/gjc/, linked by that deploy)
 # follows the current schema.
 #
 # bun's global bin dir ($XDG_CACHE_HOME/.bun/bin when BUN_INSTALL is unset) is
