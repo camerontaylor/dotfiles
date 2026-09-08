@@ -130,7 +130,7 @@ reason = "per-arch split inside install-wtp.zsh: upstream ships no darwin-x64 bi
 # ── service artifacts ───────────────────────────────────────────────────────
 
 [service_artifact."agents.slice"]
-reason = "generated per-host (RAM-dependent MemoryMax umbrella, bin/install-agents-slice.sh, run-once); no infra manifest carries it yet — follow-up m2-manifest-census branch adds it"
+reason = "generated per-host (RAM-dependent MemoryMax umbrella, bin/install-agents-slice.sh, run-once). Probed 2026-09-08: absent on every reachable host (ceres/makemake/saturn/neptune) — the generator has never been run, so no manifest entry is warranted until one does"
 
 [service_artifact."atop.service"]
 reason = "package-shipped unit (42_monitoring.zsh): the repo enables whichever atop units the distro package provided; it never writes the unit file itself. atopacct.service / atop-rotate.timer same"
