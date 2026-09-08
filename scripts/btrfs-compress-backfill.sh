@@ -14,8 +14,12 @@
 #   - Defrag with -c on a NOCOW file silently compresses a file somebody
 #     deliberately marked nodatacow. Those are skipped, which also covers an
 #     active swapfile (btrfs swapfiles are always NOCOW).
-#   - Defrag BREAKS REF-LINKS (snapshots, `cp --reflink`), so space usage can
-#     jump. --min-free aborts before filling the disk.
+#   - Defrag BREAKS REF-LINKS (snapshots, `cp --reflink`): every extent shared
+#     between the live tree and a snapshot gets a private copy, so space usage
+#     can EXPLODE. On a snapshotted box this is the difference between
+#     reclaiming space and filling the disk — makemake had zero snapshots and
+#     went 205G -> 137G, whereas ceres carries 52 snapper snapshots and would
+#     behave nothing like that. Hence the snapshot guard below, plus --min-free.
 #
 # Long-running (hours for a few hundred GB). Meant to be launched detached:
 #   sudo systemd-run --unit=btrfs-backfill --nice=19 \
@@ -29,7 +33,7 @@
 #
 # Usage: btrfs-compress-backfill.sh [--target PATH] [--exclude PATH]...
 #                                   [--algo zstd|lzo|zlib] [--min-free GB]
-#                                   [--batch N] [--dry-run]
+#                                   [--batch N] [--allow-snapshots] [--dry-run]
 
 set -eu
 
@@ -38,6 +42,7 @@ ALGO=zstd
 MIN_FREE_GB=40
 BATCH=500
 DRY_RUN=0
+ALLOW_SNAPSHOTS=0
 
 exclude_file=$(mktemp)
 list_raw=$(mktemp)
@@ -56,6 +61,7 @@ while [ $# -gt 0 ]; do
         --algo)     shift; ALGO=${1:?--algo needs a name} ;;
         --min-free) shift; MIN_FREE_GB=${1:?--min-free needs a number} ;;
         --batch)    shift; BATCH=${1:?--batch needs a number} ;;
+        --allow-snapshots) ALLOW_SNAPSHOTS=1 ;;
         --dry-run)  DRY_RUN=1 ;;
         -h|--help)  sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *)          echo "btrfs-compress-backfill: unknown argument '$1'" >&2; exit 1 ;;
@@ -69,6 +75,18 @@ if [ "$(uname -s)" != Linux ]; then
 fi
 if [ "$(findmnt -no FSTYPE --target "$TARGET")" != btrfs ]; then
     echo "btrfs-compress-backfill: $TARGET is not on a btrfs filesystem" >&2
+    exit 1
+fi
+
+# Snapshots turn this from a space-saver into a space-bomb: defrag gives every
+# shared extent a private copy. Refuse rather than surprise someone at 3am.
+snapshots=$(btrfs subvolume list -s "$TARGET" 2>/dev/null | wc -l | tr -d ' ')
+if [ "${snapshots:-0}" -gt 0 ] && [ "$ALLOW_SNAPSHOTS" -eq 0 ]; then
+    echo "btrfs-compress-backfill: $TARGET has $snapshots snapshot(s)." >&2
+    echo "  Defrag unshares every extent they hold in common with the live tree," >&2
+    echo "  so usage can grow by far more than compression saves. Delete or thin" >&2
+    echo "  the snapshots first, or pass --allow-snapshots if you have measured" >&2
+    echo "  the headroom and accept it." >&2
     exit 1
 fi
 

@@ -269,20 +269,29 @@ gotchas there — see the global memory protocol for cadence.
   only, CachyOS default) and pluto (file only). Re-running is a no-op — but note
   `comp_algorithm` is read-only once a zram device has a `disksize`, so the
   script swapoffs and resets zram0 rather than `systemctl restart`-ing it.
-  makemake's btrfs root also gained `compress=zstd:1` at the same time (it had
-  no compression at all; `zstd:1` not `:3` because it is a 15 W N97 fronting a
-  SATA SSD). The swapfile is NOCOW, and btrfs never compresses NOCOW extents, so
-  filesystem compression can never touch it. Only new writes are compressed;
-  backfilling the existing data is
-  [`scripts/btrfs-compress-backfill.sh`](scripts/btrfs-compress-backfill.sh)
-  (run detached under `systemd-run`, hours). Do NOT reach for a bare
-  `btrfs filesystem defragment -r /`: it descends into other mounted
-  filesystems (makemake's 1.1T externals), rewrites already-compressed media
-  for no gain, compresses files deliberately marked NOCOW (systemd journals
-  set `+C`), and breaks ref-links — the script prunes and guards for all four.
-  ceres, for contrast, has always had a compressed root; note its fstab was
-  changed to `zstd:3` on 2026-09-06 but the live mount is still `zstd:1` from
-  before that edit, so a reboot will change its compression level.
+  makemake's btrfs root also gained `compress=zstd:3` at the same time — it had
+  no compression at all, which is the same installer blind spot as the missing
+  swap. The swapfile is NOCOW and btrfs never compresses NOCOW extents, so
+  filesystem compression can never touch it.
+- btrfs compression is fleet-wide `zstd:3` (= plain `compress=zstd`, the btrfs
+  default level). The level is a per-FILESYSTEM property, not per-mount: one
+  `mount -o remount,compress=zstd:3 /` flips every subvolume of that fs at once.
+  `zstd:1` was tried on makemake first and abandoned as needlessly conservative
+  — the 203 GB backfill spent only 11m53s of CPU across 54 min wall, i.e. it was
+  I/O-bound, never compression-bound, even on a 15 W N97.
+- A `compress=` mount option only affects NEW writes. Backfilling what is
+  already on disk is
+  [`scripts/btrfs-compress-backfill.sh`](scripts/btrfs-compress-backfill.sh),
+  run detached under `systemd-run` (makemake 2026-09-09: 3.67M files, 54 min,
+  205G -> 137G). Do NOT reach for a bare `btrfs filesystem defragment -r /` —
+  it descends into other mounted filesystems (makemake's 1.1T externals),
+  rewrites already-compressed media for no gain, compresses files deliberately
+  marked NOCOW (systemd journals set `+C`), and breaks ref-links. The script
+  prunes and guards for all four. **The ref-link one is not theoretical:** defrag
+  gives every extent shared with a snapshot a private copy, so on ceres (52
+  snapper snapshots) it could add far more than compression saves. The script
+  refuses outright when the target has snapshots; makemake was safe only because
+  it has no subvolumes at all.
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
