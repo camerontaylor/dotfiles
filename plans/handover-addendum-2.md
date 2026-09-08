@@ -1,0 +1,179 @@
+# Handover addendum 2 — M5 verification, M6 prep, open gates
+
+2026-09-09. Covers the implementation pass over
+[`handover-fleet-m6-and-followups.md`](handover-fleet-m6-and-followups.md):
+every quick-check re-verified, the M5 settle gate assessed, M6 prep built and
+validated on a branch, and the open items sharpened into owner decisions.
+Corrections to the handover's own facts are listed — several were stale the
+day it was written.
+
+## 1. Handover quick-checks — all PASS (re-verified first-hand)
+
+| Check | Result |
+|---|---|
+| ceres dotfiles ≥ fb6ee1cd | now `a62caa1a` (pushed; see §3 swap correction) |
+| codewhale containers | 0 |
+| `cc` | `/usr/bin/cc` (no toolchain links in `~/.local/bin`) |
+| makemake at floor `62497fc2` | yes; ~5 behind after the Sep 9 pushes — nightly pull self-heals |
+| miniflux / immich on makemake | both HTTP 200 |
+| caddy (makemake) | active since Sep 8 15:23:15, no restarts |
+| M5 settle gate | **GREEN** — see §2 |
+| single-brain | ceres runs zero rss/miniflux/immich containers (re-verified via docker); rollback copies + `MOVED.md` intact |
+
+## 2. M5 settle gate: GREEN
+
+- Sep 9 03:20 restic run succeeded **both tiers**: saturn `aff676c3`
+  (parent `bc7ae59a`), B2 `621ec0e4` (parent `ec10bea3`) — clean
+  incrementals, `hart-immich-backup.service` Finished (journalctl-verified).
+- immich ML: 0 restarts since cutover.
+- Consequence: the "after it settles" cleanup gate on ceres's rollback
+  copies is now **unblocked but still owner-gated** — no deletion has
+  happened; the hard rule stands until the owner clears it.
+
+## 3. Corrections to the handover
+
+- **makemake swap was NOT "fully reverted".** A concurrent session applied
+  the full two-tier setup on 2026-09-09 morning: 8G zram (pri 100) + 8G
+  swapfile (pri 10, NOCOW via `btrfs filesystem mkswapfile`), root
+  `compress=zstd:1` + a one-off `scripts/btrfs-compress-backfill.sh` run.
+  The docs/scripts were left **uncommitted**, which had been blocking
+  ceres's midnight pulls Sep 6–8 ("cannot pull with rebase: unstaged
+  changes"). Now committed and pushed: `734a0b0a` (zram reload fix),
+  `a62caa1a` (swap+zstd docs + backfill script).
+- **The portkey 500s were already fixed Sep 8** (inline `x-portkey-config`;
+  the local-mode fork ignores the old header passthrough). The handover
+  item was closed before it was written. The LIVE defect is different and
+  still open — §5.
+- **pluto `stash@{0}` verified discardable** (the handover's verify-then-drop
+  precondition): all three edits are canonical-in-agents-main or stale
+  machine-local state. Nothing to port.
+- **makemake transcode blockers run deeper than "render group + ffmpeg":**
+  ffmpeg IS inside immich_server; the real gap is the CONTAINER — no
+  `/dev/dri` passthrough, no `group_add`. Enabling = compose edit
+  (`devices: [/dev/dri/renderD128]`, `group_add: [render]`) + recreate, then
+  `vainfo` to verify AV1 decode.
+- **immich health checks must not use 127.0.0.1** — immich_server binds
+  2283 only on 10.77.0.97 + the tailscale IP (loopback refuses). The
+  services.toml health line targets loopback and needs a bound address.
+
+## 4. M6 prep — built, validated, on a branch
+
+`infra` branch **`m6-pluto-nixos` @ `dcbd34e`** (pushed; ceres's infra
+checkout is back on main). 14 files:
+
+- `nixos/flake.nix` + `flake.lock` — one `nixosConfigurations.pluto`,
+  nixpkgs `nixos-25.05` pinned to `ac62194c`. The caddy plugin hash is
+  computed against exactly this revision (lock-sensitive).
+- `nixos/modules/base.nix` — cattle baseline (ssh keys-only, tailscale
+  trusted, docker, zramSwap zstd pri-100, journald caps, gc). Two 25.05
+  fixes were forced: `zramGenerator`→`zramSwap`, `environment.noXlibs`
+  removed upstream.
+- `nixos/modules/seaweedfs.nix` — compose file rendered into the store +
+  oneshot `docker compose up -d` unit (25.05 has no compose module;
+  oci-containers would drop the labels the manifest ids derive from).
+  Real bind dirs on @srv replace the 120G ext4 loop image. Image pinned
+  `4.21`. **s3 gateway dropped** (crashed Jun 10; was the stack's only
+  credential surface). No secrets anywhere in the module.
+- `nixos/modules/t3-serve.nix` — live unit verbatim; t3 binary stays
+  mise's. `ConditionPathExists` on the mise binary so first boot skips
+  rather than crashloops.
+- `nixos/hosts/pluto.nix` — one btrfs label across both SSDs (G2 mirror
+  alternative = identical config), systemd-boot + ESP on sda1 (spinner
+  stays the bootable rollback), iwd+networkd (`anyInterface`; PSK stays in
+  `/var/lib/iwd`, never in-repo), caddy wildcard via `withPlugins`
+  cloudflare (`/etc/caddy/env` path only — no token value), portless-proxy,
+  flake-rendered pull-dotfiles user timer (linger), commented GH-runner
+  revive block.
+- `manifests/pluto.toml` — DRAFT ledger, 20 artifacts, every disposition
+  agent-proposed pending owner review (H1). `pluto` added to converge's
+  HOSTS (additive; test fixture moved to `vesta`).
+- `docs/m6-pluto-reinstall.md` — the runbook: backup (docker-export tar
+  pipes + sha256 manifest → makemake, no sudo anywhere), USB media,
+  partitioning with both G2 variants, wifi PSK carry-over, bootstrap order
+  (dotfiles → mise → secrets → seaweed restore → caddy env → services),
+  unattended-reboot cattle test, spinner→bulk post-verification, not-carried
+  list, verification checklist, plugin-hash re-pin procedure.
+- `services.toml` — `[services.seaweedfs]` + `[services.t3-serve]` rows
+  only.
+
+Validations (re-run independently by the reviewing session, not just the
+authoring agent): `converge validate` OK for all 6 manifests (pluto: 20
+artifacts); `pytest` 103 passed; docker-nix flake eval returns
+`/nix/store/0cbm6fih…-nixos-system-pluto-25.05…ac62194.drv`; caddy
+2.10.0 + cloudflare@v0.2.1 **built for real** with the plugin install-check
+passing; rendered unit text inspected (store-pathed compose, RequiresMountsFor,
+tolerated pull).
+
+**Nothing has touched pluto.** The reinstall itself is G1.
+
+### Owner gates (runbook index)
+
+| Gate | Decision |
+|---|---|
+| G1 | the reinstall (physical; wipes both SSDs) |
+| G2 | disk layout: default ~238G (data RAID0) vs mirror ~119G — same Nix config, only mkfs changes |
+| G3 | GH runner revive vs remove (18G; both paths written) |
+| G4 | pull-dotfiles ownership: flake-rendered on NixOS vs dotfiles-owned elsewhere |
+| G5 | spinner wipe (destroys the rollback; post-soak only) |
+| G6 | confirm nothing consumes the SeaweedFS S3 API before accepting s3's retirement |
+
+Open questions the probe could not answer (runbook appendix): how
+Cloudflare reaches `*.pluto.webfront.app` inbound (tunnel? port-forward?);
+what (if anything) still writes the `langfuse-events` /
+`agent-telemetry-blobs` collections; flake authorized_keys were mirrored
+from ceres — diff against pluto's live file before install; pluto's agents
+checkout was behind (verify no pluto-only commits pre-wipe); `~/repos/webfront`
+is dirty (staged skills/.gitignore).
+
+## 5. Open items for the owner (decision-ready)
+
+1. **Stray `immich_ml` container (makemake)** — non-compose leftover from
+   Aug 23; restart=unless-stopped; publishes **unauthenticated
+   0.0.0.0:3003** (LAN + bridge peers); holds its own
+   `immich-model-cache` volume (hyphen — distinct from the live
+   `immich_model-cache` underscore), so `docker rm -f immich_ml` + volume
+   cleanup cannot touch the live ML cache. unreferenced by immich_server
+   (no override; uses compose-internal ML). Deletion needs owner clearance.
+2. **makemake transcode enablement** — compose edit per §3, then vainfo;
+   AV1 decode still unverified. Best transcode target in the fleet (only
+   box with AV1 decode + HuC authenticated).
+3. **portkey** — three separable calls: (a) gateway restart (running
+   process holds pre-rewrite provider keys since Sep 8 21:43; restart =
+   brief fleet-wide LLM interruption via the cc* aliases); (b) one paid
+   debug call for the **0-picks-since-Aug-28** defect (raw reply dump;
+   suspect glm-5.3-flash reasoning consuming the 1500 max_tokens; fix
+   likely reasoning suppression and/or higher max_tokens); (c) removal of
+   ceres's vestigial digest deployment (drift trap — stale digest.py
+   pointing MINIFLUX_URL at ceres, unit not loaded).
+4. **supervised immich-prune run** before the first unattended fire
+   (2026-10-01 05:02 AEST) — hart-immich-prune has zero journal entries,
+   never run.
+5. **convergence fixes** (all mutating; left per the infra never-enables
+   rule): `systemctl --user enable --now converge-check.timer` on makemake
+   AND pluto (both linked+enabled but never STARTED — pluto has never
+   reported); `launchctl bootstrap gui/$(id -u) …` for neptune's
+   com.ctaylor.converge-check; saturn's unmanifested maxfiles LaunchDaemon
+   needs a manifest row or waiver; ceres's checker flags docker.service
+   MISSING against live state (false-positive or stale manifest row —
+   unresolved).
+6. **makemake `origin` remote is the upstream fork (z0rc/dotfiles)** —
+   the fleet remote is named `ctaylor`. Rename to stop anything keying on
+   `origin/main` from reading the wrong repo.
+7. **ceres rollback-copy cleanup** — gate now unblocked (settle green,
+   §2) but explicitly owner-cleared deletion only.
+8. **quaoar** — offline 32 days; check tree + drift on return.
+9. **secrets key rotation** — still pending from the older migration;
+   tailscale first (leaked), then the rest.
+10. **M6 gates** — §4 table.
+
+## 6. Hygiene notes
+
+- The engram CLI is not on PATH on ceres — session memory went to the
+  file-based store under the project memory dir instead. Worth wiring
+  (mise) if engram journaling from ceres sessions is wanted.
+- neptune's Sep 9 00:00 deploy died mid-50_mise (missing exactly
+  fb6ee1cd); the fix is pushed, tonight's (Sep 10) pull should self-heal —
+  verify tomorrow.
+- Wave-1 was a 5-agent read-only sweep (no mutations, secrets REDACTED,
+  no paid LLM calls); dispatched-agent claims were independently
+  re-verified over ssh/local before being recorded here.
