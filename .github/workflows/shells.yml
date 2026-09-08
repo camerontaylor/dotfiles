@@ -52,6 +52,15 @@ jobs:
       - name: Agents sibling failure semantics
         run: python3 scripts/tests/test-agents-chain.py
 
+      # Ownership gate (fleet-consolidation M2): duplicate install mechanisms
+      # and undeclared service artifacts fail the build. CI checks out only
+      # this repo, so the cross-repo manifest attestation runs in its
+      # skip-with-notice mode here; run from a fleet box (or INFRA_DIR) for
+      # the full cross-repo check. That split is by design — see the gate's
+      # docstring.
+      - name: Ownership gate (repo-only mode)
+        run: python3 scripts/tests/ownership-gate.py
+
       # (b) pre-commit gate logic — run the hook's exact --staged path over
       # the whole bootstrap layer. A fresh checkout has nothing staged, and
       # `git add -A` alone stages nothing (index == HEAD), which would pass
