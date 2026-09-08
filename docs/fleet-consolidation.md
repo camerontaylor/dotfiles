@@ -176,14 +176,14 @@ conversation, not an eighteenth installer.
 Each independently shippable, reversible, with a kill criterion. Effort in
 agent-sessions (relative measure).
 
-| # | Move | Fixes | Effort | Kill criterion |
-|---|---|---|---|---|
-| M1 | Adopt the placement tree above into CLAUDE.md/docs | P1 (policy), agent confusion | done-when-merged | — |
-| M2 | Unit/service census → manifest entries, **plus CI that rejects duplicate ownership and undeclared service artifacts** (codex: the single highest-leverage move — it attacks the recurring conflict class and produces the migration backlog) | P2, P4 | 1–2 | census shows <5 strays: skip formalizing |
-| M3 | Kill submodules — 48 left, all editor/shell plugins (lockfile + fetch, or lazy.nvim-style lockfiles per editor) | P5 | 2–3 | plugin breakage worse than submodule pain |
-| M4 | Finish installer consolidation (cargo is down to 3: `linear-cli`, `codewhale-cli/-tui`; 6 curl installs; → mise backends where they exist) | P2 | 1–2 | a tool has no working mise backend: document exception |
-| M5 | `services.toml` + declared state dirs + **one rehearsed move** (a real service, ceres → makemake, and back) | P6 | 2–4 | the rehearsal shows placement isn't the bottleneck |
-| M6 | NixOS on one cattle box (pluto or next fresh install), services via the same declarations | P6 endgame | 3–5 | M5 shows native mobility is already fine |
+| # | Move | Fixes | Effort | Kill criterion | Status |
+|---|---|---|---|---|---|
+| M1 | Adopt the placement tree above into CLAUDE.md/docs | P1 (policy), agent confusion | done-when-merged | — | **done 2026-09-08** (`95dd4fd3`, cutover report `a932e6f3`) |
+| M2 | Unit/service census → manifest entries, **plus CI that rejects duplicate ownership and undeclared service artifacts** (codex: the single highest-leverage move — it attacks the recurring conflict class and produces the migration backlog) | P2, P4 | 1–2 | census shows <5 strays: skip formalizing | **done 2026-09-08** — kill criterion settled the other way (see below); manifests + ownership gate (`scripts/tests/ownership-gate.py`, wired into shells.yml) merged via `fleet-m234` |
+| M3 | Kill submodules — 48 left, all editor/shell plugins (lockfile + fetch, or lazy.nvim-style lockfiles per editor) | P5 | 2–3 | plugin breakage worse than submodule pain | **done 2026-09-08** — no plugin manager (all three rejected: time-0 runtimepath, no pinning, manager-owns-sourcing); `plugins.lock` + `scripts/deploy.d/30_plugins.zsh`, pins byte-identical to the old gitlinks |
+| M4 | Finish installer consolidation (cargo is down to 3: `linear-cli`, `codewhale-cli/-tui`; 6 curl installs; → mise backends where they exist) | P2 | 1–2 | a tool has no working mise backend: document exception | **done 2026-09-08** — cargo array gone; mise backends (aqua/cargo/ubi) + drift-correctors in `70_runtime_installs.zsh` |
+| M5 | `services.toml` + declared state dirs + **one rehearsed move** (a real service, ceres → makemake, and back) | P6 | 2–4 | the rehearsal shows placement isn't the bottleneck | **done 2026-09-08** — two moves, not one: rss (rollback exercised) and immich (22s downtime); `services.toml` on infra main |
+| M6 | NixOS on one cattle box (pluto or next fresh install), services via the same declarations | P6 endgame | 3–5 | M5 shows native mobility is already fine | pending — owner-gated (reinstall-sized); M5's evidence: native mobility worked, cost was runbook discipline not tooling |
 
 M5 is the keystone: it converts the vague mobility want into evidence about
 what mobility actually requires, before any Nix commitment. M6 only happens if
