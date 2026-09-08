@@ -93,7 +93,7 @@ while (( $# > 0 )); do
 done
 
 # Absolute, symlink-resolved dir of this script — zsh's ${0:A:h} has no bash
-# spelling; this is the canonical walk from scripts/generate-commit-msg.
+# spelling; this is the canonical walk from deploy.bash.
 _self=${BASH_SOURCE[0]}
 while [[ -L $_self ]]; do
     _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
