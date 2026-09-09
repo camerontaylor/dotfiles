@@ -177,3 +177,20 @@ is dirty (staged skills/.gitignore).
 - Wave-1 was a 5-agent read-only sweep (no mutations, secrets REDACTED,
   no paid LLM calls); dispatched-agent claims were independently
   re-verified over ssh/local before being recorded here.
+
+## 7. Same-day resolution (2026-09-09, later)
+
+The owner cleared items 1, 3, and 5 of §5 (plus the immich_ml removal and
+the transcode enable) the same morning. Executed + verified:
+
+| §5 item | Resolution | Verification |
+|---|---|---|
+| immich_ml (makemake) | container + orphan `immich-model-cache` (hyphen) volume removed | live stack intact — 4 containers, ML restarts=0, underscore `immich_model-cache` volume untouched, port 3003 exposure closed |
+| makemake transcode | `hwaccel.transcoding.yml` (upstream vaapi leg) + `extends: service: vaapi` on immich-server; `.bak-20260909` kept | container recreated, renderD128 visible in-container, full-path `h264_vaapi` lavfi encode exit 0, `/api/server/ping` 200. Caveat: immich admin UI transcoding toggle still selects usage |
+| portkey (a) | gateway restarted | old PID held keys from Sep 8 20:09 (pre-rewrite) → new PID Sep 9 10:29; 401-on-bare-curl = up |
+| portkey (b) | paid debug call run (the one authorized) | **0-picks root-caused**: glm-5.3-flash via z.ai anthropic-compat ALWAYS emits reasoning; reasoning counts against `max_tokens` but its text is NOT returned (thinking block len=0). At `--limit 60` the invisible reasoning alone exceeds 1500 → stop_reason=max_tokens with no text block → `extract_json("")` → `{}` → 0 picks, HTTP-successful. Journal Sep 9 06:37 confirms all three streams "60 unread -> 0 picked", latencies 33/29/37 s (pre-Aug-26 runs were 5-6 s — z.ai flipped thinking on ~Aug 26, matching when digest broke). Fix DRAFTED, not applied (live file, awaiting owner word): in `call_glm`'s payload, `"max_tokens": 4096` + `"thinking": {"type": "disabled"}`; re-probe once when applying to confirm the param is honored |
+| portkey (c) | ceres vestigial digest deployment removed (user units + `~/repos/deploy/rss/digest/`) | makemake's live copy verified separate first (its MINIFLUX_URL points at makemake). Found en route: ceres `~/repos/deploy/rss` IS a git repo now (.git since Sep 8), and `~/repos/deploy` also hosts hart-immich-backup/prune + appreciation-backup ExecStarts — their live/loaded state unchecked, flagged as follow-up |
+| convergence | converge-check.timer `enable --now` on makemake AND pluto (both fired immediately — overdue OnBootSec; pluto's first-ever report); neptune plist bootstrapped; makemake remotes renamed (origin=camerontaylor/dotfiles, upstream=z0rc, main tracks origin/main) | timer status + immediate reports observed |
+
+M6 itself untouched on pluto: branch `m6-pluto-nixos` @ `dcbd34e` pushed,
+ceres infra checkout back on main, G1–G6 gates (§4) all still closed.
