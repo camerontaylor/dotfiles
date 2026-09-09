@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template plist rendered by scripts/deploy.d/76_smb_mounts.zsh into
+  ~/Library/LaunchAgents/com.github.ctaylor.smb-mount.plist with @HOME@ and
+  @SCRIPT@ substituted for the live machine. The rendered copy is the active
+  LaunchAgent; this repo copy is the canonical source. Same shape and label
+  namespace as configs/wake-peers/.
+
+  A LaunchAgent (not a daemon) on purpose: an SMB mount belongs to a login
+  session, mount_smbfs reads the password from the LOGIN Keychain (unlocked
+  only once the user is logged in), and mounting under $HOME needs no root.
+
+  RunAtLoad + StartInterval rather than KeepAlive: scripts/smb-mount is a
+  short one-shot, not a resident process. The 300s re-run is what makes it
+  self-heal — it re-mounts after a network change, a wifi/wired switch, or a
+  ceres reboot without anyone touching it. An already-mounted share costs one
+  `mount | grep`, so the idle cost is nil.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.github.ctaylor.smb-mount</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@SCRIPT@</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <!-- Kept, unlike wake-peers' /dev/null: a missing Keychain entry is the
+       one failure mode this agent has, and it is invisible without a log. -->
+  <key>StandardOutPath</key>
+  <string>@HOME@/Library/Logs/smb-mount.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@HOME@/Library/Logs/smb-mount.log</string>
+</dict>
+</plist>

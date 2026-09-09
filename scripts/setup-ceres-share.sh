@@ -12,8 +12,21 @@
 # One manual step after first run: `sudo smbpasswd -a ctaylor` — Samba keeps
 # its own password database, nothing to do with the unix password.
 #
-# Clients: smb://ceres/downloads (Finder Cmd-K / ForkLift) or
-#   mount -t cifs //10.77.0.74/downloads (Linux, cifs-utils).
+# Serves two shares (see configs/samba/smb.conf):
+#   [downloads]  /srv/downloads   — the shared drop tree (quaoar Syncthing peer)
+#   [home]       /home/ctaylor    — the workstation share for saturn/neptune,
+#                                   with .ssh/.gnupg/.aws and the bulk trees
+#                                   (immich, caches, node_modules) vetoed
+#
+# Clients: the Macs auto-mount [home] at login via scripts/smb-mount +
+#   the com.github.ctaylor.smb-mount LaunchAgent (deployed by
+#   scripts/deploy.d/76_smb_mounts.zsh; needs a one-time Keychain entry per
+#   Mac — see that script's header). By hand: smb://10.77.0.74/home in Finder
+#   (Cmd-K) or ForkLift, or mount -t cifs //10.77.0.74/downloads on Linux.
+#
+# NOTE: smbd binds eno2/wlan0 only, NOT tailscale0 — these shares are LAN-only
+# by design, and bare `ceres` resolves to the Tailscale IP via MagicDNS on the
+# Macs. Always address the shares by IP (wired 10.77.0.74 first).
 
 set -eu
 

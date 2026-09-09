@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# smb-mount — mount (or unmount) ceres's Samba shares on a Mac workstation.
+#
+# Driven by configs/smb-mounts/mounts.conf; run at login and every 5 minutes
+# by the com.github.ctaylor.smb-mount LaunchAgent. Idempotent and quiet: an
+# already-mounted share is a no-op, and an unreachable server logs one line
+# and exits 0 (this runs on roaming machines — being off-LAN is normal, not
+# an error).
+#
+#   smb-mount          mount every row for this host
+#   smb-mount -u       unmount them again (before undocking / leaving)
+#   smb-mount -v       verbose: also report the no-op cases
+#
+# CREDENTIALS. mount_smbfs is called with -N so it never prompts — there is no
+# TTY under launchd, and a prompt would hang the agent forever. The password
+# comes from the login Keychain instead, which is a ONE-TIME per-Mac step:
+#
+#   security add-internet-password -a ctaylor -r 'smb ' -s 10.77.0.74 \
+#       -l 'ceres (SMB)' -T /sbin/mount_smbfs -U -w
+#
+# Note the trailing space in 'smb ' (it is a four-char code, not a typo), and
+# that -s takes the ADDRESS, not a hostname — mount_smbfs looks up the entry
+# by the server string it was handed. Add one entry per address in the row.
+# The Samba password is its own database (`sudo smbpasswd -a ctaylor` on
+# ceres), unrelated to the unix password.
+#
+# bash 3.2 floor (macOS stock /bin/bash) and BSD userland only.
+
+set -eu
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+conf=$repo_root/configs/smb-mounts/mounts.conf
+
+action=mount
+verbose=0
+while [ $# -gt 0 ]; do
+    case $1 in
+        -u|--unmount) action=unmount ;;
+        -v|--verbose) verbose=1 ;;
+        -h|--help)    sed -n '2,28p' "$0"; exit 0 ;;
+        *) echo "smb-mount: unknown option '$1'" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+log() { printf '%s smb-mount: %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$*" ;}
+# `return 0` is load-bearing: without it a quiet vlog returns 1 (the failed
+# test), and under `set -e` a bare `vlog ...` call would abort the script.
+vlog() { [ "$verbose" -eq 1 ] && log "$@"; return 0 ;}
+
+if [ "$(uname -s)" != Darwin ]; then
+    log "not macOS, nothing to do"
+    exit 0
+fi
+
+if [ ! -r "$conf" ]; then
+    log "$conf not readable, nothing to do"
+    exit 0
+fi
+
+self=$(scutil --get LocalHostName 2>/dev/null) || self=$(hostname -s 2>/dev/null) || self=""
+if [ -z "$self" ]; then
+    log "could not determine local hostname, skipping"
+    exit 0
+fi
+
+user=$(id -un)
+
+# is_mounted MOUNTPOINT — 0 when something is mounted there. grep -F because a
+# mountpoint is a literal path, and >/dev/null rather than -q so the early
+# exit never SIGPIPEs `mount`.
+is_mounted() {
+    mount | grep -F " on $1 (" >/dev/null 2>&1
+}
+
+# first_reachable ADDR,ADDR,... — echo the first address answering on 445.
+# Pure parameter expansion for the comma split: zsh's ${(s:,:)} and bash's
+# `read -a` disagree, and this is identical in both.
+first_reachable() {
+    local list=$1 addr=
+    while [ -n "$list" ]; do
+        addr=${list%%,*}
+        if [ "$list" = "$addr" ]; then list=; else list=${list#*,}; fi
+        [ -z "$addr" ] && continue
+        if nc -z -w1 "$addr" 445 >/dev/null 2>&1; then
+            printf '%s\n' "$addr"
+            return 0
+        fi
+    done
+    return 1
+}
+
+rows=0
+# Strip comments and blank lines in one awk pass (BSD awk safe). The redirect
+# is a plain file, so no process substitution and no pipefail interaction.
+while read -r row_host row_share row_mp row_addrs; do
+    [ -z "$row_host" ] && continue
+    [ "$row_host" = "$self" ] || continue
+    rows=$((rows + 1))
+
+    case $row_mp in
+        /*|*..*) log "row for $row_share: mountpoint '$row_mp' must be \$HOME-relative, skipping"; continue ;;
+    esac
+    mp=$HOME/$row_mp
+
+    if [ "$action" = unmount ]; then
+        if is_mounted "$mp"; then
+            if umount "$mp" 2>/dev/null; then
+                log "unmounted $mp"
+            else
+                log "could not unmount $mp (files still open?)"
+            fi
+        else
+            vlog "$mp not mounted, nothing to unmount"
+        fi
+        continue
+    fi
+
+    if is_mounted "$mp"; then
+        vlog "$row_share already mounted at $mp"
+        continue
+    fi
+
+    addr=""
+    addr=$(first_reachable "$row_addrs") || {
+        log "no address in $row_addrs answering on 445, leaving $row_share unmounted"
+        continue
+    }
+
+    mkdir -p "$mp"
+    # -N: never prompt (no TTY under launchd) — password comes from the
+    # Keychain. -o soft: fail calls after a timeout instead of wedging Finder
+    # in an uninterruptible wait when the server drops off mid-session.
+    if mount_smbfs -N -o soft "//$user@$addr/$row_share" "$mp" 2>&1; then
+        log "mounted //$addr/$row_share at $mp"
+    else
+        log "mount_smbfs failed for //$addr/$row_share (Keychain entry for $addr missing? see the header)"
+        rmdir "$mp" 2>/dev/null || true
+    fi
+done <<EOF
+$(awk '{ sub(/#.*$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") } NF > 0' "$conf")
+EOF
+
+if [ "$rows" -eq 0 ]; then
+    vlog "$self has no rows in $conf, nothing to do"
+fi
+exit 0

@@ -167,6 +167,10 @@ manifest_ids = [
 writers = ["scripts/setup-immich.sh"]
 reason = "dotfiles is the tracked source of truth; setup-immich.sh installs a copy into ~/repos/deploy/immich and the stack runs from there (containers are human-started by policy)"
 
+[service_artifact."configs/smb-mounts/com.github.ctaylor.smb-mount.plist"]
+writers = ["scripts/deploy.d/76_smb_mounts.zsh"]
+reason = "tracked template, rendered copy (awk @HOME@/@SCRIPT@ substitution) into ~/Library/LaunchAgents on the Macs listed in configs/smb-mounts/mounts.conf only; client half of the ceres Samba share, whose server half is hand-run via setup-ceres-share.sh. No manifest_ids yet: launchd:agent:com.github.ctaylor.smb-mount only exists once a listed Mac has deployed — attest it here after saturn/neptune converge."
+
 [service_artifact."configs/wake-peers/com.github.ctaylor.wake-peers.plist"]
 manifest_ids = ["launchd:agent:com.github.ctaylor.wake-peers"]
 writers = ["scripts/deploy.d/76_wake_peers.zsh"]

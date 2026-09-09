@@ -215,6 +215,6 @@ Not run by `deploy.zsh`. Run once per machine, by hand.
 | `~/.local/agents/scripts/setup-paseo.sh` | Per-host Paseo daemon config (agents repo). Runbook: `~/.local/agents/docs/paseo.md`. |
 | [`scripts/setup-t3.sh`](../scripts/setup-t3.sh) | T3 Code server unit on port 3773. |
 | `~/.local/agents/scripts/setup-llm-quota.sh` | LLM plan-quota collector (CodexBar on :8791), pacing-cue timer and ntfy (:2586) — agents repo. Runbook: `~/.local/agents/docs/llm-quota.md`. |
-| [`scripts/setup-ceres-share.sh`](../scripts/setup-ceres-share.sh) | Samba share for `/srv/downloads` on ceres. |
+| [`scripts/setup-ceres-share.sh`](../scripts/setup-ceres-share.sh) | Samba shares on ceres: `[downloads]` (`/srv/downloads`) and `[home]` (`/home/ctaylor`, secrets vetoed). Mac clients auto-mount via `scripts/smb-mount`. |
 | [`scripts/setup-office-lan.sh`](../scripts/setup-office-lan.sh) | Static gateway-less `10.77.0.x` on the wired NIC. |
 | [`bin/install-agents-slice.sh`](../bin/install-agents-slice.sh) | systemd `agents.slice` with a memory cap. `bin/disable-agents-slice-hook` is the escape hatch. |

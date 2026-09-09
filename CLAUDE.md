@@ -252,7 +252,25 @@ gotchas there — see the global memory protocol for cadence.
   `configs/samba/smb.conf`, installed by `scripts/setup-ceres-share.sh`;
   `/srv/downloads` is its own btrfs subvolume so snapper root snapshots skip
   it). Mac-friendly via vfs_fruit; auth is the `ctaylor` Samba user
-  (`sudo smbpasswd` on ceres to rotate). The laptop (quaoar) two-way syncs
+  (`sudo smbpasswd` on ceres to rotate). A second share, `[home]`, exports
+  `/home/ctaylor` to the Mac workstations — `.ssh`/`.gnupg`/`.aws`/`.config`
+  are **vetoed** (a veto is a real denial, not a hide, so a Mac cannot read
+  ceres's credentials over SMB), as are the bulk trees (immich, CI runner,
+  caches, `node_modules`) that would otherwise make Finder enumeration
+  crawl. Samba silently ignores a second `veto files` line — and `+=` on it —
+  so it must stay one line; `testparm -s` is how you catch that. The Macs
+  auto-mount it at `~/mnt/ceres` via `scripts/smb-mount` + the
+  `com.github.ctaylor.smb-mount` LaunchAgent (`scripts/deploy.d/76_smb_mounts.zsh`,
+  host-gated by `configs/smb-mounts/mounts.conf`, modelled on `76_wake_peers.zsh`).
+  Two gotchas that dictate that design: smbd binds `eno2`/`wlan0` only and
+  **not** `tailscale0`, while bare `ceres` resolves to the *Tailscale* IP via
+  MagicDNS on the Macs — so the mount script probes literal addresses
+  (wired `10.77.0.74`, then wifi) exactly like the `ssh/config` fast path;
+  and `mount_smbfs` runs with `-N` because there is no TTY under launchd, so
+  the password must be in the login Keychain (`security add-internet-password
+  -r 'smb '` — one-time per Mac, per address). `/Volumes` is `root:wheel 0755`,
+  which is why the mounts live under `$HOME` and the agent needs no sudo.
+  The laptop (quaoar) two-way syncs
   `~/Downloads` ↔ ceres `/srv/downloads` via Syncthing (pacman-installed for
   its `syncthing@ctaylor.service` unit — the one always-on-daemon exception
   to the mise rule; quaoar dials ceres's static wired/wifi/tailscale
