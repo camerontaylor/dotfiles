@@ -39,7 +39,7 @@ Two of these proxy to a loopback backend and treat `Host` differently, deliberat
 | `telemetry.webfront.app` | `configs/caddy/Caddyfile:41-47` | `localhost:3000` — langfuse-web container | `~/repos/telemetry` | `200` |
 | `mcp.ceres.webfront.app` | `configs/caddy/Caddyfile:53-68` | `localhost:3111` — openclaw-mcp bridge (default `handle`) and `localhost:3112` — hart wiki MCP (`@wiki` matcher) | `~/repos/hart` | `/mcp` -> `401` (OAuth, expected); `/wiki` -> `405` |
 | `immich.wedrifid.dev` | `configs/caddy/Caddyfile:77-95` | `10.77.0.97:2283` (makemake, wired office LAN) with `100.87.185.24:2283` (makemake tailnet) as fallback — `lb_policy first`, moved 2026-09-08 (M5) | `~/repos/deploy/immich` on makemake | `200` from the tailnet; connection refused elsewhere |
-| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:102-131` | `127.0.0.1:8791` — CodexBar quota collector, user unit `codexbar-serve.service`; Caddy injects `Authorization: Bearer {env.CODEXBAR_DASHBOARD_TOKEN}` so tailnet browsers need no token (see the secret section below) | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/health` -> `{"version":...,"status":"ok"}`; `/dashboard/v1/snapshot` -> `200` with no auth header |
+| `usage.wedrifid.dev` | `configs/caddy/Caddyfile:102-131` | `100.84.239.15:8791` — CodexBar quota collector on **neptune** (LaunchAgent `com.github.ctaylor.codexbar-serve`, dotfiles `78_codexbar_serve.zsh`; moved off ceres loopback 2026-09-10 — cookie-based sources are macOS-only); Caddy injects `Authorization: Bearer {env.CODEXBAR_DASHBOARD_TOKEN}`, which also authenticates `/usage`+`/cost` upstream now that the bind is non-loopback, so tailnet browsers need no token (see the secret section below) | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/health` -> `{"version":...,"status":"ok"}`; `/dashboard/v1/snapshot` -> `200` with no auth header |
 | `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:137-152` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/v1/health` -> `{"healthy":true}` |
 | `appreciation.wedrifid.dev` | `configs/caddy/Caddyfile:163-181` | `unix//run/appreciation/app.sock` — SvelteKit/Bun app, user unit `appreciation.service`; the socket (not a port) is load-bearing for the app's X-Forwarded-For identity check | `~/repos/hart/appreciation` (unit tracked there; tmpfiles.d snapshot at `configs/appreciation/appreciation.conf`) | `200` from Cameron's devices; abort/reset elsewhere |
 
@@ -69,10 +69,12 @@ variables, loaded via `EnvironmentFile=/etc/caddy/env`
   `wedrifid.dev` blocks for DNS-01. Different account entirely; the two tokens
   are not interchangeable.
 - `CODEXBAR_DASHBOARD_TOKEN` — the CodexBar dashboard token, copied from
-  `~/.local/state/codexbar/dashboard-token` (which stays canonical and 0600) by
+  `~/.local/state/codexbar/dashboard-token` (a **mirror pushed from neptune**,
+  where the collector generates it — that copy stays canonical and 0600) by
   `scripts/setup-caddy-usage-site.sh`. Injected as a request header on
-  `usage.wedrifid.dev` only; losing it just restores the dashboard's
-  enter-a-token prompt, so it is the least sensitive of the three.
+  `usage.wedrifid.dev` only; since the collector's bind is non-loopback it
+  also authenticates `/usage` and `/cost` upstream, so losing it fails closed
+  (401s) rather than restoring an open dashboard.
 
 ⚠ Neither wedrifid.dev credential has a canonical copy in `~/.local/secrets`.
 Verified 2026-09-04 by decrypting every `*.yaml` there: the only Cloudflare

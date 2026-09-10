@@ -1,0 +1,68 @@
+#!/bin/sh
+# codexbar-serve — run the CodexBar plan-quota collector bound to this Mac's
+# Tailscale IPv4, for the com.github.ctaylor.codexbar-serve LaunchAgent
+# (installed by scripts/deploy.d/78_codexbar_serve.zsh on hosts listed in
+# configs/codexbar/collectors.conf).
+#
+# Why a Mac at all: CodexBar's cookie-based sources (claude.ai / chatgpt.com
+# browser sessions) are macOS-only, and the CLI-probe fallback a headless
+# host is stuck with cannot refresh its OAuth tokens (Cloudflare blocks
+# headless refresh on Linux). The browser cookies self-heal; see
+# ~/.local/agents/docs/llm-quota.md.
+#
+# Binding to the Tailscale address (not loopback) is what lets ceres's Caddy
+# and cue engine reach the collector over the mesh, and it flips CodexBar's
+# own switch so /usage and /cost require the bearer token too — on loopback
+# they are ungated. Plain HTTP is accepted (--allow-plain-http) because the
+# only network this bind answers on is already WireGuard-encrypted; the
+# token never crosses a cleartext segment. The Tailscale IP is resolved at
+# start rather than baked in, so the same agent works on any collector host
+# and survives a tailnet re-join.
+#
+# Kept strictly POSIX/BSD-clean: launchd runs it with PATH=/usr/bin:/bin:
+# /usr/sbin:/sbin, no brew, no mise.
+
+set -u
+
+state_dir=$HOME/.local/state/codexbar
+env_file=$state_dir/env
+
+if [ ! -r "$env_file" ]; then
+    echo "codexbar-serve: $env_file missing (run the dotfiles deploy) — exiting" >&2
+    exit 1
+fi
+
+token=$(sed -n 's/^CODEXBAR_DASHBOARD_TOKEN=//p' "$env_file" | tail -1)
+if [ -z "$token" ]; then
+    echo "codexbar-serve: no CODEXBAR_DASHBOARD_TOKEN in $env_file — exiting" >&2
+    exit 1
+fi
+export CODEXBAR_DASHBOARD_TOKEN=$token
+
+# Tailscale CLI candidates in preference order: brew-linked CLI first, then
+# the dotfiles-local shim, then the app bundle's own binary. `ip -4` prints
+# one address line per this node; the first is the collector's bind address.
+ts_ip=
+for ts_bin in /usr/local/bin/tailscale "$HOME/.local/bin/tailscale" \
+              /Applications/Tailscale.app/Contents/MacOS/Tailscale; do
+    if [ -x "$ts_bin" ]; then
+        ts_ip=$("$ts_bin" ip -4 2>/dev/null | head -1)
+        [ -n "$ts_ip" ] && break
+    fi
+done
+if [ -z "$ts_ip" ]; then
+    echo "codexbar-serve: no Tailscale IPv4 (is Tailscale up?) — exiting" >&2
+    exit 1
+fi
+
+# Mirror of the ceres unit's flags (configs/ai/codexbar/ — now retired there):
+# --refresh-interval is a cache TTL, not a poll; nobody asking means no
+# upstream API calls. --identity redacted keeps emails out of snapshot
+# responses that cross the network.
+exec /usr/local/bin/codexbar serve \
+    --host "$ts_ip" \
+    --port 8791 \
+    --refresh-interval 180 \
+    --request-timeout 30 \
+    --identity redacted \
+    --allow-plain-http

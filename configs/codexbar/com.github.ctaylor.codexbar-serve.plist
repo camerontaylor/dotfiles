@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template plist rendered by scripts/deploy.d/78_codexbar_serve.zsh into
+  ~/Library/LaunchAgents/com.github.ctaylor.codexbar-serve.plist with @HOME@
+  and @SCRIPT@ substituted for the live machine. The rendered copy is the
+  active LaunchAgent; this repo copy is the canonical source. Same shape and
+  label namespace as configs/smb-mounts/ and configs/wake-peers/.
+
+  The fleet's LLM plan-quota collector (CodexBar CLI in serve mode, bound to
+  this Mac's Tailscale address — see scripts/codexbar-serve for why the
+  collector is macOS-bound at all). Ceres's Caddy fronts it as
+  usage.wedrifid.dev and ceres's cue engine polls it directly; both cross the
+  tailnet, which is the only network the bind answers on.
+
+  KeepAlive rather than smb-mount's RunAtLoad+StartInterval: this is a
+  resident server, not a periodic one-shot — launchd's job is to have it
+  running continuously and restart it if it dies. The wrapper exits non-zero
+  when Tailscale is down or the token file is missing; ThrottleInterval
+  keeps that failure mode to one retry per 30s instead of a spin.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.github.ctaylor.codexbar-serve</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>@SCRIPT@</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <!-- The interesting failures (missing token, Tailscale down, provider
+       breakage) all surface on stderr; without a log they are invisible. -->
+  <key>StandardOutPath</key>
+  <string>@HOME@/Library/Logs/codexbar-serve.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>@HOME@/Library/Logs/codexbar-serve.log</string>
+</dict>
+</plist>

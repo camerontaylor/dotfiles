@@ -31,6 +31,7 @@ if have brew; then
     brew_trust --formula felixkratz/formulae/borders
     brew_trust --cask nikitabobko/tap/aerospace
     brew_trust --cask manaflow-ai/cmux/cmux
+    brew_trust --cask steipete/tap/codexbar
 fi
 
 if have brew && $upgrade_mode; then
@@ -54,8 +55,10 @@ if have brew && $upgrade_mode; then
     # (Settings -> About -> Release channel) and to ~/.local/agents/docs/paseo.md's DMG
     # procedure — neither of which deploy can second-guess from a Caskroom
     # receipt. Anything added here needs the same justification: a channel brew
-    # cannot express.
-    brew_upgrade_skip=( paseo )
+    # cannot express. codexbar is here for the same reason — Sparkle owns the
+    # app's version once installed, and a brew upgrade would downgrade it
+    # underneath the live quota collector.
+    brew_upgrade_skip=( paseo codexbar )
     brew_outdated=() brew_upgradable=()
     # `brew outdated --quiet` prints one name per line, formulae and casks
     # alike; a while-read replaces ${(f)} splitting and a membership scan
@@ -412,6 +415,27 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     elif $upgrade_mode; then
         printf '%s\n' "Upgrading T3 Code..."
         brew_cask_install_or_upgrade t3-code || true
+    fi
+fi
+
+# CodexBar cask — LLM plan-quota monitor: menu-bar app + CodexBarCLI helper.
+# The CLI is the fleet's quota collector — `codexbar serve` runs under the
+# com.github.ctaylor.codexbar-serve LaunchAgent on hosts listed in
+# configs/codexbar/collectors.conf (see 78_codexbar_serve.zsh). The APP half
+# is what imports claude.ai / chatgpt.com browser cookies, the macOS-only
+# auth mechanic headless Linux cannot do — the reason the collector lives on
+# a Mac at all (see ~/.local/agents/docs/llm-quota.md).
+#
+# DELIBERATELY INSTALL-ONLY, same rule as paseo below: Sparkle auto-updates
+# the app in place, brew's Caskroom receipt goes stale, and `brew upgrade`
+# would then DOWNGRADE the app underneath a live collector (codexbar is in
+# $brew_upgrade_skip for the same reason). Sparkle also updates the CLI —
+# /usr/local/bin/codexbar symlinks into the app bundle — so the collector
+# tracks the app's version with no brew involvement after first install.
+if [[ $DOTFILES_OS == Darwin ]] && have brew; then
+    if ! brew list --cask codexbar > /dev/null 2>&1; then
+        printf '%s\n' "Installing CodexBar..."
+        brew_cask_install_or_upgrade codexbar || true
     fi
 fi
 
