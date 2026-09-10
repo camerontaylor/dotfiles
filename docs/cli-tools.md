@@ -119,6 +119,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `portless` | mise + npm | Replaces port numbers with stable named `.localhost` URLs. |
 | `happy-dom` | npm | *(library, not a CLI)* Headless DOM implementation, available to the global node. |
 | `paseo` | cask / mise | Self-hosted agent orchestrator (app ships its own CLI). Install-only via brew — upgrades belong to the app. Runbook: `~/.local/agents/docs/paseo.md`. |
+| `codexbar` | cask | LLM plan-quota monitor (menu bar app + CLI in the bundle). `serve` mode is the fleet's quota collector — launchd on neptune, host-gated by `configs/codexbar/collectors.conf` ([`78_codexbar_serve.zsh`](../scripts/deploy.d/78_codexbar_serve.zsh)). Install-only via brew — Sparkle owns the version. Runbook: `~/.local/agents/docs/llm-quota.md`. |
 
 ### Claude Code routing wrappers
 
@@ -199,6 +200,7 @@ Autoloaded from [`zsh/fpath/`](../zsh/fpath); no bash twin.
 Not CLI, but installed by the same deploy — listed so you know where they came from.
 
 `iterm2` · `cmux` · `raycast` · `t3-code` · `paseo` (install-only) ·
+`codexbar` (install-only; menu bar + CLI in `AI / coding agents` above) ·
 `aerospace` (tiling WM) · `karabiner-elements` (key remapping) · `forklift`
 (file manager) · `font-jetbrains-mono-nerd-font` · `borders` (JankyBorders focus
 ring, runs as a brew service) · `duti` (CLI: sets default apps per file type)

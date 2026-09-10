@@ -289,7 +289,7 @@ the unit census exposed inside dotfiles:
 | paseo setup + generated units + watchdog | `scripts/setup-paseo.sh`, `scripts/paseo-watchdog` |
 | LLM proxy: portkey (configs + unit) — litellm is **retired** (replaced by portkey; delete its config, clean the dangling makemake symlink); ccr-router moves but is flagged a retirement candidate (unreferenced, stale paths) | `configs/ai/` |
 | openclaw-mcp bridge config + unit | `configs/openclaw-mcp/` |
-| codexbar / llm-quota stack (quota of LLM plans) | `configs/ai/codexbar/`, `scripts/setup-llm-quota.sh` |
+| codexbar / llm-quota stack (quota of LLM plans) | `configs/ai/codexbar/` (cues + ntfy units, ceres), `scripts/setup-llm-quota.sh`; the **collector** is dotfiles-owned since 2026-09-10 (LaunchAgent `78_codexbar_serve.zsh` + `configs/codexbar/` + cask in `75_brew_setup.zsh`, neptune — macOS cookie-based sources; see `docs/llm-quota.md` there) |
 | codex/claude/provider configs, skills, ~/.claude templates | `configs/ai/`, `~/repos/skills` |
 
 Shell integration uses the already-reserved mechanism: dotfiles keeps its

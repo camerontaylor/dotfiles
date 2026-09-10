@@ -97,10 +97,17 @@ to the `$HOME`/XDG path its tool expects by that repo's own deploy:
 | Portkey gateway | `configs/ai/portkey/` | systemd user service |
 | CCR router | `configs/ai/ccr-router/` | legacy config, currently unreferenced — retirement candidate |
 | Paseo provider templates | `configs/ai/paseo/` | merged into `~/.paseo/config.json` (never symlinked) |
-| CodexBar quota units | `configs/ai/codexbar/` | `~/.config/systemd/user/` (ceres-gated) |
+| CodexBar cue/ntfy units (ceres) | `configs/ai/codexbar/` | `~/.config/systemd/user/`; collector itself = dotfiles LaunchAgent on neptune (`78_codexbar_serve.zsh`) |
 
 LiteLLM was retired 2026-09-08 (replaced by the Portkey gateway) — its config
 is deleted, not moved.
+
+The CodexBar **collector** moved off ceres 2026-09-10 to neptune (macOS
+cookie-based provider sources; headless OAuth refresh is blocked) — it is
+dotfiles-owned now: cask in `75_brew_setup.zsh` (install-only, Sparkle owns
+the version), LaunchAgent + host gate under `configs/codexbar/`, installed by
+`78_codexbar_serve.zsh`. The agents repo keeps the ceres half (cues, ntfy,
+runbook) — `~/.local/agents/docs/llm-quota.md`.
 
 Deploy chains the sibling: [`67_agents.zsh`](scripts/deploy.d/67_agents.zsh)
 (the `66_infra.zsh` pattern) clones/pulls `~/.local/agents` and runs its
