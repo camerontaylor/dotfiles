@@ -268,3 +268,24 @@ configure_iterm2_profile() {
         printf '%s\n' "  ...failed to update iTerm2 preferences"
     fi
 }
+
+# Directory for launchd StandardOutPath/StandardErrorPath. MUST be on the
+# internal disk: launchd's xpcproxy opens both paths BEFORE exec'ing the
+# program, and macOS System Policy denies it file-read-data on external
+# volumes — so a job whose log path resolves onto /Volumes/* dies at
+# posix_spawn with EPERM, exits 78 (EX_CONFIG), writes nothing, and never
+# prompts (there is no UI to prompt from). Verified on neptune 2026-09-10 with
+# two otherwise-identical agents: /Volumes path -> 78, internal path -> 0.
+#
+# This is why the path is NOT $XDG_STATE_HOME: on neptune ~/.local is a
+# symlink onto the offload volume (docs/offload-home.md), which would take
+# every dotfiles LaunchAgent down silently. ~/Library never leaves the
+# internal disk by design (that doc's invariant 3), so it is the safe home.
+# Non-Darwin uses systemd, which has no such restriction.
+launchd_log_dir() {
+    if [[ $DOTFILES_OS == Darwin ]]; then
+        printf '%s\n' "${DOTFILES_LAUNCHD_LOG_DIR:-$HOME/Library/Logs/dotfiles}"
+    else
+        printf '%s\n' "${DOTFILES_LAUNCHD_LOG_DIR:-$XDG_STATE_HOME}"
+    fi
+}

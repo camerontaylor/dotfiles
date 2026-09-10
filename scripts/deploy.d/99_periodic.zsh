@@ -63,7 +63,11 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.pull
     launchd_plist=$launchd_dir/$launchd_label.plist
+    # NOT $XDG_STATE_HOME — launchd cannot open log paths on an external
+    # volume (see launchd_log_dir in lib/helpers.zsh).
+    launchd_logs=$(launchd_log_dir)
     deploy_mkdir -p $launchd_dir
+    deploy_mkdir -p $launchd_logs
 
     launchd_command="cd $(sh_quote "$SCRIPT_DIR") && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -86,9 +90,9 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
         <integer>0</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>$XDG_STATE_HOME/dotfiles-pull.log</string>
+    <string>$launchd_logs/dotfiles-pull.log</string>
     <key>StandardErrorPath</key>
-    <string>$XDG_STATE_HOME/dotfiles-pull.err</string>
+    <string>$launchd_logs/dotfiles-pull.err</string>
 </dict>
 </plist>"
 

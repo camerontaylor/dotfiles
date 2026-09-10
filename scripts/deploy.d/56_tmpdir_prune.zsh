@@ -83,7 +83,11 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.prune-tmpdir
     launchd_plist=$launchd_dir/$launchd_label.plist
+    # NOT $XDG_STATE_HOME — launchd cannot open log paths on an external
+    # volume (see launchd_log_dir in lib/helpers.zsh).
+    launchd_logs=$(launchd_log_dir)
     deploy_mkdir -p $launchd_dir
+    deploy_mkdir -p $launchd_logs
 
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
@@ -105,9 +109,9 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
         <integer>30</integer>
     </dict>
     <key>StandardOutPath</key>
-    <string>$XDG_STATE_HOME/prune-tmpdir.log</string>
+    <string>$launchd_logs/prune-tmpdir.log</string>
     <key>StandardErrorPath</key>
-    <string>$XDG_STATE_HOME/prune-tmpdir.err</string>
+    <string>$launchd_logs/prune-tmpdir.err</string>
 </dict>
 </plist>"
     printf '%s\n' "$launchd_content" > $launchd_plist
