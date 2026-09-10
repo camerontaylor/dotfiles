@@ -1,13 +1,29 @@
 # pluto — quiet EC fan curve (MSI GS60 2QE)
 
-Host-specific, **human-run, root-required**. pluto's stock EC fan curve spins the
-CPU blower at ~3300 RPM permanently whenever the machine is awake. This replaces
-the low end of that curve so the fan is **fully off at idle**, leaving load
-behaviour untouched.
+pluto's stock EC fan curve spins the CPU blower at ~3300 RPM permanently whenever
+the machine is awake. This replaces the low end of that curve so the fan is
+**fully off at idle**, leaving load behaviour untouched.
 
-Not a deploy fragment: per [`CLAUDE.md`](../CLAUDE.md) root steps stay human-run,
-and this needs Secure Boot disabled in firmware first. Promoting it to a
-pluto-scoped fragment (precedent: `08_offload_home.zsh`) remains an open question.
+**This document is the source of truth for the NUMBERS and the method — not for
+the installation.** Since pluto's M6 NixOS reinstall the curve is declared, and
+the open question about promoting it to a deploy fragment is closed: it is
+neither a deploy fragment nor a human-run script.
+
+| Concern | Owner |
+|---|---|
+| mechanism (`ec_sys`, the unit, the resume hook, the `msi-fan-curve` CLI) | `nixos/modules/msi-ec-fan-curve.nix` in the **infra** repo |
+| the measured curve for this chassis | `nixos/hosts/pluto.nix` (`fleet.msiEcFanCurve`) |
+| install/verify/revert procedure | `docs/m6-pluto-reinstall.md` §6.8, infra repo |
+| ledger row | `manifests/pluto.toml`, `systemd-unit:system:msi-fan-curve.service` |
+| the measurements below, and the EC map | **this file** |
+
+Applying it is therefore `nixos-rebuild switch` — it comes up at boot and again
+on resume with nothing to install by hand. Do NOT hand-place the files in the
+historical appendix on a NixOS pluto; that is unmanaged drift the ledger will
+(correctly) flag.
+
+The one thing outside the flake's reach is firmware state: **Secure Boot must be
+off**, or the unit fails loudly (see below).
 
 ## Why these numbers (measured 2026-09-10, not guessed)
 
@@ -40,17 +56,64 @@ it the EC is read-only and this cannot work.
 
 It is a firmware setting and survives an OS reinstall, but a **fully drained
 battery resets firmware NVRAM and turns Secure Boot back on** — that is how it
-got re-enabled before. Verify with `mokutil --sb-state`.
+got re-enabled before. Verify with the efivar (works on any distro; `mokutil
+--sb-state` is the Ubuntu-era equivalent and is absent on NixOS):
+
+```bash
+od -An -tu1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c
+# last byte: 1 = enabled (fan curve will fail), 0 = disabled (good)
+```
 
 To get into firmware setup: **tap `Delete` at power-on** (`F2` fallback, `F11` is
 the boot menu). `systemctl reboot --firmware-setup` **does not work** — this AMI
 firmware advertises `BOOT_TO_FW_UI` in `OsIndicationsSupported` but returns EIO
 when asked to create `OsIndications`. Secure Boot lives under the Security tab.
 
-## Rebuild after an OS reinstall
+## Verify
 
-The EC map is hardware, so it is unaffected by reinstalling or moving to a
-different disk. Only these OS-side files are lost. Run all of this as root.
+`msi-fan-curve show` needs root either way — debugfs is mode 0700.
+
+```bash
+sudo msi-fan-curve show            # duties 0 0 30 55 76 84 91; at idle rpm=0
+sudo systemctl is-active msi-fan-curve   # NixOS: active (oneshot + RemainAfterExit)
+
+# Secure Boot. `mokutil --sb-state` is the Ubuntu-era check and is NOT in the
+# NixOS closure; the efivar works anywhere (last byte 1 = enabled, 0 = disabled):
+od -An -tu1 /sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c
+```
+
+Full cold-path test without rebooting — the unit must reload the module itself:
+
+```bash
+sudo rmmod ec_sys && sudo systemctl restart msi-fan-curve && sudo msi-fan-curve show
+```
+
+Load check (fan should reach ~4600 RPM and hold 89–90 °C, not higher):
+
+```bash
+# on NixOS stress-ng is not installed; nix-shell -p borrows it for the test only
+nix-shell -p stress-ng --run "stress-ng --cpu 8 --timeout 120" &
+while sleep 15; do sudo msi-fan-curve show | tail -1; done
+```
+
+## Revert
+
+`sudo msi-fan-curve restore` puts the stock curve back — and on NixOS so does
+`sudo systemctl stop msi-fan-curve`, since the unit's `ExecStop` writes the
+factory table. A full power-off also resets the EC to firmware defaults
+(= stock), so nothing here is permanent.
+
+To remove entirely on NixOS: `fleet.msiEcFanCurve.enable = false;` in
+`hosts/pluto.nix` and rebuild. (On the historical Ubuntu install it was
+`systemctl disable --now msi-fan-curve.service` plus deleting the four files.)
+
+## Historical appendix — the Ubuntu-era imperative install
+
+**Superseded.** These four files were what pluto ran before the M6 NixOS
+reinstall (which destroyed them); the flake now owns all four concerns. Kept
+only as the reference implementation, and for any OTHER MSI box that is not on
+NixOS. The EC map is hardware, so it survives reinstalls and disk moves — only
+these OS-side files were ever lost. Run all of this as root.
 
 ```bash
 # 1. module: allow EC writes, and load it at boot
@@ -119,32 +182,6 @@ chmod +x /usr/lib/systemd/system-sleep/msi-fan-curve
 
 systemctl daemon-reload && systemctl enable --now msi-fan-curve.service
 ```
-
-## Verify
-
-```bash
-mokutil --sb-state                 # must say: SecureBoot disabled
-msi-fan-curve show                 # duties 0 0 30 55 76 84 91; at idle rpm=0
-```
-
-Full cold-path test without rebooting — the unit must reload the module itself:
-
-```bash
-rmmod ec_sys && systemctl restart msi-fan-curve.service && msi-fan-curve show
-```
-
-Load check (fan should reach ~4600 RPM and hold 89–90 °C, not higher):
-
-```bash
-stress-ng --cpu 8 --timeout 120 & while sleep 15; do msi-fan-curve show | tail -1; done
-```
-
-## Revert
-
-`msi-fan-curve restore` puts the stock curve back. A full power-off also resets
-the EC to firmware defaults (= stock), so nothing here is permanent. To remove
-entirely: `systemctl disable --now msi-fan-curve.service` and delete the four
-files above.
 
 ## EC map reference
 
