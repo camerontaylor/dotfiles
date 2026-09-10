@@ -7,6 +7,9 @@
 #
 # Fragment numbering convention (current layout):
 #   05  bash           — hoist a modern brew bash ahead of fragments ≤74 (§E)
+#   08  offload_home   — neptune: declare/verify the $HOME→offload symlink farm;
+#                        MUST precede 10_dirs, which writes through those links
+#                        (an absent volume fails fast here, not mid-10_dirs)
 #   10  dirs           — XDG dirs, $HOME scaffolding
 #   20  symlinks       — link zsh/git/tmux/nvim configs into $HOME
 #   30  plugins        — converge pinned plugin clones (plugins.lock)
