@@ -313,3 +313,27 @@ gotchas there — see the global memory protocol for cadence.
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
+- neptune's Unix-side home (`~/repos`, `.npm`, `.local`, `.cache`, `.config`,
+  toolchain dirs) lives on the external `offload` volume behind compatibility
+  symlinks — declared and drift-corrected by
+  [`scripts/deploy.d/08_offload_home.zsh`](scripts/deploy.d/08_offload_home.zsh)
+  (neptune-only; numbered to run BEFORE `10_dirs`, which writes through the
+  farm — a detached volume fails fast there instead of aborting mid-deploy;
+  `~/Library` and the macOS canonical folders stay internal by design).
+  Invariants and migration runbook in
+  [`docs/offload-home.md`](docs/offload-home.md).
+- LLM plan-quota collector: `codexbar serve` runs on neptune (moved off ceres
+  2026-09-10) as the `com.github.ctaylor.codexbar-serve` LaunchAgent —
+  wrapper `scripts/codexbar-serve` (binds the Tailscale IPv4, which
+  token-gates `/usage`+`/cost` upstream), host-gated by
+  `configs/codexbar/collectors.conf`, installed by
+  `scripts/deploy.d/78_codexbar_serve.zsh` (also owns the dashboard-token +
+  env files under `~/.local/state/codexbar/`). The cask is install-ONLY in
+  `75_brew_setup.zsh` and in `$brew_upgrade_skip` — Sparkle owns the version
+  (and the CLI symlinks into the app bundle), so brew would downgrade a live
+  collector. Why a Mac at all: CodexBar's cookie-based provider sources are
+  macOS-only; the headless CLI-probe fallback can't refresh OAuth tokens.
+  ceres keeps the cue engine, ntfy and the Caddy ingress (now dialing
+  neptune's tailnet address). Runbook:
+  [`docs/llm-quota.md`](https://github.com/camerontaylor/agents) in the
+  agents repo (`~/.local/agents/docs/llm-quota.md`).
