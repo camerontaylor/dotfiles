@@ -66,7 +66,44 @@ Session.vim
 
 ### OS ###
 # MacOS
+# Everything here is metadata the OS writes next to your files. None of it is
+# ever a property of a repo, which is why it all belongs in the global ignore
+# rather than in any project .gitignore.
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# AppleDouble sidecars. macOS falls back to these only on filesystems that
+# cannot store extended attributes: exFAT/FAT32 (USB sticks, camera cards) and
+# SMB/NFS shares, plus archives round-tripped through them. APFS and HFS+ store
+# xattrs natively and never produce them, so these arrive by transfer rather
+# than from any local disk. Broad pattern, but a real source file named ._foo
+# does not exist.
+._*
+
+# Spotlight opt-out markers. Dropping one in a directory tells mds not to index
+# that subtree, so they get created by hand (or by tooling) in big checkouts to
+# keep node_modules out of the index. The _unless_rootfs variant is the same
+# switch, ignored when the subtree happens to be the boot volume.
+.metadata_never_index
+.metadata_never_index_unless_rootfs
+
+# Written at the root of a volume, so these only surface when a repo lives
+# directly on one rather than in a subdirectory.
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# AFP/SMB network share artifacts.
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
 ### oh-my-claudecode / OMC / sisyphus (copied from webfront/.gitignore) ###
 # Ignore root .omc by default, then allowlist meaningful artifacts
