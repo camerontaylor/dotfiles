@@ -25,6 +25,11 @@ historical appendix on a NixOS pluto; that is unmanaged drift the ledger will
 The one thing outside the flake's reach is firmware state: **Secure Boot must be
 off**, or the unit fails loudly (see below).
 
+**AS-BUILT 2026-09-11 — confirmed live.** System generation 3 on pluto, journal
+reports `quiet curve applied`, and `sudo msi-fan-curve show` reads back
+`duties 0 0 30 55 76 84 91` with `duty=0% rpm=0` at package 51 °C. The fan is
+fully stopped at idle on the NixOS system, as measured.
+
 ## Why these numbers (measured 2026-09-10, not guessed)
 
 - The blower has a **hard minimum sustainable speed of ~2990 RPM**. Duty 10 %,
