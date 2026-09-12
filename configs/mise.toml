@@ -162,6 +162,14 @@ DISABLE_AUTOUPDATER = "1"
 [settings]
 # Respect version files: .node-version, .tool-versions
 idiomatic_version_file = true
+# Auto-trust mise configs in paseo agent worktrees (~/.paseo/worktrees/<agent>/<wt>/).
+# Per-worktree `mise trust` can't keep up: every new worktree is a new path, so any
+# agent shelling into one died with "config files are not trusted" (exit 1). Entries
+# here are path PREFIXES, not globs — a bare directory covers configs at any depth
+# under it, while "~/.paseo/worktrees/**" matches nothing (verified on 2026.5.15).
+# Scope: this trusts whatever .mise.toml an agent clones or writes into any worktree,
+# bypassing mise's confirm-before-running-arbitrary-config-code gate for those paths.
+trusted_config_paths = ["~/.paseo/worktrees"]
 
 [settings.python]
 compile = false
