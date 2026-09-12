@@ -61,6 +61,9 @@ Do not start without explicit owner authorization — it is a reinstall.
   remove during the reinstall).
 - **Must carry across the reinstall:** SeaweedFS + t3-serve (owner
   requirement recorded when M6 was nominated).
+  **Superseded 2026-09-09** — owner retired seaweedfs, t3-serve, the GH
+  runner, and zerotier; only caddy + portless carry. See
+  [addendum-2 §8](handover-addendum-2.md).
 - pluto carries `stash@{0}` from the Phase-1 cutover (3 edits: a
   locally-duplicated langfuse-host fix already canonical in the agents
   repo, stale codex prefs, hooks.state write-through). Almost certainly

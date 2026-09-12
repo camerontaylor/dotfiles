@@ -194,3 +194,64 @@ the transcode enable) the same morning. Executed + verified:
 
 M6 itself untouched on pluto: branch `m6-pluto-nixos` @ `dcbd34e` pushed,
 ceres infra checkout back on main, G1–G6 gates (§4) all still closed.
+
+## 8. Correction — M6 scope settled: seaweedfs/t3 retired (2026-09-09/10, post-§7)
+
+Owner settled M6's scope later on 2026-09-09 (infra `m6-pluto-nixos`
+`fde68e5`, since extended to `c7477eb`): **pluto is a blank-slate dev box
+that parallel web-dev workers get dispatched to — zero long-term state,
+so obliterating it costs only inconvenience.** That premise supersedes
+parts of §4 above and of the underlying handover:
+
+- **Retired, not migrated.** This corrects the handover's "must carry:
+  SeaweedFS + t3-serve" bullet and §4's module list: `fde68e5` deleted
+  `nixos/modules/seaweedfs.nix` and `nixos/modules/t3-serve.nix` and cut
+  their `services.toml` / `manifests/pluto.toml` rows. SeaweedFS was the
+  telemetry blob store of a defunct project (~61G of leftovers, never backed
+  up, and pluto was too slow for the role); t3-serve is replaced by paseo;
+  the GH runner is retired (G3 decided: not backed up, not restored —
+  provision fresh if CI capacity is ever wanted); zerotier retired on pluto
+  only, scoped in `c7477eb` (it was live+enabled but ACCESS_DENIED on both
+  networks, with no manifest row).
+- **What carries: caddy + portless alone** — the pair that makes the box
+  useful (any port a worker starts becomes
+  `https://<name>.pluto.webfront.app`). No Cloudflare ingress exists or is
+  wanted: the wildcard has always been a LAN/tailnet reference, and DNS-01
+  validation is outbound, which is why a wildcard cert works on an otherwise
+  unreachable box.
+- **Gate table narrowed G1–G6 → G1 + G5.** Decided along the way: G2
+  (layout, both variants still in the runbook), G3 (runner: retire), G4 —
+  the reusable rule is *user units stay with the repo that generates them*
+  (`~/.config/systemd/user` precedes `/etc/systemd/user` in systemd's user
+  search path, so a flake-rendered `pull-dotfiles.*` would silently lose;
+  the flake owns system units + `linger`), and G6 (s3 consumers — moot with
+  the whole stack retired).
+- **G1 authorized + pre-flight complete** (`182b0e8`, `fb8c9d0`):
+  flake authorized_keys are now the fleet-union (9 keys — the
+  ceres-mirrored set would have locked out four hosts); `~/repos/ollie_notes`
+  reconciled — exactly one pluto-only file, rescued to
+  `ceres:~/backup/pluto-m6/ollie_notes-pluto-only/` sha256-verified. Scan
+  lesson folded into runbook §2.1: commit-less repos hide from any sweep
+  that assumes a valid HEAD (`git log` fails rather than reporting 0).
+  `~/repos/webfront`'s working copy was **discarded** by owner decision
+  2026-09-10 (`fc0ef92`) — not rescued, goes with the wipe. No caddy render
+  target exists in the secrets repo: the token is `CF_API_TOKEN` in
+  `shell/91_cloudflare_secrets.yaml` (sops) and `/etc/caddy/env` is
+  assembled by hand — the runbook carries the exact sops→install→shred
+  sequence.
+- **ISO staged on ceres and sha256-verified** (`c7477eb`):
+  `~/backup/pluto-m6/iso/nixos-minimal-25.05.813814.ac62194c3917-x86_64-linux.iso`
+  — built from exactly the flake-pinned nixpkgs `ac62194c`, so do NOT bump
+  `flake.lock` before the install (the caddy plugin hash is lock-sensitive).
+  Runbook §3 carries the dd command. Remaining work is physical: ~~USB media,~~
+  F11 boot menu, wifi PSK, console password, `tailscale up`, firmware boot
+  order. *(2026-09-10 later: media done — ISO dd'd + byte-verified, and the
+  infra clone rides on a third ext4 partition labeled `M6-INFRA`, because a
+  stock dd'd image cannot host files; runbook §3 updated as-built, branch tip
+  `cf3a334`.)*
+- Two live-fact corrections folded into the runbook after the probe: the
+  SSDs are ONE whole-device btrfs (no partition table) mounted at
+  `/home/ctaylor` with the 120G loop image inside it — so
+  `/mnt/ssd-services` dies at **partitioning**, not at the G5 spinner wipe;
+  and `enp4s0` has no carrier, so wifi is the only link (any bulk transfer
+  plan must assume ~25-40 MB/s).

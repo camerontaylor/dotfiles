@@ -183,7 +183,7 @@ agent-sessions (relative measure).
 | M3 | Kill submodules — 48 left, all editor/shell plugins (lockfile + fetch, or lazy.nvim-style lockfiles per editor) | P5 | 2–3 | plugin breakage worse than submodule pain | **done 2026-09-08** — no plugin manager (all three rejected: time-0 runtimepath, no pinning, manager-owns-sourcing); `plugins.lock` + `scripts/deploy.d/30_plugins.zsh`, pins byte-identical to the old gitlinks |
 | M4 | Finish installer consolidation (cargo is down to 3: `linear-cli`, `codewhale-cli/-tui`; 6 curl installs; → mise backends where they exist) | P2 | 1–2 | a tool has no working mise backend: document exception | **done 2026-09-08** — cargo array gone; mise backends (aqua/cargo/ubi) + drift-correctors in `70_runtime_installs.zsh`; codewhale backends + drift-corrector removed 2026-09-09 (single rustc peaked 11.9 GB RSS, OOM-killed makemake — see mise.toml note) |
 | M5 | `services.toml` + declared state dirs + **one rehearsed move** (a real service, ceres → makemake, and back) | P6 | 2–4 | the rehearsal shows placement isn't the bottleneck | **done 2026-09-08** — two moves, not one: rss (rollback exercised) and immich (22s downtime); `services.toml` on infra main |
-| M6 | NixOS on one cattle box (pluto or next fresh install), services via the same declarations | P6 endgame | 3–5 | M5 shows native mobility is already fine | pending — owner-gated (reinstall-sized); M5's evidence: native mobility worked, cost was runbook discipline not tooling |
+| M6 | NixOS on one cattle box (pluto or next fresh install), services via the same declarations | P6 endgame | 3–5 | M5 shows native mobility is already fine | in progress — prep validated on infra `m6-pluto-nixos`; scope settled 2026-09-09: blank-slate dispatched-worker box, seaweedfs/t3-serve/GH-runner/zerotier **retired**, caddy+portless carried; G1 authorized + pre-flight done, ISO staged on ceres; only G5 (spinner wipe) open — see `plans/handover-addendum-2.md` §8 |
 
 M5 is the keystone: it converts the vague mobility want into evidence about
 what mobility actually requires, before any Nix commitment. M6 only happens if
@@ -209,9 +209,15 @@ repos with no deployer. M2 proceeds.
   already wants a reinstall (off the spinner, drop the GUI) — so NixOS lands
   at near-zero marginal cost: install to the SSDs, keep the spinner as bulk
   storage. Later probing (other session, 2026-09-08) identified it as an MSI
-  GS60 2QE laptop with EC-owned untunable fans, and found it already runs
-  live services the reinstall must carry: SeaweedFS master+filer and
-  t3-serve, plus the pull-dotfiles timer. Historical note: the tracked
+  GS60 2QE laptop with EC-owned untunable fans, running SeaweedFS,
+  t3-serve, a GH runner, and zerotier. **Scope settled 2026-09-09** (infra
+  `m6-pluto-nixos` `fde68e5`): pluto is a blank-slate dev box for dispatched
+  web-dev workers, zero long-term state — all four of those services are
+  **retired, not migrated** (SeaweedFS was a defunct project's telemetry
+  store: ~61G of leftovers, never backed up; the runbook's §8 not-carried
+  list is authoritative). What crosses the reinstall is caddy + portless
+  only, so any port a worker starts becomes
+  `https://<name>.pluto.webfront.app` on the LAN/tailnet. Historical note: the tracked
   `configs/caddy/caddy.service` header says "mirrored from pluto" — it has
   run services before.
 - **eris stays macOS** — Ollie uses it (iPad-familiar UI is worth the
