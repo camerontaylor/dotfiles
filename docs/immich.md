@@ -160,6 +160,7 @@ Candidates to move when that happens, i.e. everything in this repo that is
 "how a machine is deployed" rather than "how I like my tools":
 
 - `configs/immich/` + `scripts/setup-immich.sh` (this document)
+- `configs/plex/` + `scripts/setup-plex.sh` + `docs/plex.md` (added 2026-09-13, same pattern)
 - `configs/caddy/` + `scripts/setup-caddy.sh` + `docs/caddy-ingress.md`
 - Paseo moved to the agents sibling on 2026-09-08: `~/.local/agents/scripts/setup-paseo.sh`, `scripts/paseo-watchdog`, and `docs/paseo.md` there.
 - `scripts/setup-t3.sh`, `scripts/setup-ceres-share.sh`, `scripts/setup-office-lan.sh`

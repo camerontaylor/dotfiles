@@ -1,0 +1,124 @@
+# Plex Media Server — makemake (added 2026-09-11).
+#
+# Official image (plexinc/pms-docker), matching the fleet convention of
+# upstream-vendor images (cf. ghcr.io/immich-app/*, miniflux/miniflux).
+# Version-pinned; bump deliberately, never track :latest.
+
+name: plex
+
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker:1.43.3.10896-cb3ebc72d
+
+    # Host networking, NOT a published-port bridge like immich.
+    #
+    #  1. Plex's GDM discovery (UDP 32410-32414) and DLNA rely on broadcast
+    #     traffic that Docker's bridge NAT silently drops.
+    #  2. plex.tv remote access needs the real source port to negotiate a
+    #     direct connection rather than falling back to the slow relay.
+    #  3. It covers the tailnet IP (100.87.185.24), the wired office LAN
+    #     (10.77.0.97) and WiFi (192.168.0.97) with no hardcoded binds --
+    #     immich's `10.77.0.97:2283` bind breaks whenever that address
+    #     changes, and this avoids repeating that.
+    network_mode: host
+
+    devices:
+      # Alder Lake-N iGPU (Intel N97): VAAPI H.264/HEVC/VP9/AV1 decode +
+      # H.264/HEVC encode. The whole directory, not just renderD128, because
+      # the image's start.sh probes card0 to pick a render node.
+      - /dev/dri:/dev/dri
+
+    group_add:
+      # gid of the host `render` group, which owns /dev/dri/renderD128
+      # (crw-rw---- root:render). Passing the device is not sufficient: the
+      # PMS process runs as PLEX_UID and must hold this supplementary group
+      # to open it. Numeric because the group name inside the image differs.
+      - "992"
+
+    env_file:
+      - .env
+
+    volumes:
+      - ${PLEX_CONFIG_DIR}:/config
+      # Media, read-only: Plex never needs to write to the library, and ro
+      # means a misconfigured scanner or agent cannot touch originals.
+      #
+      # Long syntax purely for create_host_path: false. MEDIA_DIR is
+      # ~/media, a symlink to /mnt/expansion/media on an external USB
+      # drive mounted `nofail`. Docker's DEFAULT is to create a missing
+      # bind source as an empty directory -- which would turn an
+      # unplugged drive into three silently empty libraries and a mass
+      # "media unavailable" sweep in Plex. This makes the container
+      # refuse to start instead. Pair with converge check, which reports
+      # path:media MISSING when the symlink dangles.
+      - type: bind
+        source: ${MEDIA_DIR}/movies
+        target: /media/movies
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${MEDIA_DIR}/tv
+        target: /media/tv
+        read_only: true
+        bind: { create_host_path: false }
+      - type: bind
+        source: ${MEDIA_DIR}/music
+        target: /media/music
+        read_only: true
+        bind: { create_host_path: false }
+      # Other Videos library (personal media, no online matching).
+      - type: bind
+        source: ${MEDIA_DIR}/p
+        target: /media/p
+        read_only: true
+        bind: { create_host_path: false }
+      # ...with ONE writable hole punched in it, for Optimised Versions.
+      #
+      # Plex writes optimiser output to `<library location>/Plex Versions/
+      # <profile>/` and offers no pref to redirect it (the /:/prefs
+      # descriptor has TranscoderTempDirectory and DownloadsTempDirectory,
+      # but nothing for versions). Against the read-only mount above that
+      # failed with:
+      #
+      #   ERROR - Error creating directory "/media/p/Plex Versions/
+      #           Optimized for Mobile": Read-only file system
+      #   ERROR - TranscodeJobManager: [Running] directory is not writable
+      #
+      # A read-write bind NESTED inside the read-only one gives the
+      # optimiser exactly the one path it needs while keeping the guard
+      # above intact -- originals stay unwritable, so a misconfigured
+      # scanner or agent still cannot touch them. Verified: `touch
+      # /media/p/x` -> "Read-only file system", `mkdir "/media/p/Plex
+      # Versions/Optimized for Mobile"` -> OK.
+      #
+      # create_host_path: false as with every other media bind -- the
+      # source dir must be pre-created on the drive, so an unplugged
+      # drive keeps failing the container closed rather than silently
+      # optimising into an empty stub directory.
+      #
+      # Scoped to this library only: it is the only one optimise has been
+      # used on. Extend per-library as needed -- but re-verify placement
+      # first, since Movies/TV have nested folder layouts and this
+      # location-root placement is only confirmed for a flat library.
+      - type: bind
+        source: ${MEDIA_DIR}/p/Plex Versions
+        target: /media/p/Plex Versions
+        bind: { create_host_path: false }
+      - /etc/localtime:/etc/localtime:ro
+
+    tmpfs:
+      # Transcode scratch in RAM (15 GiB total, ~11 GiB available). Keeps
+      # short-lived segment churn off the NVMe; also avoids btrfs CoW
+      # amplification on a directory that is pure throwaway data.
+      - /transcode:size=4g,mode=1777
+
+    restart: always
+
+    healthcheck:
+      # /identity is the one endpoint that answers without a token.
+      test: ["CMD-SHELL", "curl -fsS --max-time 5 http://127.0.0.1:32400/identity > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
