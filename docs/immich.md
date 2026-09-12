@@ -1,9 +1,11 @@
-# Immich deployment on ceres
+# Immich deployment on makemake
 
-Self-hosted photo library. Four containers on ceres, ML inference offloaded to
-saturn, library snapshotted nightly to two restic tiers.
+Self-hosted photo library. Four containers on makemake since the M5 move
+(2026-09-08; ceres holds the rollback copies), video transcoding on the N97's
+integrated GPU, library snapshotted nightly to two restic tiers.
 
 - Tracked stack shape: `configs/immich/docker-compose.yaml` → installed to `~/repos/deploy/immich/docker-compose.yaml`
+- Tracked hwaccel leg: `configs/immich/hwaccel.transcoding.yml` → installed beside the compose (the compose `extends` it — see *Transcoding*)
 - Tracked env template: `configs/immich/example.env` → seeds `~/repos/deploy/immich/.env` (**the real `.env` is never committed**)
 - Installer: `scripts/setup-immich.sh`
 
@@ -16,9 +18,10 @@ rebuild the thing doing the backing up. The compose file and env template are
 now tracked here; everything else already had a home and is pointed at, not
 copied (see *Sources of truth*).
 
-`configs/immich/docker-compose.yaml` is a **byte-identical** copy of the live
-file, deliberately. Restoring it is a copy, not a merge, and
-`setup-immich.sh --check` reports any drift between the two.
+`configs/immich/docker-compose.yaml` and `configs/immich/hwaccel.transcoding.yml`
+are **byte-identical** copies of the live files, deliberately. Restoring them is
+a copy, not a merge, and `setup-immich.sh --check` reports any drift between
+the two.
 
 ## Sources of truth
 
@@ -27,7 +30,7 @@ of them.
 
 | Artifact | Owner | Lands at |
 |---|---|---|
-| `docker-compose.yaml`, `example.env` | **this repo** (public) | `~/repos/deploy/immich/` |
+| `docker-compose.yaml`, `hwaccel.transcoding.yml`, `example.env` | **this repo** (public) | `~/repos/deploy/immich/` |
 | `immich-backup.sh`, `immich-prune.sh` | `camerontaylor/photo-steward` (private) `ops/` | symlinked into `~/repos/deploy/immich/bin/` |
 | `hart-immich-*.timer`, `hart-immich-prune.service`, `hart-immich-backup.service.template` | same, `ops/` | copied/rendered into `~/.config/systemd/user/` |
 | `dev.hart.immich-ml.plist`, `immich-ml-saturn.sh` (saturn's ML offload) | same, `ops/` | saturn's `~/Library/LaunchAgents/` and `~/.local/bin/` |
@@ -96,6 +99,27 @@ The script hard-fails if saturn is unreachable or bigload is unmounted, rather
 than writing a half snapshot or a silent no-op. `hart-immich-prune.timer` runs
 `forget --prune` monthly.
 
+## Transcoding
+
+Video transcodes run on makemake's integrated GPU (Alder Lake-N UHD, Intel Gen
+12 Quick Sync: H.264/HEVC/VP9/AV1 decode, H.264/HEVC/VP9 encode) via **VAAPI**,
+not the 15 W CPU — software transcoding on the N97 starves the whole box.
+
+Three pieces have to line up, and each is owned elsewhere:
+
+1. `/dev/dri` passthrough — the compose `extends` the `vaapi` service in
+   `hwaccel.transcoding.yml` (tracked here, installed beside the compose).
+   The container runs as root, so the `root:render 0660` render node needs no
+   `group_add`.
+2. The Immich **Administration → Video → Transcoding → Acceleration API**
+   setting (`ffmpeg.accel`), which lives in the server's database, not in any
+   file — set to `vaapi` via the admin API on 2026-09-12. It rides the nightly
+   DB dump, so a restore brings it back; it does NOT ride the compose, so a
+   fresh install starts at `disabled` until someone flips it.
+3. Working drivers in the container — the immich-server image ships the Mesa
+   stack; `ffmpeg -init_hw_device vaapi=va:/dev/dri/renderD128 … -c:v h264_vaapi`
+   inside the container is the smoke test that proves the whole chain.
+
 ## Gaps
 
 Known, deliberate, and not closed by this doc:
@@ -113,8 +137,9 @@ Known, deliberate, and not closed by this doc:
 - **`DB_PASSWORD` cannot be rotated by editing `.env`.** It is the password
   postgres was initialised with. Changing it requires an `ALTER USER` inside
   the running container *and* the edit, in that order.
-- The published port in the compose file is pinned to ceres' Tailscale address
-  `100.82.17.115`. Another host needs that line changed.
+- The published port in the compose file is pinned to makemake's addresses —
+  Tailscale `100.87.185.24` and wired `10.77.0.97` (both `:2283`). Another
+  host needs those lines changed.
 
 ## TODO: carve infra out of dotfiles into its own repo
 

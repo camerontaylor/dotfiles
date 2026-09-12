@@ -13,9 +13,9 @@ services:
   immich-server:
     container_name: immich_server
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
-    # extends:
-    #   file: hwaccel.transcoding.yml
-    #   service: cpu # set to one of [nvenc, quicksync, rkmpp, vaapi, vaapi-wsl] for accelerated transcoding
+    extends:
+      file: hwaccel.transcoding.yml
+      service: vaapi # N97 UHD: H.264/HEVC/VP9/AV1 decode + H.264/HEVC encode — enabled 2026-09-09
     volumes:
       # Do not edit the next line. If you want to change the media storage location on your system, edit the value of UPLOAD_LOCATION in the .env file
       - ${UPLOAD_LOCATION}:/data
@@ -23,7 +23,8 @@ services:
     env_file:
       - .env
     ports:
-      - '100.82.17.115:2283:2283'
+      - '100.87.185.24:2283:2283'
+      - '10.77.0.97:2283:2283'
     depends_on:
       - redis
       - database

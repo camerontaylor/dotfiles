@@ -1,0 +1,11 @@
+# Hardware acceleration for Immich transcoding.
+# From https://github.com/immich-app/immich/releases/latest/download/hwaccel.transcoding.yml
+# (vaapi leg only matters here). Enabled 2026-09-09 for makemake's N97 UHD
+# (Alder Lake-N): H.264/HEVC/VP9/AV1 decode + H.264/HEVC encode.
+# The immich-server container runs as root, so the device cgroup mapping alone
+# grants access to /dev/dri/renderD128 (root:render 0660) — no group_add.
+services:
+  cpu: {}
+  vaapi:
+    devices:
+      - /dev/dri:/dev/dri

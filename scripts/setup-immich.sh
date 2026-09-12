@@ -11,6 +11,8 @@ set -euo pipefail
 #
 # SOURCES OF TRUTH, and this script owns none of them:
 #   configs/immich/docker-compose.yaml   this repo (public)     -> stack shape
+#   configs/immich/hwaccel.transcoding.yml this repo (public)   -> /dev/dri leg the
+#                                                               compose extends
 #   configs/immich/example.env           this repo (public)     -> .env template
 #   ~/repos/photo-steward/ops/*.sh       camerontaylor/photo-steward (private)
 #                                                               -> backup/prune scripts
@@ -22,9 +24,9 @@ set -euo pipefail
 # file alone (setup-caddy.sh learned that lesson the expensive way).
 #
 # WHAT IT WILL NOT DO, ever: touch a container. No up, no down, no restart, no
-# recreate, no pull. The stack on ceres has been up for days and is snapshotted
-# nightly; a config installer has no business interrupting that. Applying a
-# changed compose file is a deliberate human `docker compose up -d`.
+# recreate, no pull. The stack on makemake has been up for days and is
+# snapshotted nightly; a config installer has no business interrupting that.
+# Applying a changed compose file is a deliberate human `docker compose up -d`.
 #
 # Usage: setup-immich.sh [--check|--dry-run] [--force] [--prefix DIR]
 #
@@ -96,6 +98,7 @@ OPS_DIR="$HOME/repos/photo-steward/ops"
 SECRETS_DIR="${SECRETS_DIR:-$HOME/.local/secrets}"
 
 TRACKED_COMPOSE="$REPO_ROOT/configs/immich/docker-compose.yaml"
+TRACKED_HWACCEL="$REPO_ROOT/configs/immich/hwaccel.transcoding.yml"
 TRACKED_EXAMPLE="$REPO_ROOT/configs/immich/example.env"
 
 PENDING=0    # work this run would do (or did)
@@ -177,8 +180,12 @@ ensure_link() {
 head2 "deploy tree: $DEPLOY_DIR"
 ensure_dir "$DEPLOY_DIR"
 ensure_dir "$BIN_DIR"
-install_tracked "$TRACKED_COMPOSE" "$DEPLOY_DIR/docker-compose.yaml" "docker-compose.yaml"
-install_tracked "$TRACKED_EXAMPLE" "$DEPLOY_DIR/example.env"          "example.env"
+install_tracked "$TRACKED_COMPOSE" "$DEPLOY_DIR/docker-compose.yaml"    "docker-compose.yaml"
+# The compose extends hwaccel.transcoding.yml's vaapi service (makemake's N97
+# UHD does the transcoding). Without this file the compose fails to even
+# `config`, which is why it is tracked and installed like the compose itself.
+install_tracked "$TRACKED_HWACCEL" "$DEPLOY_DIR/hwaccel.transcoding.yml" "hwaccel.transcoding.yml"
+install_tracked "$TRACKED_EXAMPLE" "$DEPLOY_DIR/example.env"             "example.env"
 
 # ── stage 2: .env ──────────────────────────────────────────────────────────
 #
