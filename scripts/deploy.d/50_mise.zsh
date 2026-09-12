@@ -103,10 +103,30 @@ if have mise; then
     # attestation verification. Unauthenticated requests are capped at 60/hr
     # and fail with 403 mid-install, leaving tools half-provisioned. Feed it a
     # token from the usual sources if one is reachable.
-    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
-        if have gh && gh auth token > /dev/null 2>&1; then
-            export MISE_GITHUB_TOKEN=$(gh auth token 2>/dev/null)
+    # Bounded, and a single call: `gh auth token` reads the macOS keychain and
+    # BLOCKS FOREVER rather than failing where no keychain prompt can be shown
+    # (launchd, cron, a sanitised env) — see the long note in
+    # zsh/env.d/08_mise.zsh. The old form also paid for two gh invocations to
+    # learn one token. `timeout` here is whatever is first on PATH; by this
+    # point in the deploy 75_brew_setup has not necessarily run, so its absence
+    # is expected and handled.
+    if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]] && have gh; then
+        _gh_timeout=
+        if have timeout; then
+            _gh_timeout=timeout
+        elif have gtimeout; then
+            _gh_timeout=gtimeout
         fi
+        _gh_token=
+        if [[ -n $_gh_timeout ]]; then
+            _gh_token=$("$_gh_timeout" 5 gh auth token 2>/dev/null) || _gh_token=
+        else
+            case $- in
+                *i*) _gh_token=$(gh auth token 2>/dev/null) || _gh_token= ;;
+            esac
+        fi
+        [[ -n $_gh_token ]] && export MISE_GITHUB_TOKEN=$_gh_token
+        unset _gh_token _gh_timeout
     fi
     if [[ -z $MISE_GITHUB_TOKEN && -z $GITHUB_TOKEN ]]; then
         printf '%s\n' "  ...no GitHub token found; mise may hit API rate limits"

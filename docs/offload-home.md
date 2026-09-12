@@ -3,10 +3,12 @@
 **Status:** decided 2026-09-08; fragment + runbook landed 2026-09-09; hardened
 the same day after review (fail-fast at `08`, rsync verifier, tiered soak,
 runtime-disconnect risk). **Executed 2026-09-10: 9 of 10 rows migrated.
-`.local` is BLOCKED** — launchd cannot read the volume at all (see *The launchd
-/ TCC wall*), which would take down every LaunchAgent on the host. Its 24G copy
-is staged on the volume and verified; the fragment reports the row as CONFLICT
-until the gate is resolved.
+`.local` is PENDING** — its 24G copy is staged on the volume and verified, and
+the fragment reports the row as CONFLICT until it is swapped. It was believed
+blocked by a blanket launchd/TCC deny; that finding was **superseded on
+2026-09-11** (see *The launchd / TCC wall*). The real constraint is narrow —
+`ProgramArguments[0]` must be an internal shell — and four agents still need
+that change first.
 **Implementation:** [`scripts/deploy.d/08_offload_home.zsh`](../scripts/deploy.d/08_offload_home.zsh) — neptune-only, drift-correcting, runs **before `10_dirs`**.
 **Scope:** neptune only — the always-on iMac with the WD SN810 NVMe (Thunderbolt, powered enclosure) at `/Volumes/offload`. **Never a laptop**: a drive absent at login breaks every agent and shell that resolves through `~/.local`.
 
@@ -56,7 +58,7 @@ external volume) — was considered and rejected; see *Rejected alternatives*.
 |---|---|---|---|---|
 | `repos` | — | data | **migrated** (hand-linked 2026-09-06) | predates the fragment |
 | `.npm` | ~0 | data | **migrated** (hand-linked 2026-09-08) | predates the fragment |
-| `.local` | 24G | data | **BLOCKED** (copied + verified, not swapped) | mise 20G, pnpm 3G, claude 791M; the dotfiles + agents repos live under it — migrate last |
+| `.local` | 24G | data | **PENDING** (copied + verified, not swapped) | mise 20G, pnpm 3G, claude 791M; the dotfiles + agents repos live under it — migrate last. No longer permission-blocked (see *The launchd / TCC wall*); needs the four `ProgramArguments[0]` fixes first |
 | `.colima` | 7.5G | data | **migrated 2026-09-10** | docker VM disk (container state — not regenerable without losing it); `colima stop` first. **SPARSE — copy with `rsync -aHAXS`, never `ditto`** (see Notes) |
 | `.config` | 6.3G | data | **migrated 2026-09-10** | the hidden bulk is `.config/.android` at 5.5G (not raycast) — so `.android` is already inside this row, not a long-tail candidate |
 | `.gradle` | 6.2G | regen | **migrated 2026-09-10** | `gradle --stop` first (daemon registry) |
@@ -119,54 +121,65 @@ these three are not:
   for d in ~/repos/*/; do [ -n "$(git -C "$d" status --porcelain 2>/dev/null)" ] && printf 'DIRTY %s\n' "$d"; done
   ```
 
-**The launchd / TCC wall — the gate that blocks `.local` (measured 2026-09-10).**
-A process spawned by **launchd** cannot read *anything* on `/Volumes/offload`.
-Not the program, not its data, not its log file. `diskutil info` reports
-`Device Location: External`, which puts the whole volume in a TCC-protected
-class, and a LaunchAgent has no TCC grant and no way to prompt for one (there
-is no UI behind it). The denial is silent.
+**The launchd / TCC wall — SUPERSEDED 2026-09-11, see below.** The original
+finding (2026-09-10) was that a process spawned by launchd cannot read
+*anything* on `/Volumes/offload`. That generalised from a `/bin/cat` probe and
+is **wrong**. Re-measured with a paired-agent matrix on 2026-09-11
+(`scripts/tests/macos-permissions-gate.sh`, which now regression-tests all of
+this on every run):
 
-Reproduced with pairs of otherwise-identical agents:
+| launchd execs | volume access | observed |
+|---|---|---|
+| `/bin/echo`, logs internal (control) | n/a | exit 0 |
+| `/bin/cat <file on volume>` | **denied** | exit 1, `Operation not permitted` |
+| `/bin/bash -c 'cat <file on volume>'` | **allowed** | exit 0, contents read |
+| `/bin/zsh -c 'cat <file on volume>'` | **allowed** | exit 0 |
+| `/bin/bash <script living on the volume>` | **allowed** | exit 0, script ran |
+| a Mach-O binary living on the volume, exec'd directly | **denied** | hangs in exec, live pid, no log, no exit code |
+| `StandardOutPath` on the volume | **denied** | exit 78 (`EX_CONFIG`), killed in `xpcproxy` before exec |
 
-| agent | result |
-|---|---|
-| `/bin/echo` → `StandardOutPath` on the volume | exit **78** (`EX_CONFIG`), log file never created |
-| `/bin/echo` → `StandardOutPath` internal | exit 0, output written |
-| `/bin/bash <script on volume>`, logs internal | `Operation not permitted` |
-| `/bin/cat <plain text file on volume>`, logs internal | `Operation not permitted` |
+So the boundary is not the volume, it is the **responsible process**. Shells
+hold Full Disk Access grants on this host and pass them to what they exec; a
+bare non-shell binary has none. The operative rule is therefore narrow:
 
-The last row is the important one: an Apple-signed binary reading an ordinary
-text file is denied, so this is **not** about exec bits, ownership, `nosuid`,
-or symlink resolution — it is a blanket volume-scoped deny. Note the two
-failure shapes: a bad *log* path kills the job in `xpcproxy` **before exec**
-(78, empty stderr, no output at all), while a bad *program or data* path fails
-after exec and does leave `Operation not permitted` in stderr — provided
-stderr itself is internal.
+> **`ProgramArguments[0]` must be an internal, Apple-shipped shell.** Everything
+> after it — scripts, data, config — may live on the volume.
 
-This already bit the fleet: it is why the four `telemetry-ingest` agents and
-`com.webfront.reap` have been dead since `repos` moved on **2026-09-06**, at
-exit 78 with empty logs. Nothing announced it.
+Two corollaries worth their own lines, because both cost real debugging:
 
-Migrating `.local` would extend that to the rest of the automation layer —
-`prune-tmpdir`, `dotfiles.pull`, `neptune-swap-watchdog`, `smb-mount`,
-`paseo-daemon`, `paseo-watchdog` — because their programs, their mise shims,
-or both live under `~/.local`. **So `.local` does not move until one of these
-is settled:**
+- **A denied-but-promptable access HANGS; it does not fail.** launchd has no
+  UI, so TCC blocks in `open(2)` forever waiting for a prompt that can never be
+  shown. Confirmed by sampling stuck processes: `cat` blocked in `__open`, and
+  `zsh -c` blocked in `run_init_scripts` on a `gh auth token` child waiting on
+  the keychain (fixed — `zsh/env.d/08_mise.zsh` now bounds that lookup). A hung
+  agent holds a pid, never retries, writes no log, and looks unremarkable in
+  `launchctl list`. This is strictly worse than a clean denial.
+- **Grants are keyed by path AND code-signing hash.** A brew-installed shell
+  loses its grant on the next `brew upgrade`, and by the point above the
+  revocation presents as a hang. Hence `launchd_unit_shell()` in
+  `scripts/deploy.d/lib/helpers.zsh`, which pins macOS units to `/bin/zsh`.
+  `dotfiles.prune-tmpdir` was running `/usr/local/bin/zsh` until 2026-09-11.
 
-1. **Grant Full Disk Access** to every binary launchd execs for these jobs
-   (`/bin/bash`, `/bin/zsh`, and the mise shims' interpreter). GUI-only, per
-   binary, not reproducible from this repo, and broad — FDA on `/bin/bash`
-   is FDA for every bash on the machine.
-2. **Keep `.local` internal permanently** and revise the Decision above. It is
-   24G of the ≈52G, but it is also the only row the launchd layer depends on.
-3. **Move the affected agents off `~/.local`** — programs and logs pinned to
-   internal paths — so nothing launchd touches resolves onto the volume.
+**What this means for `.local`:** it is no longer blocked on a permission
+grant. The four `telemetry-ingest` agents recorded above as dead since
+2026-09-06 are at exit 0 today. The remaining work is mechanical — four agents
+still put a `~/.local/...` path in `ProgramArguments[0]`:
 
-Partial mitigation already landed: `launchd_log_dir()` in
+| agent | `ProgramArguments[0]` | fix |
+|---|---|---|
+| `com.github.ctaylor.codexbar-serve` | `~/.local/dotfiles/scripts/codexbar-serve` | prefix `/bin/zsh` |
+| `com.github.ctaylor.smb-mount` | `~/.local/dotfiles/scripts/smb-mount` | prefix `/bin/zsh` |
+| `local.paseo-watchdog` | `~/.local/agents/scripts/paseo-watchdog` | prefix `/bin/bash` (agents repo) |
+| `com.github.ctaylor.micrec` | `~/.local/bin/micrec` | a Mach-O binary — cannot be exec'd from the volume at all; keep it internal or wrap it |
+
+`com.webfront.reap` is a separate, still-live instance of the *log* half: its
+`StandardOutPath` is under `~/repos` (already on the volume), which is why it
+sits at exit 78. It is owned by the webfront repo, not this one.
+
+Partial mitigation already landed earlier: `launchd_log_dir()` in
 `scripts/deploy.d/lib/helpers.zsh` pins dotfiles-owned LaunchAgent
-`StandardOutPath`/`StandardErrorPath` to `~/Library/Logs/dotfiles`
-(internal by invariant 3) instead of `$XDG_STATE_HOME`. That fixes the *log*
-half only; the program half still needs one of the three above.
+`StandardOutPath`/`StandardErrorPath` to `~/Library/Logs/dotfiles` (internal by
+invariant 3) instead of `$XDG_STATE_HOME`.
 
 **Idle spindown does not apply to this drive — do not set `disksleep`.**
 `pmset -g` does report `disksleep 10`, which looks alarming, but that timer is
@@ -357,7 +370,7 @@ last.
 | login-time mount dependency | every agent that resolves through `~/.local` + all interactive shells: four `telemetry-ingest` agents (not five — `openclaw` is ceres-only) run `~/.local/share/mise/shims/uv`; `prune-tmpdir` and `dotfiles.pull` run from `~/.local/dotfiles` and log to `~/.local/state`; `neptune-swap-watchdog` runs `~/.local/bin/saturn-swap-watchdog.sh`; `homebrew.mxcl.colima` boots its VM from `~/.colima` | the enclosure is expected to mount before the login UI — **assumed, not yet measured**; the reboot in runbook step 5 is the test, and the agent status check there is how it reports. All listed agents are periodic/watched, not login-critical — worst case one missed interval, self-healed on next fire. Deploy-time: fragment 08 fails fast (naming the dangling rows + the fix) when the volume is absent — before `10_dirs` can abort cryptically. Once `.local` itself has migrated, a detached volume also makes the deploy *uninvocable* (the repo lives under the link) — recovery is remount, nothing to repair. Boundary: never extend to a laptop |
 | **runtime volume loss** | a Thunderbolt bus reset, a physical unplug, or an enclosure power interruption unmounts the volume mid-session: every `~/.local` hot path — shims, agents, launchd jobs, shells with cwd under it — fails until remount; in-flight writes lost. Explicitly **not** idle-spindown: `disksleep` does not apply to NVMe (see Preconditions) | measured zero unmount events and zero I/O errors/retries across the 8-day uptime, so the residual is physical/link-level, not policy-level — there is no setting to turn off. Links are stable, so a remount heals it with no repair; worst case is the in-flight writes. This is the standing cost of the scheme and the reason it stays neptune-only |
 | ownership off | see Preconditions | fragment warns every deploy until `enableOwnership`; re-verify after replug, before `.config` moves |
-| **launchd cannot read the volume at all** | EVERY LaunchAgent whose program, data or log path resolves onto `/Volumes/offload` | **Not a prompt — a hard deny.** See *The launchd / TCC wall* under Preconditions. This is the gate blocking `.local`, and it already broke 5 agents when `repos` moved on 2026-09-06 |
+| **launchd cannot EXEC from the volume, and a denied access HANGS rather than failing** | any LaunchAgent whose `ProgramArguments[0]` or log path resolves onto `/Volumes/offload` | Narrower than first recorded — see *The launchd / TCC wall*, re-measured 2026-09-11. Shells hold grants and read the volume fine; a bare binary on the volume never execs, and a promptable denial blocks forever with a live pid and no log. Mitigations: `launchd_unit_shell()` pins units to Apple-shipped `/bin/zsh`, `launchd_log_dir()` pins logs internal, and `scripts/tests/macos-permissions-gate.sh` regression-tests both |
 | TCC removable-volume prompts (interactive apps) | GUI/terminal apps touching `/Volumes/*` | one-time per app; net prompts may *drop* (files leaving `~/Documents` leave that protected class). Interactive processes CAN prompt and be granted; launchd jobs cannot — that is the row above |
 | path instability | venvs/pnpm/node bake absolute paths | invariant 1: links created once, never re-pointed; the volume path is canonical forever |
 | EXDEV | `mv ~/f ~/.cache/x` crosses filesystems → copy+unlink instead of atomic rename | handled silently by gnubin `mv` and git; cosmetic |

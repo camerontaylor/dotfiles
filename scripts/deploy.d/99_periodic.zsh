@@ -55,10 +55,11 @@ WantedBy=timers.target"
 elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     printf '%s\n' "  ...launchd detected, installing user LaunchAgent..."
 
-    # Runner for the scheduled unit. Default /bin/zsh preserves the historical
-    # plist; DOTFILES_UNIT_SHELL overrides it for hosts that deploy through
-    # deploy.bash without zsh (56_tmpdir_prune.zsh honors the same knob).
-    unit_shell=${DOTFILES_UNIT_SHELL:-/bin/zsh}
+    # Runner for the scheduled unit — launchd_unit_shell() pins macOS to the
+    # Apple-shipped /bin/zsh so the TCC grant survives brew upgrades (see the
+    # helper). DOTFILES_UNIT_SHELL still overrides, for hosts that deploy
+    # through deploy.bash without zsh (56_tmpdir_prune.zsh honors it too).
+    unit_shell=$(launchd_unit_shell)
 
     launchd_dir=$HOME/Library/LaunchAgents
     launchd_label=com.ctaylor.dotfiles.pull
@@ -69,6 +70,11 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     deploy_mkdir -p $launchd_dir
     deploy_mkdir -p $launchd_logs
 
+    # sh_quote for the SHELL layer, xml_escape at interpolation for the XML
+    # layer — two different escapes for two different parsers. Omitting the
+    # second left a raw `&&` in the plist: invalid XML that `plutil -lint`
+    # rejects while launchd's own parser happens to accept it, so the breakage
+    # was latent rather than loud.
     launchd_command="cd $(sh_quote "$SCRIPT_DIR") && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
@@ -80,7 +86,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <array>
         <string>$unit_shell</string>
         <string>-lc</string>
-        <string>$launchd_command</string>
+        <string>$(xml_escape "$launchd_command")</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>

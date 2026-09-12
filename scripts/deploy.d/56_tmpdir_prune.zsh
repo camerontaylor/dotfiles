@@ -31,7 +31,12 @@ printf '%s\n' "Installing daily TMPDIR prune task..."
 # pruner reads it; launchd and cron otherwise hand it a bare environment.
 # DOTFILES_UNIT_SHELL overrides the runner for bash-only hosts (99_periodic.zsh
 # honors the same knob); the default resolution is unchanged.
-unit_shell=${DOTFILES_UNIT_SHELL:-$(command -v zsh || printf '%s' /bin/zsh)}
+# launchd_unit_shell(): on macOS this resolves to the Apple-shipped /bin/zsh,
+# NOT `command -v zsh` (which finds brew's). TCC keys Full Disk Access grants
+# by code-signing hash, so a brew upgrade silently revokes the grant — and the
+# revocation presents as a HANG, not an error. This agent was running
+# /usr/local/bin/zsh.
+unit_shell=$(launchd_unit_shell)
 prune_command=$(sh_quote "$pruner")
 
 if (( DEPLOY_DRY_RUN )); then
@@ -99,7 +104,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     <array>
         <string>$unit_shell</string>
         <string>-lc</string>
-        <string>$prune_command</string>
+        <string>$(xml_escape "$prune_command")</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>

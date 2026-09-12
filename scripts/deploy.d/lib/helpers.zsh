@@ -289,3 +289,34 @@ launchd_log_dir() {
         printf '%s\n' "${DOTFILES_LAUNCHD_LOG_DIR:-$XDG_STATE_HOME}"
     fi
 }
+
+# XML-escape a string for interpolation into a plist <string> element.
+# & FIRST: escaping it after < and > would double-escape the entities those
+# substitutions introduce. Without this, a command containing `&&` produces a
+# plist that `plutil -lint` rejects outright — launchd's own parser happens to
+# tolerate it, so the damage is latent rather than loud, which is worse.
+xml_escape() {
+    printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' \
+        -e 's/"/\&quot;/g' -e "s/'/\&apos;/g"
+}
+
+# Interpreter to put in ProgramArguments[0] / ExecStart for a scheduled unit.
+#
+# On macOS this MUST be the Apple-shipped shell, not a brew one. TCC keys its
+# grants by path AND code-signing hash, so a `brew upgrade bash` silently
+# revokes any Full Disk Access the brew shell held — and on this fleet a
+# revoked grant does not surface as an error: the access blocks waiting for a
+# GUI prompt that launchd can never display, so the agent hangs forever with a
+# live pid and an empty log (measured 2026-09-11; see
+# scripts/tests/macos-permissions-gate.sh, which probes for exactly this).
+# /bin/bash and /bin/zsh are platform binaries whose grants survive upgrades.
+# Non-Darwin has no TCC, so the first zsh on PATH is fine there.
+launchd_unit_shell() {
+    if [[ -n ${DOTFILES_UNIT_SHELL:-} ]]; then
+        printf '%s\n' "$DOTFILES_UNIT_SHELL"
+    elif [[ $DOTFILES_OS == Darwin && -x /bin/zsh ]]; then
+        printf '%s\n' /bin/zsh
+    else
+        command -v zsh || printf '%s\n' /bin/zsh
+    fi
+}

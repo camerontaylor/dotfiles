@@ -21,9 +21,42 @@ export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 # in sync with `gh auth login` rotations. Skipped if already exported (e.g. CI).
 # The inner `if` ensures a missing/failed `gh auth token` doesn't make this
 # whole file exit non-zero — .zshenv reports any non-zero source as an error.
+#
+# THE LOOKUP MUST BE BOUNDED. `gh auth token` reads the macOS keychain, and in
+# a context with no UI it does not fail — it blocks forever waiting for a
+# keychain prompt that can never be displayed. Measured 2026-09-11: every
+# `zsh -c` LaunchAgent on neptune hung in run_init_scripts with a live
+# `gh auth token` child, holding a pid, writing no log and never retrying.
+# The guard above catches a FAILING gh, not a HANGING one, and a hung agent is
+# invisible to a `launchctl list` glance.
+#
+# Note the PATH asymmetry that makes this reachable at all: `gh` is a mise
+# shim, and the shims were prepended a few lines above, so gh IS on PATH under
+# launchd — while `timeout`/`gtimeout` live in /usr/local/bin, which launchd's
+# default PATH (/usr/bin:/bin:/usr/sbin:/sbin) excludes. So the tiers below
+# resolve to "skip" exactly in the launchd case, which is the one that hangs.
+#
+# Tiers: bound it if we can; otherwise only risk an unbounded call when a
+# human is attached (interactive => keychain unlocked, a prompt can resolve);
+# otherwise skip. `case $- in *i*` and not `[[ -o interactive ]]`: the latter
+# is unconditionally false under bash, which silently inverts the gate
+# (CLAUDE.md, zsh-vs-bash foot-guns). Regression-tested by
+# scripts/tests/macos-permissions-gate.sh.
 if [[ -z ${GITHUB_TOKEN:-} ]] && command -v gh >/dev/null 2>&1; then
-    if _gh_token=$(gh auth token 2>/dev/null); then
-        export GITHUB_TOKEN=$_gh_token
+    _gh_timeout=
+    if command -v timeout >/dev/null 2>&1; then
+        _gh_timeout=timeout
+    elif command -v gtimeout >/dev/null 2>&1; then
+        _gh_timeout=gtimeout
     fi
-    unset _gh_token
+    _gh_token=
+    if [[ -n $_gh_timeout ]]; then
+        _gh_token=$("$_gh_timeout" 5 gh auth token 2>/dev/null) || _gh_token=
+    else
+        case $- in
+            *i*) _gh_token=$(gh auth token 2>/dev/null) || _gh_token= ;;
+        esac
+    fi
+    [[ -n $_gh_token ]] && export GITHUB_TOKEN=$_gh_token
+    unset _gh_token _gh_timeout
 fi
