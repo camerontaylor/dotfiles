@@ -52,7 +52,7 @@ Cross-check: `docs/cli-tools.md:9-20` defines the same source taxonomy (mise / b
 **Version-templated inside mise.toml (per OS+arch):**
 1. `delta` — `0.18.2` on macOS/x64, `0` elsewhere — `configs/mise.toml:49`
 2. `fd` — `10.3.0` on macOS/x64, `10` elsewhere — `configs/mise.toml:52`
-3. `btop` — `os = ["linux"]` filter (no darwin assets upstream) — `configs/mise.toml:88`
+3. `btop` — `os = ["linux"]` filter (no darwin assets upstream) — `configs/mise.toml:89`
 4. `npm:@getpaseo/cli` — `os = ["linux"]`; Macs get the CLI from the cask's app bundle instead — `configs/mise.toml:105-123`
 
 **OS fan-outs in deploy fragments:**
@@ -97,7 +97,7 @@ Cross-check: `docs/cli-tools.md:9-20` defines the same source taxonomy (mise / b
 | 13 mise tools (`gh`, `ripgrep`, `neovim`, `bat`, `eza`, `sd`, `zoxide`, `tree-sitter`, `awscli`, `glab`, + fd/delta/ast-grep above) | mise | brew fallback | Hedge path, fires only when mise failed to deliver — `50_mise.zsh:166-181` |
 
 **Same tool name, split by OS (not concurrent, but two owners fleet-wide):**
-- `btop` — mise on Linux (`mise.toml:88`) / brew on macOS (`75:207-210`)
+- `btop` — mise on Linux (`mise.toml:89`) / brew on macOS (`75:207-210`)
 - `htop` — brew (`75:182`) / pacman (`75:185`)
 - `mosh` — brew / apt / pacman (`75:234-258`)
 - `socat`, `tailscale`, `git-extras`, `testssl`, monitoring set — pkg-manager fan-outs (§2 branches 12-15)
