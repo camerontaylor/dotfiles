@@ -157,4 +157,22 @@ Temporary Items
 # the prefix covers any others.
 .gjc-exact-*
 
+# zcode (Z.AI's coding CLI) writes an ACP sandbox config into every project it
+# runs in: .zcode/acp/sandbox.json, two booleans, regenerated on each run. It is
+# covered by no project .gitignore, so it shows up as untracked in every worktree
+# an agent touches — three had appeared across ~/repos by 2026-09-14, including
+# one in a repo slated to be published public. Harmless content, but a `git add -A`
+# in an agent worktree would commit it.
+.zcode/
+
+# paseo writes per-workspace runtime state next to the project the same way.
+.paseo/
+
+# Deliberately NOT ignoring `.claude/` wholesale here. Project .claude/ holds
+# tracked content — skills/, agents/, settings.json — and a blanket rule would
+# silently keep a newly authored skill out of `git status` rather than just
+# hiding scratch. The one genuinely per-machine file is already handled by the
+# `**/.claude/settings.local.json` rule at the top of this file. A repo that
+# wants more than that should say so in its own .gitignore.
+
 # vi: ft=gitignore
