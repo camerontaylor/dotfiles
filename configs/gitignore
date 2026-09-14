@@ -168,11 +168,34 @@ Temporary Items
 # paseo writes per-workspace runtime state next to the project the same way.
 .paseo/
 
-# Deliberately NOT ignoring `.claude/` wholesale here. Project .claude/ holds
-# tracked content — skills/, agents/, settings.json — and a blanket rule would
-# silently keep a newly authored skill out of `git status` rather than just
-# hiding scratch. The one genuinely per-machine file is already handled by the
-# `**/.claude/settings.local.json` rule at the top of this file. A repo that
-# wants more than that should say so in its own .gitignore.
+# Deliberately NOT ignoring `.claude/` wholesale. Project .claude/ holds tracked
+# content and a blanket rule would silently keep a newly authored skill out of
+# `git status` rather than just hiding scratch. Surveyed 2026-09-14 across
+# ~/repos: webfront alone TRACKS thirteen paths under .claude/ (agents, skills,
+# commands, hooks, rules, conventions, analysis, references, reports, review,
+# helpers, context-backup, settings.json), ollie_notes adds output-styles/, and
+# telemetry tracks .claude/scheduled_tasks.json. The authored surface is both
+# large and per-repo, so this is a denylist of the runtime artifacts instead.
+# Add to it when a new one shows up; never invert it to a blanket ignore.
+#
+# Note the asymmetry on scheduled_tasks: the .json is authored (tracked in
+# telemetry), the .lock beside it is runtime. Only the lock is ignored.
+**/.claude/.credentials.json
+**/.claude/scheduled_tasks.lock
+**/.claude/memory.db
+**/.claude/memory.db-wal
+**/.claude/memory.db-shm
+**/.claude/worktrees/
+**/.claude/shell-snapshots/
+**/.claude/history.jsonl
+**/.claude/paste-cache/
+**/.claude/file-history/
+**/.claude/session-env/
+
+# Not ignored on purpose, though they are runtime in ~/.claude: sessions/,
+# projects/, ide/, cache/, debug/, tasks/. None has ever appeared inside a
+# project .claude/ here, and .claude/sessions/ IS tracked in two vendored
+# third-party repos under discord-chat-explorer/ — adding a rule for it would
+# claim a convention that does not exist. Revisit if one turns up untracked.
 
 # vi: ft=gitignore
