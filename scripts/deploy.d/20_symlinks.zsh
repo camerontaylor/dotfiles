@@ -26,7 +26,20 @@ deploy_ln -sfn $SCRIPT_DIR/configs/ranger $XDG_CONFIG_HOME/ranger/rc.conf
 deploy_ln -sfn $SCRIPT_DIR/configs/gemrc $XDG_CONFIG_HOME/gem/gemrc
 deploy_ln -sfn $SCRIPT_DIR/configs/ranger-plugins $XDG_CONFIG_HOME/ranger/plugins
 deploy_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
-deploy_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+# The mise global config is resolution-critical in a way no other link here is:
+# every shim resolves its tool version THROUGH this file, so a missing or
+# dangling link takes down every mise-managed binary at once (node, codex —
+# the ceres 2026-09-12..15 outage where the paseo codex probe died for 2 days).
+# Paseo agent worktrees are ephemeral, and a deploy from inside one (agent or
+# its post-merge hook) must not hand this pointer to a tree paseo will delete.
+# Worktree deploys therefore aim the link at the MAIN checkout's mise.toml;
+# from the main checkout this resolves to $SCRIPT_DIR and changes nothing.
+_mise_main=$(git -C "$SCRIPT_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -1 || true)
+if [[ -n "$_mise_main" && "$_mise_main" != "$SCRIPT_DIR" && -f "$_mise_main/configs/mise.toml" ]]; then
+    deploy_ln -sfn "$_mise_main/configs/mise.toml" $XDG_CONFIG_HOME/mise/config.toml
+else
+    deploy_ln -sfn $SCRIPT_DIR/configs/mise.toml $XDG_CONFIG_HOME/mise/config.toml
+fi
 # AeroSpace tiling-WM config. macOS-only tool, but AeroSpace only ever READS this
 # file (never writes back), so a repo symlink is safe and gives both Macs an
 # identical config; the link is an inert dangling file on Linux. Karabiner is
