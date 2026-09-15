@@ -1,5 +1,5 @@
 # curl/cargo installs for CLIs without a mise backend (rustup/cargo,
-# linear-cli), npm globals through the mise-managed node (pinned in
+# linear-cli, CodeRabbit), npm globals through the mise-managed node (pinned in
 # configs/mise.toml, installed by 50_mise.zsh), and gjc as a bun global
 # (bun-only package; see its block below). Claude Code / CodeWhale / moor /
 # wtp-Linux moved to mise backends (configs/mise.toml) — the drift-correctors
@@ -11,7 +11,7 @@
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, rustup, linear-cli, claude drift cleanup)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, coderabbit, rustup, linear-cli, claude drift cleanup)"
     return 0
 fi
 
@@ -196,6 +196,27 @@ if have bun; then
         deploy_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
         (( DEPLOY_DRY_RUN )) || hash -r
     fi
+fi
+
+# CodeRabbit ships native macOS/Linux binaries through its official installer.
+# Download completely before running; CI suppresses its browser-login prompt.
+# Supply the managed bin directory on PATH so it never edits shell profiles.
+if ! have coderabbit || $upgrade_mode; then
+    printf '%s\n' "Installing/upgrading CodeRabbit CLI..."
+    _coderabbit_installer=
+    if _coderabbit_installer=$(mktemp "${TMPDIR:-/tmp}/coderabbit-install.XXXXXX"); then
+        if curl --proto '=https' --tlsv1.2 -fsSL https://cli.coderabbit.ai/install.sh -o "$_coderabbit_installer" &&
+            CI=1 CODERABBIT_INSTALL_DIR="$HOME/.local/bin" PATH="$HOME/.local/bin:$PATH" sh "$_coderabbit_installer" > /dev/null 2>&1; then
+            hash -r
+            printf '%s\n' "  ...done"
+        else
+            printf '%s\n' "  ...failed to install CodeRabbit (non-fatal)"
+        fi
+        rm -f "$_coderabbit_installer"
+    else
+        printf '%s\n' "  ...failed to create CodeRabbit installer tempfile (non-fatal)"
+    fi
+    unset _coderabbit_installer
 fi
 
 if ! have cargo; then
