@@ -216,11 +216,17 @@ _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"      
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
 # converge drift-channel push topic (infra split, H2n's non-secret half):
-# ceres-only because the differ/renderer runs on ceres. HUMAN-ONLY H2n
-# provisions the blob in the secrets repo — encrypted in-place at
+# gated `all` as of 2026-09-16, was `ceres`. The old rationale — "the
+# differ/renderer runs on ceres" — was only half the story: ceres alone runs
+# `converge render-wiki`, but EVERY host's `converge check --status` reads THIS
+# file to decide whether to push a drift notification, and silently falls back
+# to log-only mode when it is absent. So the ceres gate downgraded every other
+# box to log-only, which is why makemake's copy had to be hand-rendered (see
+# infra manifests/makemake.toml, path:.local/state/converge/ntfy-topic).
+# HUMAN-ONLY H2n provisions the blob in the secrets repo — encrypted in-place at
 # services/converge/ntfy-topic.enc, since .sops.yaml's creation rule matches
 # `\.enc$` on the INPUT path.
-_row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 ceres  ''
+_row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 all    ''
 # gjc (gajae-code): only .env is a secret (ZAI_API_KEY, OPENROUTER_API_KEY).
 # Gated `all`, not ceres: config.yml's modelRoles.default is zai/glm-5.3, so a
 # box without these keys starts gjc with a default model it cannot authenticate.
