@@ -25,9 +25,22 @@ trap 'printf "%s\n" "deploy.bash: aborted at line $LINENO (exit $?)" >&2' ERR
 
 # ── Version floor assert (docs/bash-compatibility.md §E) ──────────────────
 # Fragments ≤74 and both drivers must run on the fleet's oldest shell, so the
-# floor is /bin/bash 3.2 (macOS stock). Anything older/missing fails loud
-# instead of half-running the deploy.
-_bash_version=$(/bin/bash --version 2>/dev/null | head -n 1)
+# floor is bash 3.2 — the version macOS ships at /bin/bash. Anything older, or
+# no bash at all, fails loud instead of half-running the deploy.
+#
+# The PROBE is not the same thing as the FLOOR. It used to read /bin/bash
+# unconditionally, which made NixOS report "version 0.0" and abort: NixOS
+# deliberately provides /bin/sh but no /bin/bash, so the probe was measuring a
+# file that will never exist there rather than the bash that would actually run
+# the fragments. It killed pluto's whole bootstrap before a single fragment
+# loaded (2026-09-16). Prefer /bin/bash where it exists — that is the one that
+# matters on macOS, and it is the strictest reading — then fall back to PATH.
+if [ -x /bin/bash ]; then
+    _bash_probe=/bin/bash
+else
+    _bash_probe=$(command -v bash 2>/dev/null)
+fi
+_bash_version=$([ -n "$_bash_probe" ] && "$_bash_probe" --version 2>/dev/null | head -n 1)
 _bash_version=${_bash_version#*version }
 _bash_major=${_bash_version%%.*}
 _bash_minor=${_bash_version#*.}
@@ -35,10 +48,14 @@ _bash_minor=${_bash_minor%%.*}
 case $_bash_major in ''|*[!0-9]*) _bash_major=0 ;; esac
 case $_bash_minor in ''|*[!0-9]*) _bash_minor=0 ;; esac
 if (( _bash_major < 3 )) || { (( _bash_major == 3 )) && (( _bash_minor < 2 )); }; then
-    printf '%s\n' "FATAL: /bin/bash is version $_bash_major.$_bash_minor; this deploy needs >= 3.2" >&2
+    if [ -z "$_bash_probe" ]; then
+        printf '%s\n' "FATAL: no bash found — /bin/bash absent and none on PATH; this deploy needs >= 3.2" >&2
+    else
+        printf '%s\n' "FATAL: $_bash_probe is version $_bash_major.$_bash_minor; this deploy needs >= 3.2" >&2
+    fi
     exit 2
 fi
-unset _bash_version _bash_major _bash_minor
+unset _bash_version _bash_major _bash_minor _bash_probe
 
 # Argument parsing — fail-closed on unknown flags or missing --only value.
 upgrade_mode=false
