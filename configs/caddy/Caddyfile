@@ -177,6 +177,11 @@ ntfy.wedrifid.dev {
 appreciation.wedrifid.dev {
 	import wedrifid_tailnet
 
+	# The import above is only the OUTER of two gates. Caddy drops non-tailnet
+	# peers here; the app then resolves the tailnet address to an identity and
+	# admits only Cameron's own devices, not tagged nodes. Nothing else behind
+	# this ingress does that second step.
+
 	# Phone photos. adapter-node's own BODY_SIZE_LIMIT is raised to match in the unit file.
 	request_body {
 		max_size 64MB
@@ -196,7 +201,9 @@ appreciation.wedrifid.dev {
 # ~/repos/deploy/plex/.env on makemake) or fall back to the plex.tv relay.
 # Removing this block therefore does not cut off the Plex clients.
 plex.wedrifid.dev {
-	import wedrifid_tailnet # Wired office LAN first (10.77.0.97 — same switch, line rate),
+	import wedrifid_tailnet
+
+	# Wired office LAN first (10.77.0.97 — same switch, line rate),
 	# makemake's tailnet IP as fallback if the cable is out. Identical
 	# upstream pair and policy to immich above.
 	# Bare / is an authenticated PMS API endpoint (401), not the web app, so a
@@ -242,4 +249,184 @@ abs.wedrifid.dev {
 		# as generated — same reason as ntfy/plex above.
 		flush_interval -1
 	}
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The fleet's remaining web UIs (added 2026-09-17).
+#
+# Everything below imports `wedrifid_tailnet` above — grey-cloud A record at
+# 100.82.17.115, DNS-01 cert, and the remote_ip abort that is the actual
+# boundary. Catalogued in infra web/catalog.toml, which renders the landing
+# page and cross-checks this file (`bin/render-fleet-page --check-caddy`).
+#
+# All the makemake upstreams here are the host's TAILNET bind, not its wired
+# LAN IP — unlike immich/plex/abs, which bind both. That is a real difference
+# in failure mode, not an oversight: a tailnet bind comes up only after the
+# boot-race drop-in's wait-for-tailscale-ip completes, so these services are
+# late-starting on a cold boot where the wired ones are not. Moving one to a
+# dual bind is a compose edit plus a container recreate, deliberately not
+# bundled into an ingress change.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── the landing page itself ────────────────────────────────────────────────
+# Static files, served straight off disk by this same Caddy — no application,
+# no container, no database. It therefore has no failure mode of its own: if
+# this page is down, the thing that serves every other name here is also down.
+#
+# /var/www/fleet rather than anywhere under /home/ctaylor, which is 0700 and
+# unreadable to User=caddy — the same constraint that makes /etc/caddy/Caddyfile
+# a copy rather than a symlink. Installed by infra bin/install-fleet-page.
+fleet.wedrifid.dev {
+	import wedrifid_tailnet
+
+	root * /var/www/fleet
+	encode zstd gzip
+	file_server
+
+	# The icons change only when the catalog does; the page itself must not be
+	# cached or an edit appears not to have landed.
+	#
+	# BOTH paths, and that is not belt-and-braces: file_server serves the page
+	# at `/` without rewriting the request path, so a matcher for /index.html
+	# alone never fires for the URL everybody actually visits.
+	header /icons/* Cache-Control "public, max-age=604800"
+	# Go's mime table has no entry for .webmanifest, so file_server serves it
+	# with no Content-Type at all and the browser declines to install the PWA.
+	header /manifest.webmanifest Content-Type "application/manifest+json"
+	header / Cache-Control "no-cache"
+	header /index.html Cache-Control "no-cache"
+}
+
+# ── acquisition: the *arr lane ─────────────────────────────────────────────
+# Sonarr/Radarr/Lidarr/Prowlarr/Bazarr need no header surgery: served at the
+# root of their own hostname their UrlBase stays empty, and their SignalR live
+# updates ride a WebSocket, which reverse_proxy upgrades natively. No
+# flush_interval needed — that matters for unbuffered streaming responses
+# (SSE, long-poll), not for WebSockets.
+
+seerr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:5055
+}
+
+sonarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8989
+}
+
+radarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:7878
+}
+
+lidarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8686
+}
+
+# Host port 6768 -> container 6767: this host's Paseo Daemon already owns 6767.
+bazarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:6768
+}
+
+prowlarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:9696
+}
+
+bindery.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8787
+}
+
+# ── libraries ──────────────────────────────────────────────────────────────
+
+# Calibre-Web-Automated. No request_body directive: Caddy imposes no body
+# limit unless one is configured, so epub uploads work by default. (The
+# appreciation block's `request_body max_size 64MB` is imposing a cap, not
+# raising one — it is not a thing to copy here.)
+books.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8083
+}
+
+# ── downloaders ────────────────────────────────────────────────────────────
+
+# qBittorrent needs THREE header changes, and two of them are easy to miss:
+#
+#   1. Host -> the dial target. The WebUI validates the Host header against
+#      its own bind address and answers "Unauthorized" otherwise. Same
+#      dial-target rewrite as the usage vhost, same reason.
+#   2/3. Origin and Referer STRIPPED. Rewriting Host alone is not enough:
+#      qBittorrent's CSRF check compares Origin/Referer against Host, so
+#      after step 1 the browser's `https://qbit.wedrifid.dev` Origin no
+#      longer matches the rewritten Host and every state-changing request
+#      fails 403 — logging in works, then nothing else does.
+#
+# The alternative is turning off HostHeaderValidation + CSRFProtection in
+# qBittorrent itself, which weakens the app for every client and needs a
+# container recreate. Fixing it at the ingress keeps the blast radius here.
+qbit.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8080 {
+		header_up Host {upstream_hostport}
+		header_up -Origin
+		header_up -Referer
+	}
+}
+
+# slskd's UI is driven by SignalR and shows live transfer progress; where that
+# falls back to long-polling rather than a WebSocket, buffering would make
+# progress arrive in lumps.
+slskd.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:5030 {
+		flush_interval -1
+	}
+}
+
+soularr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8265 {
+		flush_interval -1
+	}
+}
+
+pyload.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8000
+}
+
+# YTPTube streams download progress to the page as it happens.
+ytptube.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8081 {
+		flush_interval -1
+	}
+}
+
+# ── fleet ──────────────────────────────────────────────────────────────────
+
+# Syncthing is the qBittorrent case again: its GUI runs its own host check and
+# rejects a proxied request whose Host it does not recognise. Rewriting Host to
+# the dial target satisfies it without setting insecureSkipHostcheck, which
+# would drop the protection for every client rather than just this path.
+# flush_interval because the GUI tracks state through a long-poll /rest/events
+# stream — buffered, the UI simply stops updating.
+syncthing.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8384 {
+		header_up Host {upstream_hostport}
+		flush_interval -1
+	}
+}
+
+# SeaweedFS filer browser — the object store behind Langfuse. Note this filer
+# ALREADY binds 0.0.0.0:8888, so it is reachable from the whole LAN with or
+# without this vhost; the hostname adds convenience, not exposure. It can
+# delete objects: an admin surface, not a file manager.
+seaweed.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 127.0.0.1:8888
 }

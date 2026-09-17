@@ -42,6 +42,52 @@ Two of these proxy to a loopback backend and treat `Host` differently, deliberat
 | `usage.wedrifid.dev` | `configs/caddy/Caddyfile:102-131` | `100.84.239.15:8791` — CodexBar quota collector on **neptune** (LaunchAgent `com.github.ctaylor.codexbar-serve`, dotfiles `78_codexbar_serve.zsh`; moved off ceres loopback 2026-09-10 — cookie-based sources are macOS-only); Caddy injects `Authorization: Bearer {env.CODEXBAR_DASHBOARD_TOKEN}`, which also authenticates `/usage`+`/cost` upstream now that the bind is non-loopback, so tailnet browsers need no token (see the secret section below) | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/health` -> `{"version":...,"status":"ok"}`; `/dashboard/v1/snapshot` -> `200` with no auth header |
 | `ntfy.wedrifid.dev` | `configs/caddy/Caddyfile:137-152` | `127.0.0.1:2586` — ntfy server, user unit `ntfy-server.service` | `~/.local/agents/docs/llm-quota.md` (agents repo; Caddy side stays dotfiles) | `/v1/health` -> `{"healthy":true}` |
 | `appreciation.wedrifid.dev` | `configs/caddy/Caddyfile:163-181` | `unix//run/appreciation/app.sock` — SvelteKit/Bun app, user unit `appreciation.service`; the socket (not a port) is load-bearing for the app's X-Forwarded-For identity check | `~/repos/hart/appreciation` (unit tracked there; tmpfiles.d snapshot at `configs/appreciation/appreciation.conf`) | `200` from Cameron's devices; abort/reset elsewhere |
+| `fleet.wedrifid.dev` | the `fleet` block | static files from `/var/www/fleet` — the fleet landing page, no application behind it. Installed by infra `bin/install-fleet-page`; generated from infra `web/catalog.toml` | `~/.local/infra` | `200`, and `/manifest.webmanifest` -> `application/manifest+json` |
+| 15 × `<service>.wedrifid.dev` | the block after the `fleet` one | the rest of the fleet's web UIs, added 2026-09-17: `seerr` `sonarr` `radarr` `lidarr` `bazarr` `prowlarr` `bindery` `books` `qbit` `slskd` `soularr` `pyload` `ytptube` `syncthing` `seaweed`. All but `seaweed` proxy to makemake's **tailnet** bind `100.87.185.24:<port>` | `~/.local/infra` `web/catalog.toml` | `200`/`302`; whole set probed by the loop in that file's header |
+
+### The `(wedrifid_tailnet)` snippet
+
+As of 2026-09-17 every `wedrifid.dev` block is `import wedrifid_tailnet` rather
+than its own copy of the `tls` block and the `@external`/`abort` pair. With
+twenty-two of them, the copy-paste version had a failure mode worth designing
+out: a block that silently omitted the matcher would not be merely
+misconfigured, it would be **genuinely internet-facing**, because Caddy binds
+`*:443` and ceres has a public IP. Spelling the boundary once removes that.
+
+The refactor was proven behaviour-preserving with the adapt-diff below — the
+JSON was byte-identical at 33817 bytes before and after — and the 16 routes
+added afterwards left all 11 pre-existing routes byte-identical too.
+
+Two things enforce it from outside this file, in the infra repo:
+
+```sh
+infra/bin/render-fleet-page --check-caddy ~/.local/dotfiles/configs/caddy/Caddyfile
+```
+
+fails if a catalog entry has no vhost, a vhost has no catalog entry, or any
+`wedrifid.dev` vhost is missing the gate — and it follows the `import`, so an
+emptied snippet cannot launder twenty "gated" vhosts. `miniflux` is the single
+declared exception (`exposure = "public"`), because it is an orange-cloud CNAME
+through the Cloudflare Tunnel and is not served by this Caddy at all.
+
+```sh
+infra/bin/ensure-fleet-dns            # dry run; --apply to write
+```
+
+reconciles the grey-cloud A records against the same catalog. It refuses to
+create a proxied (orange-cloud) record: that would route through Cloudflare's
+edge, which cannot reach a CGNAT address, and would put the service on the
+public internet.
+
+Two per-service header cases are worth knowing before copying a block, in
+addition to the `usage` vs `ntfy` distinction above:
+
+- **`qbit`** rewrites `Host` to the dial target *and strips `Origin` and
+  `Referer`*. qBittorrent validates `Host`, then separately compares
+  `Origin`/`Referer` against it for CSRF — so rewriting `Host` alone lets you
+  log in and then fails every subsequent request with 403.
+- **`syncthing`** rewrites `Host` for the same reason (its GUI runs its own
+  host check) but has no CSRF coupling, so nothing is stripped.
 
 Two ordering facts hold this together and are the reason the file is **not**
 split across repos:
