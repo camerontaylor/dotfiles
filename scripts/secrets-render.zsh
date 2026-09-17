@@ -182,7 +182,7 @@ FIRST_RENDER=0
 #   field 2  kind  shellenv | dotenv | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | immich | libris | ollie-notes
+#   field 5  gate  all | ceres | immich | libris | ollie-notes | infra
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -208,6 +208,12 @@ for _shell_file in 90_secrets 91_cloudflare_secrets 92_telemetry_secrets \
                    94_zerotier_secrets 95_tailscale_secrets; do
     _row "shell/${_shell_file}.yaml" shellenv "$RENDER_STATE/zsh/${_shell_file}.zsh" 600 all ''
 done
+
+# Audiobookshelf client API key (arr stack on makemake). The consumers are
+# shell/agent tooling that talk TO the server, which lives where the infra
+# repo is worked on — so the row sits outside the loop above, gated on the
+# infra checkout rather than fleet-wide.
+_row "shell/96_audiobookshelf_secrets.yaml" shellenv "$RENDER_STATE/zsh/96_audiobookshelf_secrets.zsh" 600 infra ''
 
 # Services. openclaw is ceres-only (server-side config for a bridge that runs
 # on exactly one box); the immich rows are gated on the deploy dir already
@@ -297,6 +303,7 @@ _gate_open() {
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
+        infra)  [[ -d $HOME/.local/infra ]] ;;
         ollie-notes) [[ $(hostname -s 2>/dev/null) == saturn ]] ;;
         *)      return 1 ;;
     esac
