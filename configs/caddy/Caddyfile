@@ -188,3 +188,76 @@ appreciation.wedrifid.dev {
 
 	reverse_proxy unix//run/appreciation/app.sock
 }
+
+# Plex Media Server — tailnet-only (added 2026-09-11). Backend on makemake.
+# Same shape as immich.wedrifid.dev above: grey-cloud A record straight at
+# ceres's Tailscale IP, personal-account token because wedrifid.dev is a
+# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
+#
+# NOTE: this vhost is for browsers. The Plex *apps* do not use it; they pick
+# a direct route from the server's advertised URLs (ADVERTISE_IP in
+# ~/repos/deploy/plex/.env on makemake) or fall back to the plex.tv relay.
+# Removing this block therefore does not cut off the Plex clients.
+plex.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
+	# the DNS record alone — refuse anything not arriving over the tailnet.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+	# Wired office LAN first (10.77.0.97 — same switch, line rate),
+	# makemake's tailnet IP as fallback if the cable is out. Identical
+	# upstream pair and policy to immich above.
+	# Bare / is an authenticated PMS API endpoint (401), not the web app, so a
+	# browser hitting the vhost root falls through to Plex's hosted page
+	# instead of this server. Send browsers to the locally-bundled web client.
+	# Redirect to /web, NOT straight to /web/index.html: Plex's own /web
+	# handler 302s to /web/index.html#!/setup/<machineIdentifier>, and that
+	# fragment is what pins the app to THIS server. Without it the web app
+	# loads with no server selected and shows Plex's own catalog instead.
+	redir / /web 302
+	reverse_proxy 10.77.0.97:32400 100.87.185.24:32400 {
+		lb_policy first
+		fail_duration 30s
+		# Plex builds redirect URLs from the scheme it sees. Caddy
+		# terminates TLS and proxies plain HTTP upstream, so /web 302s to
+		# an http:// Location, downgrading the browser. Rewrite it back.
+		header_down Location "^http://plex.wedrifid.dev" "https://plex.wedrifid.dev"
+		# Plex pushes library/playback activity over a long-lived
+		# EventSource stream (/:/eventsource/notifications) and a
+		# WebSocket. Disable response buffering so those arrive
+		# immediately rather than in chunks — same reason as ntfy above.
+		flush_interval -1
+	}
+}
+
+# Audiobookshelf — audiobook server on makemake, tailnet-only (added 2026-09-17).
+# Same shape as immich/plex.wedrifid.dev above: grey-cloud A record straight at
+# ceres's Tailscale IP, personal-account token because wedrifid.dev is a
+# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
+#
+# SINGLE upstream, wired LAN only (changed same day, owner direction): the
+# makemake compose moved off its tailnet bind to 10.77.0.97 — the domain is
+# THE access path and direct tailnet access is retired. No tailnet fallback
+# exists BY THAT CHOICE: if the office cable drops, ABS is unreachable even
+# via this vhost (immich/plex keep a fallback; ABS deliberately does not).
+abs.wedrifid.dev {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
+	# the DNS record alone — refuse anything not arriving over the tailnet.
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+
+	reverse_proxy 10.77.0.97:13378 {
+		# ABS keeps the web UI live over a long-lived WebSocket (library
+		# scans, playback progress) and serves audiobook files as long
+		# streaming responses; disable response buffering so both arrive
+		# as generated — same reason as ntfy/plex above.
+		flush_interval -1
+	}
+}
