@@ -39,7 +39,7 @@ glab = "1"
 # no active version outside that project's directory, so `have cargo`
 # (a bare `command -v`) reports true while `cargo install` actually fails
 # with "No version is set for shim" — silently breaking the
-# linear-cli/CodeWhale cargo installs below whenever they run from outside
+# linear-cli cargo install below whenever it runs from outside
 # a rust-pinning project directory.
 rust = "1"
 # delta >=0.19 and fd >=10.4 dropped x86_64-apple-darwin release binaries
@@ -112,12 +112,11 @@ btop = { version = "1.4.7", os = ["linux"] }
 # stale 0.4.0; majors are pinned per the CLAUDE.md rule instead. Caught
 # 2026-09-08 when the fleet-m234 deploy reached makemake.
 "aqua:anthropics/claude-code" = "2"
-# CodeWhale: deliberately NOT mise-managed (removed 2026-09-09). The cargo:
-# backends build from source and a single codewhale-tui rustc peaked at
-# 11.9 GB RSS — kernel-OOM-killed on makemake (16 GB soldered, no swap, and
-# now a service host). Hosts that still carry the pre-M4 rustup install in
-# ~/.cargo/bin keep working; do NOT re-add cargo:codewhale-* rows without
-# solving the build-memory problem (or a prebuilt backend) first.
+# HISTORICAL, kept because scripts/setup-swap.sh cites it as the evidence for
+# this fleet's swap sizing: a single cargo source build here (codewhale-tui,
+# since retired) peaked at 11.9 GB RSS and was kernel-OOM-killed on makemake
+# (16 GB soldered, no swap at the time). The lesson outlives the tool — think
+# twice before adding any cargo: backend that builds from source.
 # moor (was: scripts/install-moor.sh curl of the release binary). Upstream
 # ships darwin x64/arm64 + linux assets, so no per-host conditional needed.
 "ubi:walles/moor" = "2"

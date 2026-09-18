@@ -245,15 +245,6 @@ _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"
 # services/converge/ntfy-topic.enc, since .sops.yaml's creation rule matches
 # `\.enc$` on the INPUT path.
 _row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 all    ''
-# gjc (gajae-code): only .env is a secret (ZAI_API_KEY, OPENROUTER_API_KEY).
-# Gated `all`, not ceres: config.yml's modelRoles.default is zai/glm-5.3, so a
-# box without these keys starts gjc with a default model it cannot authenticate.
-# The secret-free gjc files (models.yml, AGENTS.md, config.yml) live in the
-# agents repo under configs/ai/gjc/ and are symlinked onto every box by that
-# sibling's deploy (manifests/links.conf, chained via 67_agents.zsh).
-# config.yml was rendered here until the Discord
-# notifications block (bot token, no env indirection) was dropped.
-_row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
 # slskd's Soulseek credentials + primary API key (music lane of the arr stack

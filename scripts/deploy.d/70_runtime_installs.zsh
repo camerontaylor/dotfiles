@@ -1,17 +1,16 @@
 # curl/cargo installs for CLIs without a mise backend (rustup/cargo,
-# linear-cli, CodeRabbit), npm globals through the mise-managed node (pinned in
-# configs/mise.toml, installed by 50_mise.zsh), and gjc as a bun global
-# (bun-only package; see its block below). Claude Code / CodeWhale / moor /
+# linear-cli, CodeRabbit) and npm globals through the mise-managed node (pinned
+# in configs/mise.toml, installed by 50_mise.zsh). Claude Code / moor /
 # wtp-Linux moved to mise backends (configs/mise.toml) — the drift-correctors
 # below retire what this fragment used to install by hand.
 #
-# Dry-run contract (AGENTS.md): same story as 50_mise.zsh — the npm and gjc
-# blocks below had per-step gates, but the curl/rustup/cargo blocks did not,
+# Dry-run contract (AGENTS.md): same story as 50_mise.zsh — the npm
+# block below had a per-step gate, but the curl/rustup/cargo blocks did not,
 # and on a provisioned box every install is a quiet `have`-skipped no-op, so
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, gjc, coderabbit, rustup, linear-cli, claude drift cleanup)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, coderabbit, rustup, linear-cli, claude + retired-tool drift cleanup)"
     return 0
 fi
 
@@ -36,11 +35,6 @@ if [[ -L $HOME/.local/bin/claude ]]; then
     esac
 fi
 unset _claude_target
-
-# CodeWhale is unmanaged (removed from mise 2026-09-09 — the cargo build
-# OOM-killed makemake; see the note in configs/mise.toml). Whatever
-# ~/.cargo/bin copies hosts still carry are theirs to keep: no install, no
-# drift-correction, nothing touches them.
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
@@ -81,6 +75,19 @@ elif have mise; then
     mise uninstall -y --all "${obsolete_mise_tools[@]}" > /dev/null 2>&1 || true
     printf '%s\n' "  ...done"
 
+    # Retired npm GLOBALS. Dropping a line from .default-npm-packages only
+    # stops future installs — it does not uninstall anything, so without this
+    # sweep a retired CLI stays on every box that ever deployed it and keeps
+    # resolving on PATH through the mise shims. That is the whole difference
+    # between "the repo no longer installs X" and "the fleet no longer has X".
+    #
+    # Same hard rule as obsolete_mise_tools above: node, npm, corepack, pnpm
+    # and anything a systemd unit execs through the shims must NEVER appear
+    # here.
+    obsolete_npm_globals=(
+        "@google/gemini-cli"   # retired 2026-09-18, no longer in use
+    )
+
     # npm globals install into the active mise node's prefix through its own
     # npm; `mise reshim` then exposes them via ~/.local/share/mise/shims to
     # every shell AND to systemd units. (mise also auto-installs this list
@@ -91,6 +98,15 @@ elif have mise; then
         mise_node_ok=true
     else
         printf '%s\n' "  ...mise node unavailable (mise install node); skipping npm globals"
+    fi
+
+    # Sweep the retired globals declared above. Gated on mise_node_ok for the
+    # same reason the install is: without a working node there is no npm to
+    # call, and a failed uninstall must never look like a successful one.
+    if [[ $mise_node_ok == true && ${#obsolete_npm_globals[@]} -gt 0 ]]; then
+        printf '%s\n' "Removing retired npm globals..."
+        mise exec node -- npm uninstall -g "${obsolete_npm_globals[@]}" > /dev/null 2>&1 || true
+        printf '%s\n' "  ...done"
     fi
 
     if [[ $mise_node_ok == true && -f $npm_packages_file ]]; then
@@ -141,60 +157,27 @@ elif have mise; then
     fi
 fi
 
-# gjc (gajae-code): a bun-ONLY package — its package.json declares
-# `engines: { bun: ">=1.4.0" }` and bin/gjc.js runs under `#!/usr/bin/env bun`
-# — so it CANNOT ride the npm globals sweep above; installing it with npm
-# yields a binary that won't start. Tracked at @latest: the CLI moves fast and
-# its config in the agents sibling (configs/ai/gjc/, linked by that deploy)
-# follows the current schema.
+# gjc (gajae-code) — RETIRED 2026-09-18. It used to be installed here as a bun
+# global (a bun-ONLY package: `engines: { bun: ">=1.4.0" }`, bin/gjc.js under
+# `#!/usr/bin/env bun`) and bridged onto PATH with a ~/.local/bin/gjc symlink,
+# because bun's global bin dir is on no PATH here.
 #
-# bun's global bin dir ($XDG_CACHE_HOME/.bun/bin when BUN_INSTALL is unset) is
-# NOT on any PATH here — only ~/.local/bin is (zsh/env.d/03_paths.zsh:46) — so
-# link the binary there. A symlink beats adding a PATH entry to env.d because
-# ~/.local/bin also reaches non-zsh callers (systemd units, paseo dispatch).
-if have bun; then
-    gjc_bun_version= gjc_bun_bin=
-    gjc_bun_version=$(bun --version 2>/dev/null)
-
-    if (( DEPLOY_DRY_RUN )); then
-        printf '%s\n' "  [dry-run] would install/upgrade gajae-code (gjc) as a bun global"
-    elif ! version_ge "${gjc_bun_version:-0}" 1.4.0; then
-        # 50_mise.zsh runs `mise upgrade` on every deploy, so bun should already
-        # be current (configs/mise.toml pins the major, `bun = "1"`). If a box is
-        # still behind, say so rather than planting a gjc its runtime can't run.
-        printf '%s\n' "gjc needs bun >= 1.4.0; this box has ${gjc_bun_version:-none}, skipping"
-        printf '%s\n' "  ...run 'mise upgrade bun', then ./deploy.zsh"
-    else
-        printf '%s\n' "Installing/upgrading gjc (gajae-code) as a bun global..."
-        if bun install -g gajae-code@latest > /dev/null 2>&1; then
-            printf '%s\n' "  ...done"
-            # `bun install -g` rewrites node_modules/@gajae-code/coding-agent in
-            # place, under anything already running out of it. Deliberately NOT a
-            # reason to skip the upgrade: gjc's broker and daemon are long-lived
-            # on ceres, so a "skip while running" guard would pin that box
-            # forever. Unlike the openclaw beta->stable downgrades documented in
-            # .default-npm-packages, this only ever moves forward — but a live
-            # process keeps the old build, so name it and let the human restart.
-            # Two cmdline shapes to catch: `bun ~/.local/bin/gjc <cmd>` and the
-            # broker/daemon forms that exec straight out of node_modules.
-            if pgrep -u "$USER" -f 'gajae-code|bin/gjc' > /dev/null 2>&1; then
-                printf '%s\n' "  ...note: gjc processes are running on the old build;"
-                printf '%s\n' "     restart them ('gjc daemon' / open sessions) to pick this up"
-            fi
-        else
-            printf '%s\n' "  ...failed to install gjc"
-        fi
-    fi
-
-    # Drift-correct the ~/.local/bin bridge even when the install was skipped:
-    # the link is what puts gjc on PATH at all, and it was hand-made (untracked)
-    # on the boxes that had gjc before this fragment existed. deploy_ln (not
-    # zf_ln) so --dry-run reports the link instead of refreshing it; `bun pm
-    # bin -g` is read-only, so it is safe to probe in either mode.
-    gjc_bun_bin=$(bun pm bin -g 2>/dev/null)
-    if [[ -n $gjc_bun_bin && -x $gjc_bun_bin/gjc ]]; then
-        deploy_ln -sfn $gjc_bun_bin/gjc $HOME/.local/bin/gjc
-        (( DEPLOY_DRY_RUN )) || hash -r
+# Both are drift-corrected away rather than merely un-installed, for the same
+# reason as obsolete_npm_globals above: a box that already deployed gjc keeps
+# both the bun global and the hand-made symlink forever otherwise, and the
+# symlink is what put it on PATH for systemd units and paseo dispatch.
+#
+# NOTE for whoever removes this block later: bun itself stays. gjc was its only
+# REQUIRED consumer (docs/cli-tools.md said as much), but bun is still a pinned
+# runtime in configs/mise.toml, still offered as an alternative runner for
+# configs/karabiner/karabiner.ts, and still has a completion row in
+# 82_zsh_completions.zsh. Retiring bun is a separate decision.
+deploy_rm -f "$HOME/.local/bin/gjc"
+if have bun && [[ -z ${DEPLOY_DRY_RUN:+x} || $DEPLOY_DRY_RUN -eq 0 ]]; then
+    if bun pm ls -g 2>/dev/null | grep -q gajae-code; then
+        printf '%s\n' "Removing retired gjc (gajae-code) bun global..."
+        bun remove -g gajae-code > /dev/null 2>&1 || true
+        printf '%s\n' "  ...done"
     fi
 fi
 

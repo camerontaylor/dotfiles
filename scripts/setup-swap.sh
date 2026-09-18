@@ -5,7 +5,8 @@
 # SKIPS swap entirely when root is btrfs (swapfiles there need NOCOW + no
 # compression, unsupported before kernel 5.0). makemake came up that way —
 # 16 GB soldered RAM, zero swap — and has been OOM-killing things ever since
-# (a single rustc peaked at 11.9 GB RSS; see mise.toml's codewhale note).
+# (a single cargo source build peaked at 11.9 GB RSS; see the historical note
+# in configs/mise.toml).
 #
 # The two tiers, and why both:
 #   - zram (priority 100) takes the hot anonymous pages and compresses them in

@@ -13,7 +13,6 @@ Sources, and the file that owns each:
 | `brew` | [`75_brew_setup.zsh`](../scripts/deploy.d/75_brew_setup.zsh) | macOS only. GNU userland, casks, things mise can't deliver. |
 | `npm` | [`.default-npm-packages`](../.default-npm-packages) | Installed through **mise's** node by [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh). |
 | `cargo` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh) | For crates with no mise/aqua backend. |
-| `bun` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh) | Only `gjc` (bun-only package), symlinked into `~/.local/bin`. |
 | `curl` | [`70_runtime_installs.zsh`](../scripts/deploy.d/70_runtime_installs.zsh), [`install-wtp.zsh`](../scripts/install-wtp.zsh) | Vendor install scripts (rustup, linear-cli; wtp's release-asset fallback). |
 | `pkg` | [`40_tools.zsh`](../scripts/deploy.d/40_tools.zsh), [`41_net_tools.zsh`](../scripts/deploy.d/41_net_tools.zsh) | Platform package manager (brew / apt / pacman / AUR), best-effort. |
 | `repo` | [`20_symlinks.zsh`](../scripts/deploy.d/20_symlinks.zsh), [`21_bash_symlinks.zsh`](../scripts/deploy.d/21_bash_symlinks.zsh) | Scripts from this repo, symlinked into `~/.local/bin`. |
@@ -86,7 +85,7 @@ smoke-tests ~24 of these at the end of every deploy.
 |---|---|---|
 | `mise` | curl / brew | The tool-version manager itself. Source of truth: `configs/mise.toml`. |
 | `node` / `npm` | mise | Pinned major. The one node every shell **and** systemd unit resolves. |
-| `bun` | mise | JS runtime + package manager; required by `gjc`. |
+| `bun` | mise | JS runtime + package manager. Its one *required* consumer (`gjc`) was retired 2026-09-18; retained as a pinned runtime and as the alternative runner for `configs/karabiner/karabiner.ts`. |
 | `python` / `uv` | mise | Python 3 and the fast pip/venv replacement. |
 | `pnpm` / `pn` | npm | Package manager. `pnpm` is served by corepack, `pn` by npm's own binary — deploy keeps them pointed at the same release. |
 | `corepack` | npm | Node's package-manager shim manager. |
@@ -104,11 +103,8 @@ smoke-tests ~24 of these at the end of every deploy.
 | `claude` | mise | Claude Code CLI (aqua backend; auto-updater disabled so mise is the only writer). |
 | `codex` | npm | OpenAI Codex CLI. |
 | `opencode` | npm | OpenCode terminal coding agent. |
-| `gemini` | npm | Google Gemini CLI. |
-| `gjc` | bun | gajae-code — coding/planning agent. See the `gjc-orchestration` skill. |
 | `dsh` | npm | DeepSeek Harness — DeepSeek's own agent harness (`@deepseek-ai/dsh`, developer preview). `dsh web` is the browser UI, `dsh --profile headless "task"` a one-shot, `dsh --profile acp` the stdio server paseo drives. Its plugin tree, and the one-model catalog (V4.1 Flash, `deepseek-flash`), are pinned by the agents repo at `configs/ai/dsh/cordis.patch.yml` → `~/.dsh/cordis.patch.yml`. |
 | `coderabbit` / `cr` | curl | CodeRabbit code reviews; official installer, refreshed by deploy `--upgrade`. |
-| `codewhale` / `codewhale-tui` | unmanaged | DeepSeek-backed coding agent, CLI and TUI forms. Not installed by this repo — the cargo build OOMs small hosts (removed from mise 2026-09-09; see note in `configs/mise.toml`). Pre-existing `~/.cargo/bin` copies keep working. |
 | `omp` | npm | `@oh-my-pi/pi-coding-agent` — coding agent with read/bash/edit/write tools and session management. |
 | `ao` | npm | `@aoagents/ao` — Agent Orchestrator CLI. |
 | `omc` / `oh-my-claudecode` | npm | `oh-my-claude-sisyphus` — multi-agent orchestration layer for Claude Code. |

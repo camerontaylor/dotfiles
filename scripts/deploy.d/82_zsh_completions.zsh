@@ -9,7 +9,7 @@
 #             bashcompinit, can't be cached as a static `_npm` file
 #   python  — completion is per-script via argcomplete, not global
 #   fzf     — fzf-tab plugin handles the interactive UX
-#   engram, oxlint, biome, happy, gemini — no upstream completion
+#   engram, oxlint, biome, happy — no upstream completion
 #   moreutils binaries (sponge/ts/chronic/vipe), flock — trivial CLI surface
 
 cache_fpath="$XDG_CACHE_HOME/zsh/fpath"

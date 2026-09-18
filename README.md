@@ -25,7 +25,7 @@ configs live under `~/.config` (symlinked from the repo) and the **shell keeps a
 near-zero `$HOME` footprint** — with `ZDOTDIR` set, not even `~/.zshenv` is
 needed (see [Zero home presence](#zero-home-presence)). The exceptions are tools
 that hardcode their own dotfile paths: the AI CLIs (`~/.claude`, `~/.codex`,
-`~/.codewhale`, …) and a handful of app configs get their own `$HOME`
+`~/.config/opencode`, …) and a handful of app configs get their own `$HOME`
 entries, symlinked back into their owning repo by deploy — the AI CLI entries
 by the agents sibling (`~/.local/agents`), the rest by this repo.
 
@@ -54,7 +54,7 @@ bootstrap.
 * **AI / LLM tooling** — the agent CLIs install through this repo's tool layer
   (mise / npm globals), but their **config lives in the sibling agents repo**
   (`~/.local/agents`, [camerontaylor/agents](https://github.com/camerontaylor/agents)):
-  Claude Code, Codex, CodeWhale, OpenCode, agent-orchestrator, the Portkey /
+  Claude Code, Codex, OpenCode, agent-orchestrator, the Portkey /
   CCR gateways, the `cc*` routing wrappers, and the Paseo daemon setup. See
   [AI tooling](#ai--llm-tooling).
 * **Other configs** — [Git](configs/gitconfig), [tig](configs/tigrc), [htop](configs/htoprc), [btop](configs/btop.conf), [bat](configs/bat), [quilt](configs/quiltrc), [starship](configs/starship.toml) (available as a p10k alternative).
@@ -91,7 +91,6 @@ to the `$HOME`/XDG path its tool expects by that repo's own deploy:
 |------|-----------|----------|
 | Claude Code (+ oh-my-claudecode) | `configs/ai/claude-code/` | `~/.claude/` |
 | Codex | `configs/ai/codex/` | `~/.codex/` |
-| CodeWhale | `configs/ai/codewhale/` | `~/.codewhale/` |
 | OpenCode | `configs/ai/opencode/` | `~/.config/opencode/` |
 | agent-orchestrator | `configs/ai/agent-orchestrator/` | `~/.agent-orchestrator*` |
 | Portkey gateway | `configs/ai/portkey/` | systemd user service |

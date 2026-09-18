@@ -6,7 +6,6 @@ happy@latest
 happy-dom@latest
 @openai/codex@latest
 opencode-ai@latest
-@google/gemini-cli@latest
 # DeepSeek Harness -- `dsh`, DeepSeek's own agent harness. Tracks latest like
 # the other agent CLIs above, which today means a DEVELOPER-PREVIEW rc
 # (0.1.5-rc.2): upstream states there will be compatibility-breaking changes,

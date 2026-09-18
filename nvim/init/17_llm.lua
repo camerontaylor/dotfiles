@@ -4,13 +4,13 @@ require('codecompanion').setup({
   ignore_warnings = true,
   strategies = {
     chat = {
-      adapter = 'gemini_cli',
+      adapter = 'claude_code',
     },
     inline = {
-      adapter = 'gemini_cli',
+      adapter = 'claude_code',
     },
     cmd = {
-      adapter = 'gemini_cli',
+      adapter = 'claude_code',
     },
   },
   display = {
