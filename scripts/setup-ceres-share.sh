@@ -21,12 +21,12 @@
 # Clients: the Macs auto-mount [home] at login via scripts/smb-mount +
 #   the com.github.ctaylor.smb-mount LaunchAgent (deployed by
 #   scripts/deploy.d/76_smb_mounts.zsh; needs a one-time Keychain entry per
-#   Mac — see that script's header). By hand: smb://10.77.0.74/home in Finder
-#   (Cmd-K) or ForkLift, or mount -t cifs //10.77.0.74/downloads on Linux.
+#   Mac — see that script's header). By hand: smb://10.77.0.3/home in Finder
+#   (Cmd-K) or ForkLift, or mount -t cifs //10.77.0.3/downloads on Linux.
 #
 # NOTE: smbd binds eno2/wlan0 only, NOT tailscale0 — these shares are LAN-only
 # by design, and bare `ceres` resolves to the Tailscale IP via MagicDNS on the
-# Macs. Always address the shares by IP (wired 10.77.0.74 first).
+# Macs. Always address the shares by IP (wired 10.77.0.3 first).
 
 set -eu
 

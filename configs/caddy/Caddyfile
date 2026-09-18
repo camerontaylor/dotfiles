@@ -104,10 +104,10 @@ immich.wedrifid.dev {
 	import wedrifid_tailnet
 
 	# Backend moved to makemake 2026-09-08 (M5). Wired office LAN first
-	# (10.77.0.97 — same switch, line rate), makemake's tailnet IP as
+	# (10.77.0.2 — same switch, line rate), makemake's tailnet IP as
 	# fallback if the cable is out. lb_policy first sends all traffic to
 	# the wired upstream; fail_duration marks it down for 30s on failure.
-	reverse_proxy 10.77.0.97:2283 100.87.185.24:2283 {
+	reverse_proxy 10.77.0.2:2283 100.87.185.24:2283 {
 		lb_policy first
 		fail_duration 30s
 	}
@@ -203,7 +203,7 @@ appreciation.wedrifid.dev {
 plex.wedrifid.dev {
 	import wedrifid_tailnet
 
-	# Wired office LAN first (10.77.0.97 — same switch, line rate),
+	# Wired office LAN first (10.77.0.2 — same switch, line rate),
 	# makemake's tailnet IP as fallback if the cable is out. Identical
 	# upstream pair and policy to immich above.
 	# Bare / is an authenticated PMS API endpoint (401), not the web app, so a
@@ -214,7 +214,7 @@ plex.wedrifid.dev {
 	# fragment is what pins the app to THIS server. Without it the web app
 	# loads with no server selected and shows Plex's own catalog instead.
 	redir / /web 302
-	reverse_proxy 10.77.0.97:32400 100.87.185.24:32400 {
+	reverse_proxy 10.77.0.2:32400 100.87.185.24:32400 {
 		lb_policy first
 		fail_duration 30s
 		# Plex builds redirect URLs from the scheme it sees. Caddy
@@ -236,13 +236,13 @@ plex.wedrifid.dev {
 # Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
 #
 # SINGLE upstream, wired LAN only (changed same day, owner direction): the
-# makemake compose moved off its tailnet bind to 10.77.0.97 — the domain is
+# makemake compose moved off its tailnet bind to 10.77.0.2 — the domain is
 # THE access path and direct tailnet access is retired. No tailnet fallback
 # exists BY THAT CHOICE: if the office cable drops, ABS is unreachable even
 # via this vhost (immich/plex keep a fallback; ABS deliberately does not).
 abs.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 10.77.0.97:13378 {
+	reverse_proxy 10.77.0.2:13378 {
 		# ABS keeps the web UI live over a long-lived WebSocket (library
 		# scans, playback progress) and serves audiobook files as long
 		# streaming responses; disable response buffering so both arrive
