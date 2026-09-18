@@ -42,10 +42,27 @@
 # A hung agent holds a pid, never retries, never logs, and no `launchctl list`
 # glance reveals it. Prefer Apple-signed /bin/bash and /bin/zsh (which hold
 # grants and so never prompt), and let nothing promptable run under launchd.
-# Shells (/bin/bash, /bin/zsh, brew bash) are granted and read the volume
-# fine. That asymmetry is the architectural rule: launchd's ProgramArguments[0]
-# should always be an INTERNAL shell, never a bare binary and never a path
-# that resolves onto the external volume.
+#
+# Re-measured 2026-09-15 — the rule sharpened from "an internal shell" to a
+# ONE-LEVEL UMBRELLA around a static, accepted file, and the brew-shell
+# assumption died:
+#   * ProgramArguments[0] must be a STATIC, TCC-ACCEPTED file (/bin/bash,
+#     /bin/zsh). Its grant covers itself and its DIRECT fork-children.
+#   * exec — or a shebang hop — re-attributes to the exec'd binary, so a
+#     trampoline (/bin/bash -c 'exec brew-shell script') does NOT carry the
+#     grant past the exec. It worked for brew zsh on 09-15 only because brew
+#     zsh happened to hold its own grant that day; brew bash hung.
+#   * the umbrella does not extend through an ungranted middle binary
+#     (bash -> brew bash -> cat hangs), and it does not cover exec'ing a
+#     volume-resident Mach-O at all: dyld blocks reading the image slice
+#     (getOnDiskBinarySliceOffset), live pid, fork form and exec form alike.
+#   * brew-shell grants are undeclarable state: brew bash was granted on
+#     2026-09-11 and gone by 2026-09-15 with the binary untouched since
+#     08-22. com.webfront.reap wedged for 7.5h on exactly this.
+# Therefore: units run [/bin/bash|/bin/zsh, script] with the script at the
+# repo's 3.2/zsh portability floor, and the payload's volume reads happen
+# from the shell's own children. Nothing in the chain is a bare binary, a
+# volume path, or a brew shell.
 #
 # POSIX sh per the house rule for scripts/ (dual-shell, bash 3.2 floor): no
 # arrays, no `declare -A`, rows are pipe-delimited strings read from a temp
@@ -118,9 +135,10 @@ manifest() {
 harness-control|logint|grant|PROBE-OK|-|CONTROL: launchd job with an internal log runs at all
 shell-bash-reads-volume|shell|grant|CANARY-OK|/bin/bash cat __CANARY__|launchd /bin/bash can READ the external volume
 shell-zsh-reads-volume|shell|grant|CANARY-OK|/bin/zsh cat __CANARY__|launchd /bin/zsh can READ the external volume
-shell-brewbash-reads-volume|shell|grant|CANARY-OK|/usr/local/bin/bash cat __CANARY__|launchd brew bash can READ the external volume (granted, but fragile — see remedy)
+shell-brewbash-reads-volume|shell|grant|CANARY-OK|/usr/local/bin/bash cat __CANARY__|launchd brew bash holds a DECLARED volume-access grant (owner accepted 2026-09-18); never rely on it — it rotted once
 nonshell-reads-volume|direct|deny|CANARY-OK|/bin/cat __CANARY__|launchd non-shell binary can READ the external volume
 direct-exec-from-volume|direct|deny|mise|__OFFLOAD_ROOT__/.local/bin/mise --version|launchd can EXEC a binary living on the volume
+exec-trampoline-volume-binary|shell|deny|mise|/bin/bash exec __OFFLOAD_ROOT__/.local/bin/mise --version|a granted-shell trampoline does NOT rescue exec of a volume-resident binary
 ssh-direct-config-parse|direct|grant|hostname|/usr/bin/ssh -G localhost|launchd-exec'd ssh can parse ~/.ssh/config
 log-path-on-volume|logext|deny|PROBE-OK|-|launchd can write a LOG onto the external volume
 ROWS
@@ -132,13 +150,18 @@ remedy() {
             printf '%s\n' "The probe harness itself failed — launchctl bootstrap or ~/Library/Logs is broken."
             printf '%s\n' "Every other verdict is unreliable until this passes." ;;
         shell-brewbash-reads-volume)
-            printf '%s\n' "Brew bash currently holds a grant, but it is the fragile one: TCC keys"
-            printf '%s\n' "grants by code-signing hash, so the next \`brew upgrade bash\` silently"
-            printf '%s\n' "revokes it — and a revoked grant here presents as a HANG, not an error"
-            printf '%s\n' "(see the prompt-hang note in the header), so the agent will simply stop"
-            printf '%s\n' "with a live pid and no log. Prefer Apple-signed /bin/bash or /bin/zsh in"
-            printf '%s\n' "ProgramArguments. Currently affected: com.ctaylor.dotfiles.prune-tmpdir"
-            printf '%s\n' "(/usr/local/bin/zsh) and com.webfront.reap (/usr/local/bin/bash)." ;;
+            printf '%s\n' "Owner accepted the grant on 2026-09-18, so this row now DECLARES"
+            printf '%s\n' "grant instead of deny. Nothing may still depend on it: brew bash was"
+            printf '%s\n' "granted 2026-09-11, the grant vanished by 2026-09-15 with the binary"
+            printf '%s\n' "untouched since 2026-08-22, and a revoked grant HANGS under launchd"
+            printf '%s\n' "rather than erroring (see the prompt-hang note in the header). reap"
+            printf '%s\n' "was ported off brew bash for exactly this and now runs"
+            printf '%s\n' "[/bin/bash, ~/.local/agents/scripts/reap]."
+            printf '%s\n' ""
+            printf '%s\n' "If this row reports REGRESSED the grant has rotted again — the known"
+            printf '%s\n' "failure mode, and harmless now because no unit relies on it. Either"
+            printf '%s\n' "re-grant in System Settings -> Privacy & Security -> Full Disk Access,"
+            printf '%s\n' "or flip this row's expect back to deny and treat the grant as gone." ;;
         shell-*-reads-volume)
             printf '%s\n' "If the verdict was HUNG this is NOT a permission problem: the interpreter"
             printf '%s\n' "blocked in its startup files. Known cause — zsh/env.d/08_mise.zsh shells"
@@ -158,9 +181,23 @@ remedy() {
             printf '%s\n' "Re-bootstrap affected agents afterwards — TCC is evaluated at exec." ;;
         direct-exec-from-volume)
             printf '%s\n' "Expected to be denied: launchd cannot exec a program that lives on the"
-            printf '%s\n' "external volume — it hangs in exec with a live pid and never logs."
-            printf '%s\n' "This is the standing constraint on the .local row in docs/offload-home.md:"
-            printf '%s\n' "ProgramArguments[0] must always resolve to an INTERNAL path." ;;
+            printf '%s\n' "external volume. It may manifest as never-starts OR as a hang with a"
+            printf '%s\n' "live pid (dyld blocked reading the image slice, re-measured"
+            printf '%s\n' "2026-09-15) — check for a wedged pid and kill it. Not rescued by a"
+            printf '%s\n' "/bin/bash trampoline either, fork form or exec form — see the"
+            printf '%s\n' "exec-trampoline-volume-binary row. Standing constraint on the"
+            printf '%s\n' ".local row in docs/offload-home.md: ProgramArguments[0] (and anything"
+            printf '%s\n' "it execs) must resolve to an INTERNAL path." ;;
+        exec-trampoline-volume-binary)
+            printf '%s\n' "The tempting fix for direct-exec-from-volume is a trampoline:"
+            printf '%s\n' "    /bin/bash -c 'exec <volume binary>'"
+            printf '%s\n' "It does not work. exec re-attributes TCC to the exec'd binary, and"
+            printf '%s\n' "dyld's read of the volume image is that binary's (ungranted)"
+            printf '%s\n' "responsibility — it blocks in getOnDiskBinarySliceOffset with a live"
+            printf '%s\n' "pid (measured 2026-09-15, fork form and exec form alike)."
+            printf '%s\n' "Volume-resident Mach-O binaries are unusable under launchd, full"
+            printf '%s\n' "stop: copy them to an internal path, or invoke them only from"
+            printf '%s\n' "interactive sessions." ;;
         nonshell-reads-volume)
             printf '%s\n' "UNEXPECTED GRANT: this was denied when the manifest was written."
             printf '%s\n' "Someone granted Full Disk Access to that binary, or an OS update widened"
@@ -331,6 +368,20 @@ while IFS='|' read -r id mode expect marker payload summary; do
     actual=${result%%|*}
     detail=${result#*|}
     if [ "$actual" = hung ]; then
+        # For a deny-expect row a hang IS the declared absence: on this host
+        # a missing capability blocks in open(2)/dyld with a live pid instead
+        # of erroring (re-measured 2026-09-15 — brew bash's vanished grant
+        # wedged every absence probe; the pid is killed in run_probe). For a
+        # grant-expect row a hang is a real failure — something half-provided
+        # the capability and the probe cannot use it.
+        if [ "$expect" = deny ]; then
+            printf '  %-28s ok (deny )     %s\n' "$id" "$summary"
+            ok=$((ok + 1))
+            if [ "$VERBOSE" -eq 1 ] && [ -n "$detail" ]; then
+                printf '      %s (absent, hang-form)\n' "$detail"
+            fi
+            continue
+        fi
         printf '  %-28s HUNG            %s\n' "$id" "$summary"
         regressed=$((regressed + 1))
         problems="$problems $id"
