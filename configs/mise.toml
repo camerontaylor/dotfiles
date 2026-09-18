@@ -172,3 +172,27 @@ trusted_config_paths = ["~/.paseo/worktrees"]
 
 [settings.python]
 compile = false
+
+# Never build node from source — always take the prebuilt release.
+#
+# mise decides this per-host by probing libc, and on NixOS that probe cannot
+# classify the system, so it silently falls back to COMPILING. On pluto that
+# turned `mise install` into a node source build which then died in node's own
+# configure script:
+#
+#   File ".../configure.py", line 1444, in check_compiler
+#   ValueError: too many values to unpack (expected 4, got 5)
+#
+# (node 24's configure vs the mise-managed python 3.14 — a toolchain mismatch
+# we have no reason to be anywhere near.) The visible damage was worse than one
+# missing tool: no node means no npm globals, so codex/opencode/gemini AND
+# npm:@getpaseo/cli all silently never install, which is most of what a worker
+# box exists for.
+#
+# Compiling was never needed. Verified on pluto 2026-09-18 that the official
+# prebuilt runs there unmodified once programs.nix-ld is enabled:
+#   ./node-v24.21.0-linux-x64/bin/node --version  ->  v24.21.0
+# This is a no-op on every glibc box (they already resolve the prebuilt) and
+# the fix on NixOS. Mirrors the python setting above.
+[settings.node]
+compile = false
