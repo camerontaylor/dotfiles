@@ -106,6 +106,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `opencode` | npm | OpenCode terminal coding agent. |
 | `gemini` | npm | Google Gemini CLI. |
 | `gjc` | bun | gajae-code — coding/planning agent. See the `gjc-orchestration` skill. |
+| `dsh` | npm | DeepSeek Harness — DeepSeek's own agent harness (`@deepseek-ai/dsh`, developer preview). `dsh web` is the browser UI, `dsh --profile headless "task"` a one-shot, `dsh --profile acp` the stdio server paseo drives. Its plugin tree, and the one-model catalog (V4.1 Flash, `deepseek-flash`), are pinned by the agents repo at `configs/ai/dsh/cordis.patch.yml` → `~/.dsh/cordis.patch.yml`. |
 | `coderabbit` / `cr` | curl | CodeRabbit code reviews; official installer, refreshed by deploy `--upgrade`. |
 | `codewhale` / `codewhale-tui` | unmanaged | DeepSeek-backed coding agent, CLI and TUI forms. Not installed by this repo — the cargo build OOMs small hosts (removed from mise 2026-09-09; see note in `configs/mise.toml`). Pre-existing `~/.cargo/bin` copies keep working. |
 | `omp` | npm | `@oh-my-pi/pi-coding-agent` — coding agent with read/bash/edit/write tools and session management. |

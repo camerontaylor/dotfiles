@@ -7,6 +7,17 @@ happy-dom@latest
 @openai/codex@latest
 opencode-ai@latest
 @google/gemini-cli@latest
+# DeepSeek Harness -- `dsh`, DeepSeek's own agent harness. Tracks latest like
+# the other agent CLIs above, which today means a DEVELOPER-PREVIEW rc
+# (0.1.5-rc.2): upstream states there will be compatibility-breaking changes,
+# so a dsh that stops booting after a deploy is expected breakage, not drift.
+# Its model catalog and ACP defaults are pinned by the agents repo
+# (configs/ai/dsh/cordis.patch.yml -> ~/.dsh/cordis.patch.yml).
+# npm's allow-scripts gate (~/.config/npm/config) blocks three of its optional
+# native postinstalls (node-pty, koffi, dsh-subprocess-local's spawn helper).
+# Deliberately NOT allowlisted: verified 2026-09-18 that the agent loop, the
+# bash tool and the ACP profile all work without them.
+@deepseek-ai/dsh@latest
 t3@latest
 oh-my-claude-sisyphus@latest
 pnpm@latest
