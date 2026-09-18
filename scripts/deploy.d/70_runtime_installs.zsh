@@ -100,12 +100,29 @@ elif have mise; then
         printf '%s\n' "  ...mise node unavailable (mise install node); skipping npm globals"
     fi
 
-    # Sweep the retired globals declared above. Gated on mise_node_ok for the
-    # same reason the install is: without a working node there is no npm to
-    # call, and a failed uninstall must never look like a successful one.
+    # Sweep the retired globals declared above, across EVERY installed node —
+    # not just the active one.
+    #
+    # `mise exec node -- npm uninstall -g` only reaches the active version's
+    # prefix. mise generates shims from every INSTALLED version, so a leftover
+    # node (neptune still carried 22.20.0 long after mise.toml pinned 24) keeps
+    # the package, and `mise reshim` faithfully recreates the shim from it. The
+    # visible result is the worst kind: `gemini` still on PATH, but running it
+    # gives "No version is set for shim" — a half-dead tool that looks like a
+    # mise fault rather than a retired package.
+    #
+    # Iterating the install dirs also covers versions that are not currently
+    # resolvable. The alias dirs (22, 22.20, latest, lts-*) symlink onto the
+    # same real installs, so some passes are redundant no-ops; npm is
+    # idempotent here and the clarity is worth more than the microseconds.
     if [[ $mise_node_ok == true && ${#obsolete_npm_globals[@]} -gt 0 ]]; then
-        printf '%s\n' "Removing retired npm globals..."
-        mise exec node -- npm uninstall -g "${obsolete_npm_globals[@]}" > /dev/null 2>&1 || true
+        printf '%s\n' "Removing retired npm globals (all installed node versions)..."
+        _node_installs="${XDG_DATA_HOME:-$HOME/.local/share}/mise/installs/node"
+        for _node_prefix in "$_node_installs"/*/; do
+            [ -x "${_node_prefix}bin/npm" ] || continue
+            "${_node_prefix}bin/npm" uninstall -g "${obsolete_npm_globals[@]}" > /dev/null 2>&1 || true
+        done
+        unset _node_installs _node_prefix
         printf '%s\n' "  ...done"
     fi
 
