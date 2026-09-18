@@ -28,11 +28,15 @@ else
     host=${host%%.*}
 fi
 
+# Octets renumbered 2026-09-18 to re-mirror the wifi side after the LAN moved
+# to a contiguous low block (was saturn 102 / neptune 101 / ceres 74 /
+# makemake 97). pluto is .7 on both sides too, but its wired address is
+# declared in infra nixos/hosts/pluto.nix, not here.
 case "$host" in
-    saturn)   octet=102 iface=en0    ;;  # 2.5GbE USB adapter
-    neptune)  octet=101 iface=en0    ;;  # iMac built-in 1GbE
-    ceres)    octet=74  iface=eno2   ;;  # onboard 1GbE (second port)
-    makemake) octet=97  iface=enp3s0 ;;  # onboard 1GbE
+    saturn)   octet=4  iface=en0    ;;  # 2.5GbE USB adapter
+    neptune)  octet=5  iface=en0    ;;  # iMac built-in 1GbE
+    ceres)    octet=3  iface=eno2   ;;  # onboard 1GbE (second port)
+    makemake) octet=2  iface=enp3s0 ;;  # onboard 1GbE
     *)
         echo "setup-office-lan: no wired mapping for '$host' — nothing to do" >&2
         exit 0
@@ -55,7 +59,16 @@ else
     # belt-and-braces: even if a gateway appears on the segment one day, this
     # profile must not capture the default route.
     if nmcli -t -f NAME con show | grep -qx office-lan; then
-        echo "office-lan: connection already exists ($(nmcli -g ip4.address device show "$iface" 2>/dev/null || echo down))"
+        # Compare, do not just exist-check: the 2026-09-18 renumber changed
+        # these octets, and an exist-check silently keeps the stale address.
+        have=$(nmcli -g ipv4.addresses con show office-lan 2>/dev/null)
+        if [ "$have" = "$ip/24" ]; then
+            echo "office-lan: already $ip"
+        else
+            echo "office-lan: $have -> $ip/24"
+            sudo nmcli con modify office-lan ipv4.addresses "$ip/24"
+            sudo nmcli con up office-lan
+        fi
     else
         sudo nmcli con add type ethernet ifname "$iface" con-name office-lan \
             ipv4.method manual ipv4.addresses "$ip/24" \

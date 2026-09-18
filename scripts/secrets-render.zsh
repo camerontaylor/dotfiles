@@ -182,7 +182,7 @@ FIRST_RENDER=0
 #   field 2  kind  shellenv | dotenv | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | immich | libris | ollie-notes | infra
+#   field 5  gate  all | ceres | immich | libris | ollie-notes | infra | arr | adguard
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -215,11 +215,23 @@ done
 # infra checkout rather than fleet-wide.
 _row "shell/96_audiobookshelf_secrets.yaml" shellenv "$RENDER_STATE/zsh/96_audiobookshelf_secrets.zsh" 600 infra ''
 
+# YTPTube account + API key (arr stack on makemake). Same class and same gate as
+# the audiobookshelf row above: a CLIENT credential for talking to the service,
+# not container config — ytptube keeps its own user table in ytptube.db and
+# reads no auth env, so there is nothing for a deploy .env to hold. The key is
+# what the phone's share-sheet shortcut sends as `Authorization: Bearer ytp_…`.
+_row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secrets.zsh" 600 infra ''
+
 # Services. openclaw is ceres-only (server-side config for a bridge that runs
 # on exactly one box); the immich rows are gated on the deploy dir already
 # existing so live B2 credentials never land on a box that has no immich.
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
+
+# restic repository password for the config backup (makemake -> pluto). A blob,
+# not a dotenv row: restic takes --password-file directly, which keeps the
+# passphrase out of the process environment and out of `ps`.
+_row services/restic/config-backup-password.enc blob "$STATE_HOME/restic/config-backup-password" 600 infra ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
 # converge drift-channel push topic (infra split, H2n's non-secret half):
 # gated `all` as of 2026-09-16, was `ceres`. The old rationale — "the
@@ -244,6 +256,27 @@ _row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topi
 _row services/gjc/env.yaml                dotenv "$HOME/.gjc/agent/.env"                   600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
+# slskd's Soulseek credentials + primary API key (music lane of the arr stack
+# on makemake, added 2026-09-17). A SEPARATE dotenv from the stack's own .env
+# rather than folding into it: .env holds keys the apps minted themselves and
+# is not rendered from here, so a render that owned it would clobber them.
+# Compose reads this file via the slskd service's `env_file:`, not via ${}
+# substitution — substitution only ever reads the project-default .env.
+_row services/arr/slskd-env.yaml          dotenv "$HOME/repos/deploy/arr/.slskd-env"   600 arr    ''
+# Router admin credentials for the Sagemcom F@st 5366 LTE at 192.168.0.1
+# (added 2026-09-18; owner standing authorisation for automated router admin).
+# Gated `infra` rather than `all`: the consumers are the fleet-management
+# scripts and agents that run where the infra checkout is. Rendered to the
+# state dir, NOT into ~/.local/infra — that repo's rule is "no secrets ever",
+# gitignored or not.
+_row services/router/admin-env.yaml       dotenv "$STATE_HOME/router/admin-env"        600 infra  ''
+# AdGuard Home's web-UI admin login (fleet DNS resolver on makemake, added
+# 2026-09-18). Agent-generated credential, so it lands here rather than in the
+# deploy tree -- the deploy dir is not a git repo and is backed up by nothing.
+# Gated `adguard` (deploy-dir existence) so it renders only where AGH runs.
+# NOTE the bcrypt hash of this password ALSO lives in conf/AdGuardHome.yaml,
+# which AGH owns and rewrites; this file is the only copy of the plaintext.
+_row services/adguard/admin-env.yaml      dotenv "$HOME/repos/deploy/adguard/.admin-env" 600 adguard ''
 # libris (book/serial archiver on ceres) backs up to its own restic repo on
 # saturn; same deploy-dir gate so the password lands only where libris lives.
 _row services/libris/restic-password.enc   blob   "$HOME/repos/deploy/libris/.restic-password" 600 libris ''
@@ -292,8 +325,15 @@ LEGACY_PLAINTEXTS=(
 )
 
 # Tracked files that are deliberately not render sources.
+# services/arr/rutracker-env.yaml: a tracker login the OWNER created on a
+# third-party site. It has no render target because nothing reads a file for
+# it -- Prowlarr holds the live copy inside its own config DB
+# (~/arr/config/prowlarr), which it owns and rewrites. This entry is therefore
+# the canonical BACKUP of a credential that otherwise exists in exactly one
+# unbacked place (services.toml records ~/arr/config as still outside any
+# backup tier). If that DB is lost, re-enter from here.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -303,6 +343,8 @@ _gate_open() {
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
+        arr)    [[ -d $HOME/repos/deploy/arr ]] ;;
+        adguard) [[ -d $HOME/repos/deploy/adguard ]] ;;
         infra)  [[ -d $HOME/.local/infra ]] ;;
         ollie-notes) [[ $(hostname -s 2>/dev/null) == saturn ]] ;;
         *)      return 1 ;;

@@ -18,8 +18,8 @@ services:
     #  2. plex.tv remote access needs the real source port to negotiate a
     #     direct connection rather than falling back to the slow relay.
     #  3. It covers the tailnet IP (100.87.185.24), the wired office LAN
-    #     (10.77.0.97) and WiFi (192.168.0.97) with no hardcoded binds --
-    #     immich's `10.77.0.97:2283` bind breaks whenever that address
+    #     (10.77.0.2) and WiFi (192.168.0.97) with no hardcoded binds --
+    #     immich's `10.77.0.2:2283` bind breaks whenever that address
     #     changes, and this avoids repeating that.
     network_mode: host
 

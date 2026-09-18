@@ -15,7 +15,7 @@
 # TTY under launchd, and a prompt would hang the agent forever. The password
 # comes from the login Keychain instead, which is a ONE-TIME per-Mac step:
 #
-#   security add-internet-password -a ctaylor -r 'smb ' -s 10.77.0.74 \
+#   security add-internet-password -a ctaylor -r 'smb ' -s 10.77.0.3 \
 #       -l 'ceres (SMB)' -T /sbin/mount_smbfs -U -w
 #
 # Note the trailing space in 'smb ' (it is a four-char code, not a typo), and

@@ -67,6 +67,32 @@ mcp.ceres.webfront.app {
 	}
 }
 
+# ── snippet: the wedrifid.dev tailnet gate ──────────────────────────────────
+# Every wedrifid.dev vhost below imports this, and it is the whole of the
+# security boundary. Spelled once rather than per-block because there are now
+# twenty-odd of them and a block that silently omitted it would be genuinely
+# internet-facing, not merely misconfigured:
+#
+#   - Caddy binds *:443 and ceres has a PUBLIC IP. The grey-cloud A record
+#     pointing at 100.82.17.115 is addressing, not access control — anyone who
+#     resolves the name and connects reaches this process.
+#   - So the remote_ip matcher is what actually keeps these private. It reads
+#     the peer address, which no header can forge.
+#
+# infra `bin/render-fleet-page --check-caddy` fails if any wedrifid.dev vhost
+# lacks `abort @external` and is not declared exposure="public" in the catalog.
+#
+# DNS-01 is mandatory: Let's Encrypt cannot reach a CGNAT address to do HTTP-01.
+# CF_WEDRIFID_TOKEN is the personal Cloudflare account — a different account
+# from webfront.app's CF_API_TOKEN above, and the two are not interchangeable.
+(wedrifid_tailnet) {
+	tls {
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
+	}
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
+}
+
 # Immich — tailnet-only (added 2026-08-26, photo-steward).
 # Unlike mcp/fred/miniflux.wedrifid.dev (orange-cloud CNAMEs into the
 # Cloudflare Tunnel), this is a grey-cloud A record straight at ceres's
@@ -75,20 +101,13 @@ mcp.ceres.webfront.app {
 # while webfront.app (CF_API_TOKEN above) is a different account entirely.
 # DNS-01 is mandatory: Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
 immich.wedrifid.dev {
-	tls {
-		dns cloudflare {env.CF_WEDRIFID_TOKEN}
-	}
-
-	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
-	# the DNS record alone — refuse anything not arriving over the tailnet.
-	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
-	abort @external
+	import wedrifid_tailnet
 
 	# Backend moved to makemake 2026-09-08 (M5). Wired office LAN first
-	# (10.77.0.97 — same switch, line rate), makemake's tailnet IP as
+	# (10.77.0.2 — same switch, line rate), makemake's tailnet IP as
 	# fallback if the cable is out. lb_policy first sends all traffic to
 	# the wired upstream; fail_duration marks it down for 30s on failure.
-	reverse_proxy 10.77.0.97:2283 100.87.185.24:2283 {
+	reverse_proxy 10.77.0.2:2283 100.87.185.24:2283 {
 		lb_policy first
 		fail_duration 30s
 	}
@@ -104,14 +123,7 @@ immich.wedrifid.dev {
 # The collector lives on a Mac because CodexBar's cookie-based sources are
 # macOS-only — see ~/.local/agents/docs/llm-quota.md.
 usage.wedrifid.dev {
-	tls {
-		dns cloudflare {env.CF_WEDRIFID_TOKEN}
-	}
-
-	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
-	# the DNS record alone — refuse anything not arriving over the tailnet.
-	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
-	abort @external
+	import wedrifid_tailnet
 
 	# CodexBar rejects any request whose Host is not its own bind address
 	# ({"error":"forbidden host"}) — a DNS-rebinding guard with no allowlist
@@ -144,14 +156,7 @@ usage.wedrifid.dev {
 # Host is deliberately NOT rewritten: ntfy builds links from base-url and the
 # request host, and its Android client subscribes over long-lived SSE.
 ntfy.wedrifid.dev {
-	tls {
-		dns cloudflare {env.CF_WEDRIFID_TOKEN}
-	}
-
-	# Caddy listens on *:443 and ceres has a public IP, so do not rely on
-	# the DNS record alone — refuse anything not arriving over the tailnet.
-	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
-	abort @external
+	import wedrifid_tailnet
 
 	reverse_proxy 127.0.0.1:2586 {
 		# ntfy subscriptions are long-lived SSE/WebSocket streams; disable
@@ -170,16 +175,12 @@ ntfy.wedrifid.dev {
 # is 0750 ctaylor:caddy (tmpfiles.d) and the socket 0660, so the kernel decides who may connect.
 # The app refuses to start if either is wider. See appreciation/docs/adr/0005 and server.ts.
 appreciation.wedrifid.dev {
-	tls {
-		dns cloudflare {env.CF_WEDRIFID_TOKEN}
-	}
+	import wedrifid_tailnet
 
-	# Caddy listens on *:443 and ceres has a public IP, so do not rely on the DNS record alone —
-	# refuse anything not arriving over the tailnet. This is the outer of two gates: Caddy drops
-	# non-tailnet peers here, and the app then resolves the tailnet address to an identity and
-	# admits only Cameron's own devices, not tagged nodes.
-	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
-	abort @external
+	# The import above is only the OUTER of two gates. Caddy drops non-tailnet
+	# peers here; the app then resolves the tailnet address to an identity and
+	# admits only Cameron's own devices, not tagged nodes. Nothing else behind
+	# this ingress does that second step.
 
 	# Phone photos. adapter-node's own BODY_SIZE_LIMIT is raised to match in the unit file.
 	request_body {
@@ -187,4 +188,245 @@ appreciation.wedrifid.dev {
 	}
 
 	reverse_proxy unix//run/appreciation/app.sock
+}
+
+# Plex Media Server — tailnet-only (added 2026-09-11). Backend on makemake.
+# Same shape as immich.wedrifid.dev above: grey-cloud A record straight at
+# ceres's Tailscale IP, personal-account token because wedrifid.dev is a
+# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
+#
+# NOTE: this vhost is for browsers. The Plex *apps* do not use it; they pick
+# a direct route from the server's advertised URLs (ADVERTISE_IP in
+# ~/repos/deploy/plex/.env on makemake) or fall back to the plex.tv relay.
+# Removing this block therefore does not cut off the Plex clients.
+plex.wedrifid.dev {
+	import wedrifid_tailnet
+
+	# Wired office LAN first (10.77.0.2 — same switch, line rate),
+	# makemake's tailnet IP as fallback if the cable is out. Identical
+	# upstream pair and policy to immich above.
+	# Bare / is an authenticated PMS API endpoint (401), not the web app, so a
+	# browser hitting the vhost root falls through to Plex's hosted page
+	# instead of this server. Send browsers to the locally-bundled web client.
+	# Redirect to /web, NOT straight to /web/index.html: Plex's own /web
+	# handler 302s to /web/index.html#!/setup/<machineIdentifier>, and that
+	# fragment is what pins the app to THIS server. Without it the web app
+	# loads with no server selected and shows Plex's own catalog instead.
+	redir / /web 302
+	reverse_proxy 10.77.0.2:32400 100.87.185.24:32400 {
+		lb_policy first
+		fail_duration 30s
+		# Plex builds redirect URLs from the scheme it sees. Caddy
+		# terminates TLS and proxies plain HTTP upstream, so /web 302s to
+		# an http:// Location, downgrading the browser. Rewrite it back.
+		header_down Location "^http://plex.wedrifid.dev" "https://plex.wedrifid.dev"
+		# Plex pushes library/playback activity over a long-lived
+		# EventSource stream (/:/eventsource/notifications) and a
+		# WebSocket. Disable response buffering so those arrive
+		# immediately rather than in chunks — same reason as ntfy above.
+		flush_interval -1
+	}
+}
+
+# Audiobookshelf — audiobook server on makemake, tailnet-only (added 2026-09-17).
+# Same shape as immich/plex.wedrifid.dev above: grey-cloud A record straight at
+# ceres's Tailscale IP, personal-account token because wedrifid.dev is a
+# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
+#
+# SINGLE upstream, wired LAN only (changed same day, owner direction): the
+# makemake compose moved off its tailnet bind to 10.77.0.2 — the domain is
+# THE access path and direct tailnet access is retired. No tailnet fallback
+# exists BY THAT CHOICE: if the office cable drops, ABS is unreachable even
+# via this vhost (immich/plex keep a fallback; ABS deliberately does not).
+abs.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 10.77.0.2:13378 {
+		# ABS keeps the web UI live over a long-lived WebSocket (library
+		# scans, playback progress) and serves audiobook files as long
+		# streaming responses; disable response buffering so both arrive
+		# as generated — same reason as ntfy/plex above.
+		flush_interval -1
+	}
+}
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The fleet's remaining web UIs (added 2026-09-17).
+#
+# Everything below imports `wedrifid_tailnet` above — grey-cloud A record at
+# 100.82.17.115, DNS-01 cert, and the remote_ip abort that is the actual
+# boundary. Catalogued in infra web/catalog.toml, which renders the landing
+# page and cross-checks this file (`bin/render-fleet-page --check-caddy`).
+#
+# All the makemake upstreams here are the host's TAILNET bind, not its wired
+# LAN IP — unlike immich/plex/abs, which bind both. That is a real difference
+# in failure mode, not an oversight: a tailnet bind comes up only after the
+# boot-race drop-in's wait-for-tailscale-ip completes, so these services are
+# late-starting on a cold boot where the wired ones are not. Moving one to a
+# dual bind is a compose edit plus a container recreate, deliberately not
+# bundled into an ingress change.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── the landing page itself ────────────────────────────────────────────────
+# Static files, served straight off disk by this same Caddy — no application,
+# no container, no database. It therefore has no failure mode of its own: if
+# this page is down, the thing that serves every other name here is also down.
+#
+# /var/www/fleet rather than anywhere under /home/ctaylor, which is 0700 and
+# unreadable to User=caddy — the same constraint that makes /etc/caddy/Caddyfile
+# a copy rather than a symlink. Installed by infra bin/install-fleet-page.
+fleet.wedrifid.dev {
+	import wedrifid_tailnet
+
+	root * /var/www/fleet
+	encode zstd gzip
+	file_server
+
+	# The icons change only when the catalog does; the page itself must not be
+	# cached or an edit appears not to have landed.
+	#
+	# BOTH paths, and that is not belt-and-braces: file_server serves the page
+	# at `/` without rewriting the request path, so a matcher for /index.html
+	# alone never fires for the URL everybody actually visits.
+	header /icons/* Cache-Control "public, max-age=604800"
+	# Go's mime table has no entry for .webmanifest, so file_server serves it
+	# with no Content-Type at all and the browser declines to install the PWA.
+	header /manifest.webmanifest Content-Type "application/manifest+json"
+	header / Cache-Control "no-cache"
+	header /index.html Cache-Control "no-cache"
+}
+
+# ── acquisition: the *arr lane ─────────────────────────────────────────────
+# Sonarr/Radarr/Lidarr/Prowlarr/Bazarr need no header surgery: served at the
+# root of their own hostname their UrlBase stays empty, and their SignalR live
+# updates ride a WebSocket, which reverse_proxy upgrades natively. No
+# flush_interval needed — that matters for unbuffered streaming responses
+# (SSE, long-poll), not for WebSockets.
+
+seerr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:5055
+}
+
+sonarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8989
+}
+
+radarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:7878
+}
+
+lidarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8686
+}
+
+# Host port 6768 -> container 6767: this host's Paseo Daemon already owns 6767.
+bazarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:6768
+}
+
+prowlarr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:9696
+}
+
+bindery.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8787
+}
+
+# ── libraries ──────────────────────────────────────────────────────────────
+
+# Calibre-Web-Automated. No request_body directive: Caddy imposes no body
+# limit unless one is configured, so epub uploads work by default. (The
+# appreciation block's `request_body max_size 64MB` is imposing a cap, not
+# raising one — it is not a thing to copy here.)
+books.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8083
+}
+
+# ── downloaders ────────────────────────────────────────────────────────────
+
+# qBittorrent needs THREE header changes, and two of them are easy to miss:
+#
+#   1. Host -> the dial target. The WebUI validates the Host header against
+#      its own bind address and answers "Unauthorized" otherwise. Same
+#      dial-target rewrite as the usage vhost, same reason.
+#   2/3. Origin and Referer STRIPPED. Rewriting Host alone is not enough:
+#      qBittorrent's CSRF check compares Origin/Referer against Host, so
+#      after step 1 the browser's `https://qbit.wedrifid.dev` Origin no
+#      longer matches the rewritten Host and every state-changing request
+#      fails 403 — logging in works, then nothing else does.
+#
+# The alternative is turning off HostHeaderValidation + CSRFProtection in
+# qBittorrent itself, which weakens the app for every client and needs a
+# container recreate. Fixing it at the ingress keeps the blast radius here.
+qbit.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8080 {
+		header_up Host {upstream_hostport}
+		header_up -Origin
+		header_up -Referer
+	}
+}
+
+# slskd's UI is driven by SignalR and shows live transfer progress; where that
+# falls back to long-polling rather than a WebSocket, buffering would make
+# progress arrive in lumps.
+slskd.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:5030 {
+		flush_interval -1
+	}
+}
+
+soularr.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8265 {
+		flush_interval -1
+	}
+}
+
+pyload.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8000
+}
+
+# YTPTube streams download progress to the page as it happens.
+ytptube.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8081 {
+		flush_interval -1
+	}
+}
+
+# ── fleet ──────────────────────────────────────────────────────────────────
+
+# Syncthing is the qBittorrent case again: its GUI runs its own host check and
+# rejects a proxied request whose Host it does not recognise. Rewriting Host to
+# the dial target satisfies it without setting insecureSkipHostcheck, which
+# would drop the protection for every client rather than just this path.
+# flush_interval because the GUI tracks state through a long-poll /rest/events
+# stream — buffered, the UI simply stops updating.
+syncthing.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:8384 {
+		header_up Host {upstream_hostport}
+		flush_interval -1
+	}
+}
+
+# SeaweedFS filer browser — the object store behind Langfuse. Note this filer
+# ALREADY binds 0.0.0.0:8888, so it is reachable from the whole LAN with or
+# without this vhost; the hostname adds convenience, not exposure. It can
+# delete objects: an admin surface, not a file manager.
+seaweed.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 127.0.0.1:8888
 }
