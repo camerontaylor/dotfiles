@@ -271,6 +271,11 @@ _row services/adguard/admin-env.yaml      dotenv "$HOME/repos/deploy/adguard/.ad
 # libris (book/serial archiver on ceres) backs up to its own restic repo on
 # saturn; same deploy-dir gate so the password lands only where libris lives.
 _row services/libris/restic-password.enc   blob   "$HOME/repos/deploy/libris/.restic-password" 600 libris ''
+# The RoyalRoad account, so the weekly rr-sync can re-mint a lapsed session
+# instead of failing until a human re-runs rr-login by hand. A SEPARATE dotenv
+# from libris's own .env, which carries hand-edited restic/B2 knobs that are
+# not rendered and would read as drift in a whole-file compare.
+_row services/libris/rr-env.yaml           dotenv "$HOME/repos/deploy/libris/.rr-env"    600 libris ''
 # ollie_notes (the court register) backs up to a local restic repo on saturn AND
 # to B2 offsite. Gated on HOSTNAME, not on the corpus dir: ceres also carries a
 # 5,802-file working clone of ollie_notes but never runs the backup, so a
