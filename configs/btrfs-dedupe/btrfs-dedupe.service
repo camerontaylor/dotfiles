@@ -1,0 +1,52 @@
+# Tracked source of truth for /etc/systemd/system/btrfs-dedupe.service.
+# Installed by scripts/setup-btrfs-dedupe.sh — do not hand-edit the live unit.
+[Unit]
+Description=btrfs out-of-band deduplication (duperemove)
+Documentation=man:duperemove(8)
+ConditionPathExists=/usr/bin/duperemove
+
+[Service]
+Type=oneshot
+
+# Pure maintenance: it must never compete with interactive work or with the
+# services on this box. The job is I/O bound end to end (6.2M files), so the
+# I/O class matters far more than the nice level.
+Nice=19
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+
+# Why each argument:
+#   -d              actually dedupe (without it duperemove only reports)
+#   -q              duperemove logs ONE LINE PER DEDUPE BATCH — 8.4M lines /
+#                   1.1GB on the first cold run here. Unfiltered that lands in
+#                   journald, whose files are NOCOW (+C) and cannot themselves
+#                   be deduped. -q keeps the summary and spares the journal.
+#   --hashfile      persistent block hashes. This is the whole point of the
+#                   monthly cadence: a cold run took 46m06s, an incremental
+#                   re-run with this file took 3m36s (12.8x). Lives under
+#                   /var/cache (subvol @cache), which snapper does NOT snapshot
+#                   — a 3.1GB file inside @ would be pinned by every snapshot.
+#   --skip-zeroes   sparse/zero regions are not worth dedupe records
+#   --exclude       /.snapshots holds 51 read-only snapper snapshots. duperemove
+#                   walks logical paths, so including them presents the same
+#                   data ~51x. NOTE: dedupe CAN write into read-only snapshots
+#                   (the RO flag blocks open(O_WRONLY) but not FIDEDUPERANGE),
+#                   so this exclusion is a deliberate scope choice, not a no-op.
+#                   Including them would reclaim more but mutates snapshots and
+#                   breaks btrfs send/receive parent chains.
+ExecStart=/usr/bin/duperemove -dhqr \
+    --hashfile=/var/cache/duperemove/hashfile.db \
+    --skip-zeroes \
+    --exclude=/.snapshots/* \
+    --exclude=/var/cache/duperemove/* \
+    /boot /etc /home /mnt /opt /root /srv /usr /var
+
+# Memory: measured 11G peak on ceres (6.2M files, 3.1GB hashfile) even on an
+# incremental run — duperemove holds a lot of the hash index in core regardless
+# of --hashfile. Fine on 31G; this unit should NOT be reused unexamined on a
+# 16G box (makemake) without testing. Deliberately no MemoryMax: being OOM-
+# killed mid-run risks leaving the hashfile inconsistent, and a soft cap just
+# turns the job into a reclaim storm. Nice=19 + idle I/O is the containment.
+# A cold run (empty hashfile) is ~46 min here; allow generous headroom for a
+# box that has grown, without hanging forever on a pathological case.
+TimeoutStartSec=6h
