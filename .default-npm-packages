@@ -27,6 +27,12 @@ agent-browser@latest
 @ast-grep/cli@latest
 @ast-grep/napi@latest
 oxlint@latest
+# Base Pi -- the minimal terminal coding harness (earendil-works/pi), binary
+# `pi`. Distinct from oh-my-pi above: that package's binary is `omp`, a
+# separate fork with its own ~/.omp config tree. `pi`'s config/extensions
+# (the pi-opencode provider) are pinned by the agents repo
+# (configs/ai/pi/settings.json -> ~/.pi/agent/settings.json).
+@earendil-works/pi-coding-agent@latest
 @oh-my-pi/pi-coding-agent@latest
 @aoagents/ao@latest
 grab@latest
