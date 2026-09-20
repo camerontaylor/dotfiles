@@ -233,6 +233,14 @@ _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-
 # passphrase out of the process environment and out of `ps`.
 _row services/restic/config-backup-password.enc blob "$STATE_HOME/restic/config-backup-password" 600 infra ''
 _row services/openclaw/env.yaml           dotenv "$CONFIG_HOME/openclaw-mcp/env"           600 ceres  ''
+# CodexBar dashboard token. Backed up to the store 2026-09-21 (secrets 453759c)
+# but given no render row at the time, so the ciphertext was canonical in name
+# only — nothing could turn it back into a file. ceres-gated: it exists so
+# ceres's caddy can inject it into the usage.wedrifid.dev block. The collector
+# host (neptune) still PUSHES to $STATE_HOME/codexbar/dashboard-token; this row
+# renders the store's copy alongside it, so a rebuilt ceres can restore the
+# token without waiting on neptune.
+_row services/codexbar/env.yaml           dotenv "$STATE_HOME/codexbar/env"                600 ceres  ''
 # converge drift-channel push topic (infra split, H2n's non-secret half):
 # gated `all` as of 2026-09-16, was `ceres`. The old rationale — "the
 # differ/renderer runs on ceres" — was only half the story: ceres alone runs
