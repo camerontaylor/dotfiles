@@ -430,3 +430,17 @@ seaweed.wedrifid.dev {
 	import wedrifid_tailnet
 	reverse_proxy 127.0.0.1:8888
 }
+
+# OpenClaw Gateway — Android app + remote operator clients.
+# Gateway binds loopback only (gateway.bind=loopback, TLS terminated here);
+# gateway.trustedProxies allows 127.0.0.1 so forwarded client identity is
+# attributed to this proxy rather than rejected.
+openclaw.wedrifid.dev {
+	import wedrifid_tailnet
+
+	reverse_proxy 127.0.0.1:18789 {
+		# Gateway traffic is long-lived WebSocket; disable response buffering
+		# so streamed events arrive immediately (same reason as ntfy above).
+		flush_interval -1
+	}
+}
