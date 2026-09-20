@@ -158,6 +158,9 @@ Temporary Items
 # paseo writes per-workspace runtime state next to the project the same way.
 .paseo/
 
+# gjc writes generated workspace state next to the project.
+.gjc/
+
 # Deliberately NOT ignoring `.claude/` wholesale. Project .claude/ holds tracked
 # content and a blanket rule would silently keep a newly authored skill out of
 # `git status` rather than just hiding scratch. Surveyed 2026-09-14 across
