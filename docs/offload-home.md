@@ -3,12 +3,15 @@
 **Status:** decided 2026-09-08; fragment + runbook landed 2026-09-09; hardened
 the same day after review (fail-fast at `08`, rsync verifier, tiered soak,
 runtime-disconnect risk). **Executed 2026-09-10: 9 of 10 rows migrated.
-`.local` is PENDING** — its 24G copy is staged on the volume and verified, and
-the fragment reports the row as CONFLICT until it is swapped. It was believed
-blocked by a blanket launchd/TCC deny; that finding was **superseded on
-2026-09-11** (see *The launchd / TCC wall*). The real constraint is narrow —
-`ProgramArguments[0]` must be an internal shell — and four agents still need
-that change first.
+`.local` RETIRED 2026-09-20 — it stays internal.** It was believed blocked by a
+blanket launchd/TCC deny (superseded 2026-09-11, see *The launchd / TCC wall*),
+then by four `ProgramArguments[0]` fixes. Neither was the real wall: `.local`
+is the one XDG dir that is mostly *executables* — `~/.local/bin/mise` and the
+20G of mise-installed toolchains — and a volume-resident Mach-O never loads
+under launchd. Five units fork those toolchains (see *What this means for
+`.local`*), so the row was retired, the stale 24G staged copy deleted, and
+the fragment now asserts the opposite: `~/.local` must be a real internal
+dir.
 **Implementation:** [`scripts/deploy.d/08_offload_home.zsh`](../scripts/deploy.d/08_offload_home.zsh) — neptune-only, drift-correcting, runs **before `10_dirs`**.
 **Scope:** neptune only — the always-on iMac with the WD SN810 NVMe (Thunderbolt, powered enclosure) at `/Volumes/offload`. **Never a laptop**: a drive absent at login breaks every agent and shell that resolves through `~/.local`.
 
@@ -58,7 +61,7 @@ external volume) — was considered and rejected; see *Rejected alternatives*.
 |---|---|---|---|---|
 | `repos` | — | data | **migrated** (hand-linked 2026-09-06) | predates the fragment |
 | `.npm` | ~0 | data | **migrated** (hand-linked 2026-09-08) | predates the fragment |
-| `.local` | 24G | data | **PENDING** (copied + verified, not swapped) | mise 20G, pnpm 3G, claude 791M; the dotfiles + agents repos live under it — migrate last. No longer permission-blocked (see *The launchd / TCC wall*); needs the four `ProgramArguments[0]` fixes first |
+| `.local` | 24G | exec | **RETIRED 2026-09-20 — stays internal** | mise 20G (`bin/mise` + `share/mise/installs` are Mach-O that launchd units fork), pnpm 3G, the dotfiles/agents/infra/secrets repos. Staged copy deleted. The only movable bulk is `share/pnpm` (~3G) — a nested row if disk pressure ever justifies nested-source support in the fragment |
 | `.colima` | 7.5G | data | **migrated 2026-09-10** | docker VM disk (container state — not regenerable without losing it); `colima stop` first. **SPARSE — copy with `rsync -aHAXS`, never `ditto`** (see Notes) |
 | `.config` | 6.3G | data | **migrated 2026-09-10** | the hidden bulk is `.config/.android` at 5.5G (not raycast) — so `.android` is already inside this row, not a long-tail candidate |
 | `.gradle` | 6.2G | regen | **migrated 2026-09-10** | `gradle --stop` first (daemon registry) |
@@ -182,17 +185,35 @@ Two corollaries worth their own lines, because both cost real debugging:
   `scripts/deploy.d/lib/helpers.zsh`, which pins macOS units to `/bin/zsh`.
   `dotfiles.prune-tmpdir` was running `/usr/local/bin/zsh` until 2026-09-11.
 
-**What this means for `.local`:** it is no longer blocked on a permission
-grant. The four `telemetry-ingest` agents recorded above as dead since
-2026-09-06 are at exit 0 today. The remaining work is mechanical — four agents
-still put a `~/.local/...` path in `ProgramArguments[0]`:
+**What this means for `.local` (re-read 2026-09-20):** it is not blocked on a
+permission grant, and the `ProgramArguments[0]` fixes below were never
+sufficient. The wall is the *Mach-O* row: `~/.local/bin/mise` and every
+mise-installed toolchain under `~/.local/share/mise/installs` would become
+volume-resident, and these units fork them —
 
-| agent | `ProgramArguments[0]` | fix |
-|---|---|---|
-| `com.github.ctaylor.codexbar-serve` | `~/.local/dotfiles/scripts/codexbar-serve` | prefix `/bin/zsh` |
-| `com.github.ctaylor.smb-mount` | `~/.local/dotfiles/scripts/smb-mount` | prefix `/bin/zsh` |
-| `local.paseo-watchdog` | `~/.local/agents/scripts/paseo-watchdog` | prefix `/bin/bash` (agents repo) |
-| `com.github.ctaylor.micrec` | `~/.local/bin/micrec` | a Mach-O binary — cannot be exec'd from the volume at all, not even behind a `/bin/bash` trampoline (measured 2026-09-15: dyld hangs reading the image, fork form and exec form alike); keep it internal |
+| unit | volume-resident Mach-O it would fork |
+|---|---|
+| `com.ctaylor.converge-check` | `uv` via an absolute mise-shim path |
+| `com.github.ctaylor.codexbar-serve` | `node`, `claude` |
+| `local.paseo-watchdog` | `npm` |
+| `local.reap` | `python3`, `codex` |
+| `com.ctaylor.telemetry-ingest.all` | `python`, `uv`, `claude`, `codex` |
+
+The gate's `fork-volume-binary` row measures exactly that shape (granted
+`/bin/bash` forking a volume-resident Mach-O, no exec) and it hangs. So the
+row is retired and the invariant is stated the other way round: **nothing a
+LaunchAgent executes — argv[0], the script, or any tool the script forks —
+may resolve onto the volume.** Data may; code may not.
+
+The `ProgramArguments[0]` hygiene was done anyway on 2026-09-20 so every unit
+matches the `[static shell, script]` shape — `codexbar-serve` and `smb-mount`
+render `[/bin/bash, script]` (`launchd_unit_shell bash`; the flavor matches
+the script's shebang — `zsh script` runs *native* zsh, not sh), and
+`local.paseo-watchdog` in the agents repo likewise. `com.github.ctaylor.micrec`
+was recorded above as a Mach-O; it is a 1 KB `#!/bin/bash` script (the Mach-O
+it forks is brew's internal `/usr/local/bin/ffmpeg`), so the earlier note was
+wrong about *what* it is — but it stays internal for the same reason as
+everything else under `~/.local`.
 
 `com.webfront.reap` is owned by the webfront repo, not this one. Its exit-78
 *log* half was fixed 2026-09-11 (log path moved internal). The 2026-09-15

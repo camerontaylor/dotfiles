@@ -125,8 +125,10 @@ fi
 
 # --- LaunchAgent ------------------------------------------------------------
 cxb_plist_rendered=
-cxb_plist_rendered=$(awk -v home="$HOME" -v script="$cxb_script" '
-    { gsub(/@HOME@/, home); gsub(/@SCRIPT@/, script); print }
+cxb_unit_shell=
+cxb_unit_shell=$(launchd_unit_shell bash)
+cxb_plist_rendered=$(awk -v home="$HOME" -v script="$cxb_script" -v shell="$cxb_unit_shell" '
+    { gsub(/@HOME@/, home); gsub(/@SCRIPT@/, script); gsub(/@SHELL@/, shell); print }
 ' $cxb_plist_template)
 
 cxb_needs_write=1

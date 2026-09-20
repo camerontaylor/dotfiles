@@ -51,7 +51,6 @@ printf '%s\n' "Checking offload-home links on $self..."
 offload_rows=(
     'repos|/Volumes/offload/neptune/repos'
     '.npm|/Volumes/offload/neptune/.npm'
-    '.local|/Volumes/offload/neptune/.local'
     '.cache|/Volumes/offload/neptune/.cache|nocopy,regen'
     '.config|/Volumes/offload/neptune/.config'
     '.vscode|/Volumes/offload/neptune/.vscode|regen'
@@ -171,6 +170,24 @@ for _row in "${offload_rows[@]}"; do
         _fixed=$((_fixed+1))
     fi
     # Absent everywhere: row not applicable on this machine yet — nothing.
+done
+
+# Retired rows: directories that were candidates but must stay internal.
+# `.local` (2026-09-20): it is the one XDG dir that is mostly EXECUTABLES —
+# ~/.local/bin/mise and every mise-installed toolchain under
+# ~/.local/share/mise/installs — and a volume-resident Mach-O never loads
+# under launchd (dyld hang, live pid; docs/offload-home.md, "The launchd /
+# TCC wall"). converge-check, codexbar-serve, paseo-watchdog, reap and
+# telemetry-ingest all fork those toolchains. So the row is asserted the
+# other way round: ~/.local must be a real internal dir, and a copy left on
+# the volume is stale bulk to delete, not a pending migration.
+for _name in .local; do
+    if [[ -L $HOME/$_name ]]; then
+        printf '%s\n' "  ...WARNING: ~/$_name is a symlink ($(readlink "$HOME/$_name")) but the row is RETIRED — launchd units exec toolchains under it; move it back internal"
+    fi
+    if [[ -e $offload_root/$_name ]]; then
+        printf '%s\n' "  ...stale retired copy: $offload_root/$_name — delete it (rm -rf), nothing may point there"
+    fi
 done
 
 # Soak-fallback nag: deleting the ~/<name>.pre-offload dirs is the runbook's
