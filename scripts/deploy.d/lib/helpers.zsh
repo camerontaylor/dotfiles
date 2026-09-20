@@ -310,6 +310,14 @@ xml_escape() {
 # live pid and an empty log (measured 2026-09-11; see
 # scripts/tests/macos-permissions-gate.sh, which probes for exactly this).
 # /bin/bash and /bin/zsh are platform binaries whose grants survive upgrades.
+#
+# The requirement in one line: the RUNNING COMMAND must be the static,
+# accepted file, and the payload must run as its script ([shell, script]) —
+# the grant covers direct fork-children only (re-measured 2026-09-15). An
+# exec hop or a brew-shell trampoline re-attributes TCC to the exec'd binary,
+# and brew-shell grants are undeclarable state (brew bash: granted 09-11,
+# gone 09-15, binary unchanged). Volume-resident Mach-O never loads at all.
+# See docs/offload-home.md, "The launchd / TCC wall".
 # Non-Darwin has no TCC, so the first zsh on PATH is fine there.
 launchd_unit_shell() {
     if [[ -n ${DOTFILES_UNIT_SHELL:-} ]]; then

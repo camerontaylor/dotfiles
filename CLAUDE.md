@@ -14,7 +14,12 @@ eighteenth installer.
 - shell/editor/terminal config → dotfiles `configs/` + symlink fragment
 - secret → secrets repo (sops/age), rendered at deploy
 - daemon or service → unit in the OWNING repo + manifest entry +
-  `services.toml` placement; root steps stay human-run
+  `services.toml` placement; root steps stay human-run. On macOS the unit's
+  running command must be the static, TCC-accepted shell
+  (`launchd_unit_shell()` — `/bin/bash`|`/bin/zsh`) with the payload as its
+  script: the grant covers direct children only, exec-hops to brew shells
+  re-attribute and hang, and volume-resident binaries never load
+  (see docs/offload-home.md, "The launchd / TCC wall")
 - agent CLI/skill/provider config → the agents repo (`~/.local/agents`)
 - host-specific quirk → host-scoped fragment + manifest entry
 

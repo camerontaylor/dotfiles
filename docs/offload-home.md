@@ -138,12 +138,32 @@ this on every run):
 | a Mach-O binary living on the volume, exec'd directly | **denied** | hangs in exec, live pid, no log, no exit code |
 | `StandardOutPath` on the volume | **denied** | exit 78 (`EX_CONFIG`), killed in `xpcproxy` before exec |
 
-So the boundary is not the volume, it is the **responsible process**. Shells
-hold Full Disk Access grants on this host and pass them to what they exec; a
-bare non-shell binary has none. The operative rule is therefore narrow:
+So the boundary is not the volume, it is the **responsible process**. And on
+2026-09-15 a second probe round (trampoline shapes, sampling the wedges)
+sharpened "an internal shell" into a **one-level umbrella**:
 
-> **`ProgramArguments[0]` must be an internal, Apple-shipped shell.** Everything
-> after it — scripts, data, config — may live on the volume.
+> **`ProgramArguments[0]` must be a static, TCC-accepted file** — in practice
+> `/bin/bash` or `/bin/zsh`. Its grant covers itself and its **direct
+> fork-children**, so everything those processes read — scripts, data, config
+> — may live on the volume. The payload must run as the shell's *script*
+> (`[/bin/bash, script]`): a script's commands keep the shell as their parent
+> process. The umbrella stops there — no further.
+
+| launchd → … | verdict 2026-09-15 |
+|---|---|
+| `/bin/bash` → fork `cat` → volume file | **allowed** — the umbrella |
+| `/bin/bash` → exec brew zsh → fork `cat` | **allowed**, but only because brew zsh held its own grant that day |
+| `/bin/bash` → exec brew bash → fork `cat` | **hang** — brew bash's grant gone |
+| `/bin/bash` → fork brew bash → fork `cat` | **hang** — the umbrella is one level deep |
+| `/bin/bash` → fork or exec a volume-resident Mach-O | **hang** in dyld `getOnDiskBinarySliceOffset`, live pid |
+| brew bash **as** `[0]` — green on 2026-09-11 | **hang** on 2026-09-15, binary unchanged since 08-22 |
+
+So a brew-shell trampoline — `/bin/bash` whose only job is to launch brew's
+bash or zsh with the real script — solves exactly the `[0]`-is-internal half
+and silently re-creates the fragile-grant problem one exec later. The durable
+shape is `[/bin/bash, script]` with the script at the bash 3.2 floor this
+repo already mandates ([`docs/bash-compatibility.md`](bash-compatibility.md));
+units owned elsewhere (webfront's `reap`) need the same port.
 
 Two corollaries worth their own lines, because both cost real debugging:
 
@@ -154,9 +174,11 @@ Two corollaries worth their own lines, because both cost real debugging:
   the keychain (fixed — `zsh/env.d/08_mise.zsh` now bounds that lookup). A hung
   agent holds a pid, never retries, writes no log, and looks unremarkable in
   `launchctl list`. This is strictly worse than a clean denial.
-- **Grants are keyed by path AND code-signing hash.** A brew-installed shell
-  loses its grant on the next `brew upgrade`, and by the point above the
-  revocation presents as a hang. Hence `launchd_unit_shell()` in
+- **Grants are keyed by path AND code-signing hash — and can vanish with no
+  trigger at all.** A brew-installed shell loses its grant on the next
+  `brew upgrade`; brew bash additionally went from granted (2026-09-11) to
+  hung (2026-09-15) with the binary untouched since 2026-08-22. Either way
+  the revocation presents as a hang. Hence `launchd_unit_shell()` in
   `scripts/deploy.d/lib/helpers.zsh`, which pins macOS units to `/bin/zsh`.
   `dotfiles.prune-tmpdir` was running `/usr/local/bin/zsh` until 2026-09-11.
 
@@ -170,11 +192,16 @@ still put a `~/.local/...` path in `ProgramArguments[0]`:
 | `com.github.ctaylor.codexbar-serve` | `~/.local/dotfiles/scripts/codexbar-serve` | prefix `/bin/zsh` |
 | `com.github.ctaylor.smb-mount` | `~/.local/dotfiles/scripts/smb-mount` | prefix `/bin/zsh` |
 | `local.paseo-watchdog` | `~/.local/agents/scripts/paseo-watchdog` | prefix `/bin/bash` (agents repo) |
-| `com.github.ctaylor.micrec` | `~/.local/bin/micrec` | a Mach-O binary — cannot be exec'd from the volume at all; keep it internal or wrap it |
+| `com.github.ctaylor.micrec` | `~/.local/bin/micrec` | a Mach-O binary — cannot be exec'd from the volume at all, not even behind a `/bin/bash` trampoline (measured 2026-09-15: dyld hangs reading the image, fork form and exec form alike); keep it internal |
 
-`com.webfront.reap` is a separate, still-live instance of the *log* half: its
-`StandardOutPath` is under `~/repos` (already on the volume), which is why it
-sits at exit 78. It is owned by the webfront repo, not this one.
+`com.webfront.reap` is owned by the webfront repo, not this one. Its exit-78
+*log* half was fixed 2026-09-11 (log path moved internal). The 2026-09-15
+re-measurement then exposed the deeper *shell* half: it runs
+`/usr/local/bin/bash` over a script in `~/repos` — on the volume — which is
+probe-identical to the brew-bash hang row above, and it wedged for 7.5h in
+production once brew bash's grant vanished. Durable fix, in webfront:
+3.2-port `scripts/reap` (`mapfile` ×2, `declare -A` ×2) so the unit can run
+`[/bin/bash, script]`.
 
 Partial mitigation already landed earlier: `launchd_log_dir()` in
 `scripts/deploy.d/lib/helpers.zsh` pins dotfiles-owned LaunchAgent
@@ -370,7 +397,7 @@ last.
 | login-time mount dependency | every agent that resolves through `~/.local` + all interactive shells: four `telemetry-ingest` agents (not five — `openclaw` is ceres-only) run `~/.local/share/mise/shims/uv`; `prune-tmpdir` and `dotfiles.pull` run from `~/.local/dotfiles` and log to `~/.local/state`; `neptune-swap-watchdog` runs `~/.local/bin/saturn-swap-watchdog.sh`; `homebrew.mxcl.colima` boots its VM from `~/.colima` | the enclosure is expected to mount before the login UI — **assumed, not yet measured**; the reboot in runbook step 5 is the test, and the agent status check there is how it reports. All listed agents are periodic/watched, not login-critical — worst case one missed interval, self-healed on next fire. Deploy-time: fragment 08 fails fast (naming the dangling rows + the fix) when the volume is absent — before `10_dirs` can abort cryptically. Once `.local` itself has migrated, a detached volume also makes the deploy *uninvocable* (the repo lives under the link) — recovery is remount, nothing to repair. Boundary: never extend to a laptop |
 | **runtime volume loss** | a Thunderbolt bus reset, a physical unplug, or an enclosure power interruption unmounts the volume mid-session: every `~/.local` hot path — shims, agents, launchd jobs, shells with cwd under it — fails until remount; in-flight writes lost. Explicitly **not** idle-spindown: `disksleep` does not apply to NVMe (see Preconditions) | measured zero unmount events and zero I/O errors/retries across the 8-day uptime, so the residual is physical/link-level, not policy-level — there is no setting to turn off. Links are stable, so a remount heals it with no repair; worst case is the in-flight writes. This is the standing cost of the scheme and the reason it stays neptune-only |
 | ownership off | see Preconditions | fragment warns every deploy until `enableOwnership`; re-verify after replug, before `.config` moves |
-| **launchd cannot EXEC from the volume, and a denied access HANGS rather than failing** | any LaunchAgent whose `ProgramArguments[0]` or log path resolves onto `/Volumes/offload` | Narrower than first recorded — see *The launchd / TCC wall*, re-measured 2026-09-11. Shells hold grants and read the volume fine; a bare binary on the volume never execs, and a promptable denial blocks forever with a live pid and no log. Mitigations: `launchd_unit_shell()` pins units to Apple-shipped `/bin/zsh`, `launchd_log_dir()` pins logs internal, and `scripts/tests/macos-permissions-gate.sh` regression-tests both |
+| **launchd cannot EXEC from the volume, and a denied access HANGS rather than failing** | any LaunchAgent whose `ProgramArguments[0]`, exec chain, or log path resolves onto `/Volumes/offload` | Narrower than first recorded — see *The launchd / TCC wall*, re-measured 2026-09-11 and 2026-09-15. The static shells' grants form a one-level umbrella: their scripts and direct children read the volume fine, but an exec or shebang hop re-attributes to the exec'd binary, and a volume-resident Mach-O never loads (dyld hang, live pid — a `/bin/bash` trampoline does not rescue it). A promptable denial blocks forever with a live pid and no log. Mitigations: `launchd_unit_shell()` pins units to Apple-shipped `/bin/zsh` with the payload as its script, `launchd_log_dir()` pins logs internal, and `scripts/tests/macos-permissions-gate.sh` regression-tests all of it |
 | TCC removable-volume prompts (interactive apps) | GUI/terminal apps touching `/Volumes/*` | one-time per app; net prompts may *drop* (files leaving `~/Documents` leave that protected class). Interactive processes CAN prompt and be granted; launchd jobs cannot — that is the row above |
 | path instability | venvs/pnpm/node bake absolute paths | invariant 1: links created once, never re-pointed; the volume path is canonical forever |
 | EXDEV | `mv ~/f ~/.cache/x` crosses filesystems → copy+unlink instead of atomic rename | handled silently by gnubin `mv` and git; cosmetic |
