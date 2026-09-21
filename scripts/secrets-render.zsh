@@ -336,8 +336,25 @@ LEGACY_PLAINTEXTS=(
 # the canonical BACKUP of a credential that otherwise exists in exactly one
 # unbacked place (services.toml records ~/arr/config as still outside any
 # backup tier). If that DB is lost, re-enter from here.
+#
+# services/arr/deploy-env.yaml and services/arr/bindery-env.yaml (2026-09-22)
+# are the same case, widened. Backup-only for two different reasons, both
+# deliberate:
+#   * deploy-env.yaml mirrors the credential rows of ~/repos/deploy/arr/.env
+#     plus prowlarr's API key. That .env must NOT become render-owned --
+#     services.toml says so explicitly, because it also carries keys the arrs
+#     minted themselves and a render that owned the file would clobber them on
+#     every pass. The qBittorrent and Calibre-Web-Automated logins in it were
+#     set by a human and cannot be re-derived from anything on disk.
+#   * bindery-env.yaml holds the live Hardcover token and Bindery's API key,
+#     which exist ONLY inside ~/arr/config/bindery/bindery.db -- entered
+#     through the web UI, never written to .env (its HARDCOVER_TOKEN slot is
+#     empty). The Hardcover token is issued by a third party and expires every
+#     Jan 1, so it is not regenerable locally at all.
+# Everything above sits under ~/arr/config or the un-git'd deploy tree, which
+# services.toml still records as outside every backup tier.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
