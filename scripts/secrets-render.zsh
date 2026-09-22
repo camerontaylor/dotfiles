@@ -336,6 +336,9 @@ LEGACY_PLAINTEXTS=(
 # the canonical BACKUP of a credential that otherwise exists in exactly one
 # unbacked place (services.toml records ~/arr/config as still outside any
 # backup tier). If that DB is lost, re-enter from here.
+# services/arr/usenet-accounts.yaml follows the same backup-only pattern for
+# Frugal's NNTP login and NZBGeek's account/API key. NZBGet and Prowlarr own
+# the live copies in their config databases; neither consumes an env file.
 #
 # services/arr/deploy-env.yaml and services/arr/bindery-env.yaml (2026-09-22)
 # are the same case, widened. Backup-only for two different reasons, both
@@ -354,7 +357,7 @@ LEGACY_PLAINTEXTS=(
 # Everything above sits under ~/arr/config or the un-git'd deploy tree, which
 # services.toml still records as outside every backup tier.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
