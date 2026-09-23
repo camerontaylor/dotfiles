@@ -319,12 +319,17 @@ xml_escape() {
 # gone 09-15, binary unchanged). Volume-resident Mach-O never loads at all.
 # See docs/offload-home.md, "The launchd / TCC wall".
 # Non-Darwin has no TCC, so the first zsh on PATH is fine there.
+#
+# Usage: launchd_unit_shell [zsh|bash]. The flavor must match the payload's
+# shebang: `zsh script` runs NATIVE zsh (no word splitting, 1-based arrays),
+# so a #!/bin/sh or #!/bin/bash payload goes under /bin/bash, never /bin/zsh.
 launchd_unit_shell() {
+    local _flavor=${1:-zsh}
     if [[ -n ${DOTFILES_UNIT_SHELL:-} ]]; then
         printf '%s\n' "$DOTFILES_UNIT_SHELL"
-    elif [[ $DOTFILES_OS == Darwin && -x /bin/zsh ]]; then
-        printf '%s\n' /bin/zsh
+    elif [[ $DOTFILES_OS == Darwin && -x /bin/$_flavor ]]; then
+        printf '%s\n' "/bin/$_flavor"
     else
-        command -v zsh || printf '%s\n' /bin/zsh
+        command -v "$_flavor" || printf '%s\n' "/bin/$_flavor"
     fi
 }

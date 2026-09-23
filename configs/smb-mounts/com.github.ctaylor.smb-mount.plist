@@ -23,7 +23,13 @@
   <string>com.github.ctaylor.smb-mount</string>
 
   <key>ProgramArguments</key>
+  <!-- [@SHELL@, @SCRIPT@]: ProgramArguments[0] is the Apple-shipped shell,
+       the script is its argument. launchd/TCC keys its grant to argv[0]; a
+       script path there re-attributes to the shebang interpreter. The shell
+       flavor matches the script's shebang (launchd_unit_shell bash) — see
+       docs/offload-home.md, "The launchd / TCC wall". -->
   <array>
+    <string>@SHELL@</string>
     <string>@SCRIPT@</string>
   </array>
 

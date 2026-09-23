@@ -318,9 +318,11 @@ gotchas there — see the global memory protocol for cadence.
 - Raycast *script commands* (Cloud Sync doesn't carry the script files) live in
   [`raycast/`](raycast/README.md) — e.g. `open-in-forklift.sh`. Add the dir once
   in Raycast settings; the files are version-controlled and ride along to every Mac.
-- neptune's Unix-side home (`~/repos`, `.npm`, `.local`, `.cache`, `.config`,
-  toolchain dirs) lives on the external `offload` volume behind compatibility
-  symlinks — declared and drift-corrected by
+- neptune's Unix-side home (`~/repos`, `.npm`, `.cache`, `.config`,
+  toolchain caches) lives on the external `offload` volume behind compatibility
+  symlinks — but NOT `~/.local`: it holds mise and every mise-installed
+  toolchain, and launchd units that fork a volume-resident Mach-O hang (row
+  retired 2026-09-20; code stays internal, only data offloads) — declared and drift-corrected by
   [`scripts/deploy.d/08_offload_home.zsh`](scripts/deploy.d/08_offload_home.zsh)
   (neptune-only; numbered to run BEFORE `10_dirs`, which writes through the
   farm — a detached volume fails fast there instead of aborting mid-deploy;

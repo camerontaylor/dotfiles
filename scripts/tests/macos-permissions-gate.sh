@@ -137,8 +137,10 @@ shell-bash-reads-volume|shell|grant|CANARY-OK|/bin/bash cat __CANARY__|launchd /
 shell-zsh-reads-volume|shell|grant|CANARY-OK|/bin/zsh cat __CANARY__|launchd /bin/zsh can READ the external volume
 shell-brewbash-reads-volume|shell|grant|CANARY-OK|/usr/local/bin/bash cat __CANARY__|launchd brew bash holds a DECLARED volume-access grant (owner accepted 2026-09-18); never rely on it — it rotted once
 nonshell-reads-volume|direct|deny|CANARY-OK|/bin/cat __CANARY__|launchd non-shell binary can READ the external volume
-direct-exec-from-volume|direct|deny|mise|__OFFLOAD_ROOT__/.local/bin/mise --version|launchd can EXEC a binary living on the volume
-exec-trampoline-volume-binary|shell|deny|mise|/bin/bash exec __OFFLOAD_ROOT__/.local/bin/mise --version|a granted-shell trampoline does NOT rescue exec of a volume-resident binary
+direct-exec-from-volume|direct|deny|mise|__FIXTURES__/mise --version|launchd can EXEC a binary living on the volume
+exec-trampoline-volume-binary|shell|deny|mise|/bin/bash exec __FIXTURES__/mise --version|a granted-shell trampoline does NOT rescue exec of a volume-resident binary
+fork-volume-binary|shell|deny|mise|/bin/bash __FIXTURES__/mise --version|a granted shell FORKING a volume-resident Mach-O (no exec) — why ~/.local (mise toolchains) stays internal
+shell-runs-volume-script|direct|grant|SCRIPT-OK|/bin/bash __FIXTURES__/hello.sh|[/bin/bash, script-on-volume]: the unit shape every LaunchAgent uses
 ssh-direct-config-parse|direct|grant|hostname|/usr/bin/ssh -G localhost|launchd-exec'd ssh can parse ~/.ssh/config
 log-path-on-volume|logext|deny|PROBE-OK|-|launchd can write a LOG onto the external volume
 ROWS
@@ -350,7 +352,25 @@ else
     printf '%s\n' "  NOTE: $OFFLOAD_ROOT absent or unwritable — volume rows will SKIP"
 fi
 
-manifest | sed -e "s#__CANARY__#$CANARY#g" -e "s#__OFFLOAD_ROOT__#$OFFLOAD_ROOT#g" > "$TMPROWS"
+# Persistent fixtures on the volume. The Mach-O rows used to point at the
+# staged ~/.local copy, which is gone (row retired 2026-09-20); a private
+# copy of the mise binary and a one-line script stand in for it. The copy is
+# made once and left in place: what is measured is where it LIVES, not what
+# it is, and re-copying 80 MB per run is pointless.
+FIXTURES=$OFFLOAD_ROOT/.gate-fixtures
+if [ "$vol_present" -eq 1 ]; then
+    mkdir -p "$FIXTURES" 2>/dev/null || true
+    if [ ! -x "$FIXTURES/mise" ]; then
+        fx_src=$(command -v mise 2>/dev/null || true)
+        [ -n "$fx_src" ] && cp "$fx_src" "$FIXTURES/mise" 2>/dev/null || true
+    fi
+    if [ ! -x "$FIXTURES/hello.sh" ]; then
+        printf '%s\n' '#!/bin/sh' 'echo SCRIPT-OK' > "$FIXTURES/hello.sh"
+        chmod +x "$FIXTURES/hello.sh"
+    fi
+fi
+
+manifest | sed -e "s#__CANARY__#$CANARY#g" -e "s#__OFFLOAD_ROOT__#$OFFLOAD_ROOT#g" -e "s#__FIXTURES__#$FIXTURES#g" > "$TMPROWS"
 
 ok=0; regressed=0; drifted=0; skipped=0
 problems=""
@@ -359,7 +379,9 @@ while IFS='|' read -r id mode expect marker payload summary; do
     needs_vol=0
     case $mode in logext) needs_vol=1 ;; esac
     case $payload in *"$OFFLOAD_ROOT"*) needs_vol=1 ;; esac
-    if [ "$needs_vol" -eq 1 ] && [ "$vol_present" -eq 0 ]; then
+    fixture_missing=0
+    case $payload in *"$FIXTURES/mise"*) [ -x "$FIXTURES/mise" ] || fixture_missing=1 ;; esac
+    if { [ "$needs_vol" -eq 1 ] && [ "$vol_present" -eq 0 ]; } || [ "$fixture_missing" -eq 1 ]; then
         printf '  %-28s SKIP            %s\n' "$id" "$summary"
         skipped=$((skipped + 1))
         continue

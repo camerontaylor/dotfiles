@@ -66,8 +66,10 @@ if [[ ! -f $smb_plist_template ]]; then
 fi
 
 smb_plist_rendered=
-smb_plist_rendered=$(awk -v home="$HOME" -v script="$smb_script" '
-    { gsub(/@HOME@/, home); gsub(/@SCRIPT@/, script); print }
+smb_unit_shell=
+smb_unit_shell=$(launchd_unit_shell bash)
+smb_plist_rendered=$(awk -v home="$HOME" -v script="$smb_script" -v shell="$smb_unit_shell" '
+    { gsub(/@HOME@/, home); gsub(/@SCRIPT@/, script); gsub(/@SHELL@/, shell); print }
 ' $smb_plist_template)
 
 smb_needs_write=1
