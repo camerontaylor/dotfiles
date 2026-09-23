@@ -386,6 +386,11 @@ qbit.wedrifid.dev {
 	}
 }
 
+qui.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy 100.87.185.24:7476
+}
+
 # slskd's UI is driven by SignalR and shows live transfer progress; where that
 # falls back to long-polling rather than a WebSocket, buffering would make
 # progress arrive in lumps.
