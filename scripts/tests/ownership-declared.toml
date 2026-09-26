@@ -157,16 +157,6 @@ writers = ["scripts/deploy.d/99_periodic.zsh"]
 manifest_ids = ["systemd-unit:system:caddy.service"]
 writers = ["scripts/setup-caddy.sh"]
 
-[service_artifact."configs/immich/docker-compose.yaml"]
-manifest_ids = [
-    "container:docker:immich/database",
-    "container:docker:immich/immich-machine-learning",
-    "container:docker:immich/immich-server",
-    "container:docker:immich/redis",
-]
-writers = ["scripts/setup-immich.sh"]
-reason = "dotfiles is the tracked source of truth; setup-immich.sh installs a copy into ~/repos/deploy/immich and the stack runs from there (containers are human-started by policy)"
-
 [service_artifact."configs/smb-mounts/com.github.ctaylor.smb-mount.plist"]
 writers = ["scripts/deploy.d/76_smb_mounts.zsh"]
 reason = "tracked template, rendered copy (awk @HOME@/@SCRIPT@ substitution) into ~/Library/LaunchAgents on the Macs listed in configs/smb-mounts/mounts.conf only; client half of the ceres Samba share, whose server half is hand-run via setup-ceres-share.sh. No manifest_ids yet: launchd:agent:com.github.ctaylor.smb-mount only exists once a listed Mac has deployed — attest it here after saturn/neptune converge."
@@ -175,26 +165,6 @@ reason = "tracked template, rendered copy (awk @HOME@/@SCRIPT@ substitution) int
 manifest_ids = ["launchd:agent:com.github.ctaylor.wake-peers"]
 writers = ["scripts/deploy.d/76_wake_peers.zsh"]
 reason = "tracked template, rendered copy (awk @HOME@/@SLEEPWATCHER_PATH@ substitution) into ~/Library/LaunchAgents on macOS peers only"
-
-[service_artifact."hart-immich-backup.service"]
-manifest_ids = ["systemd-unit:user:hart-immich-backup.service"]
-writers = ["scripts/setup-immich.sh"]
-reason = "dotfiles deploys photo-steward's template (rendered with the Immich API key — the one real, non-symlinked file in ~/.config/systemd/user); hart/photo-steward own the content"
-
-[service_artifact."hart-immich-backup.timer"]
-manifest_ids = ["systemd-unit:user:hart-immich-backup.timer"]
-writers = ["scripts/setup-immich.sh"]
-reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
-
-[service_artifact."hart-immich-prune.service"]
-manifest_ids = ["systemd-unit:user:hart-immich-prune.service"]
-writers = ["scripts/setup-immich.sh"]
-reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
-
-[service_artifact."hart-immich-prune.timer"]
-manifest_ids = ["systemd-unit:user:hart-immich-prune.timer"]
-writers = ["scripts/setup-immich.sh"]
-reason = "installed from photo-steward's ops/ dir by dotfiles' setup-immich.sh; hart/photo-steward own the content"
 
 [service_artifact."local.caddy.plist"]
 manifest_ids = ["launchd:daemon:local.caddy"]

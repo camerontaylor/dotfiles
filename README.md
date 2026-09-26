@@ -241,7 +241,8 @@ triple — with the tracked files living in the repo that owns the domain
 
 | Service | Installer | Runbook |
 |---|---|---|
-| Immich (photo library + nightly restic backup, ceres) | dotfiles [`scripts/setup-immich.sh`](scripts/setup-immich.sh) | [`docs/immich.md`](docs/immich.md) |
+| Immich (photo library + nightly restic backup, makemake) | infra repo `~/.local/infra/bin/setup-immich` (compose in `compose/immich/`, placed by `converge apply`) | infra repo `~/.local/infra/docs/immich.md` |
+| Plex (media server, makemake) | infra repo `~/.local/infra/bin/setup-plex` (compose in `compose/plex/`) | infra repo `~/.local/infra/docs/plex.md` |
 | Caddy (TLS ingress, ceres) | dotfiles [`scripts/setup-caddy.sh`](scripts/setup-caddy.sh) | [`docs/caddy-ingress.md`](docs/caddy-ingress.md) |
 | Paseo (agent orchestrator) | agents repo `~/.local/agents/scripts/setup-paseo.sh` | agents repo `~/.local/agents/docs/paseo.md` |
 | LLM plan quota (usage collector + pacing cues + ntfy, ceres) | agents repo `~/.local/agents/scripts/setup-llm-quota.sh` | agents repo `~/.local/agents/docs/llm-quota.md` |

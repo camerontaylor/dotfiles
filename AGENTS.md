@@ -34,7 +34,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. External code is vendored as pinned plug
 | Keybindings / GUI nav / tiling WM | macOS: `configs/karabiner/karabiner.ts` (Hyper + text nav, generated) + `configs/aerospace/aerospace.toml` (tiling). Linux: `configs/keyd/default.conf` (Caps→Esc/Hyper, installed to /etc by `79_keyd.zsh`) + `configs/sway/config` (tiling). Full guide: [`docs/keybindings/README.md`](docs/keybindings/README.md) |
 | macOS App Shortcuts / Finder `defaults` / default-app associations | `scripts/macos/macos-defaults.sh` (shortcuts + Finder prefs + `duti` file-type→VS Code; change-aware, backs up to `$XDG_STATE_HOME/macos-defaults/`; applied on deploy by `77_macos_defaults.zsh`, needs `duti` from brew). Capture hand-set shortcuts with `capture-shortcuts.sh`. See [`scripts/macos/README.md`](scripts/macos/README.md) |
 | macOS Raycast script command | drop a `*.sh` in `raycast/` (version-controlled; add the dir once in Raycast settings). See [`raycast/README.md`](raycast/README.md) |
-| Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-immich.sh`, `setup-ceres-share.sh`. Agent-serving services (paseo, llm-quota) keep the whole triple — configs + installers + units **and runbooks** — in the **agents repo** per the owning-repo rule. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
+| Deployed service (compose file, units, install steps) | `configs/<service>/` for the tracked artifacts + `scripts/setup-<service>.sh` for the idempotent installer + `docs/<service>.md` for the runbook. Hand-run only — **never** wire one into `scripts/deploy.d/`, since the fleet auto-deploys on every pull and two of three boxes are Macs. Models: `setup-caddy.sh`, `setup-ceres-share.sh` (immich and plex moved to the infra repo 2026-09-27; new services go there). Agent-serving services (paseo, llm-quota) keep the whole triple — configs + installers + units **and runbooks** — in the **agents repo** per the owning-repo rule. **This is an interim home — see [Infra carve-out](#todo-infra-carve-out) below.** |
 
 ## Agents sibling repo
 
@@ -151,9 +151,11 @@ crash-looped three services for a week in 2026-07.
 
 ## TODO: infra carve-out
 
-Deployed-service infrastructure (`configs/immich/`, `configs/caddy/`,
-`scripts/setup-*.sh`, `docs/immich.md`, `docs/caddy-ingress.md`, …) lives here
-as an **interim home**. Cameron's intent (2026-09-03) is to split infra out of
+Deployed-service infrastructure (`configs/caddy/`, `scripts/setup-*.sh`,
+`docs/caddy-ingress.md`, …) lives here as an **interim home**. Immich and Plex
+have moved: compose files, installers and runbooks are in the infra repo
+(`~/.local/infra` — `compose/<svc>/`, `bin/setup-<svc>`, `docs/<svc>.md`) since
+2026-09-27, where `converge apply` places the compose files as symlinks. Cameron's intent (2026-09-03) is to split infra out of
 dotfiles into its own repo, leaving this one to config *preferences* — shell,
 editor, keybindings, terminal.
 
@@ -164,4 +166,7 @@ seam back to dotfiles.
 
 Until then, keep new infra to the `configs/<service>/` + `scripts/setup-<service>.sh`
 + `docs/<service>.md` triple so the eventual move is a `git mv`, not a rewrite.
-Full candidate list and rationale: [`docs/immich.md`](docs/immich.md#todo-carve-infra-out-of-dotfiles-into-its-own-repo).
+Remaining candidates: `configs/caddy/` + `scripts/setup-caddy.sh` +
+`docs/caddy-ingress.md`; `scripts/setup-t3.sh`, `scripts/setup-ceres-share.sh`,
+`scripts/setup-office-lan.sh`; `configs/samba/`, `configs/portless/`. New
+deployed services go straight to the infra repo, not here.
