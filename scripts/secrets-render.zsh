@@ -264,7 +264,7 @@ setopt pipefail
 #   field 2  kind  shellenv | dotenv | dotenv-select:KEYS | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | pluto | immich | libris | ollie-notes | infra | arr | adguard
+#   field 5  gate  all | ceres | pluto | agents | immich | libris | ollie-notes | infra | arr | adguard
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -318,6 +318,12 @@ _row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secr
 # the file as root BEFORE the unit's sandbox/User= apply, so no root copy into
 # /etc is needed.
 _row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_API_TOKEN' "$STATE_HOME/caddy/env" 600 pluto ''
+
+# Codex CLI's OpenAI credential for service context: OPENAI_API_KEY renders to
+# the shell env only, which the paseo daemon's workers never see (401 at
+# api.openai.com, 2026-09-29). Selected single-key dotenv; the agents lane owns
+# consumption. Gate = agents checkout, honouring AGENTS_DIR.
+_row "shell/90_secrets.yaml" 'dotenv-select:OPENAI_API_KEY' "$STATE_HOME/codex/env" 600 agents ''
 
 # Services. openclaw is ceres-only (server-side config for a bridge that runs
 # on exactly one box); the immich rows are gated on the deploy dir already
@@ -505,6 +511,7 @@ _gate_open() {
         all)    return 0 ;;
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         pluto)  [[ $(hostname -s 2>/dev/null) == pluto ]] ;;
+        agents) [[ -d ${AGENTS_DIR:-$HOME/.local/agents} ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
         arr)    [[ -d $HOME/repos/deploy/arr ]] ;;

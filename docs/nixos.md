@@ -5,6 +5,11 @@ The four repos retain the fleet deployment order: dotfiles → secrets → infra
 agent CLIs. A NixOS rebuild is a setup operation, not part of the unattended
 pull/deploy chain.
 
+Normal deployment repairs missing or broken npm globals and restores exact
+pins. Use `--upgrade` to refresh installed `@latest` packages. Repeated
+deployments avoid the npm reinstall that nearly exhausted Pluto's
+300-second post-merge hook limit.
+
 The system definition lives in the infra repo at `nixos/`. Apply it before
 bootstrapping the home layer:
 
@@ -30,6 +35,16 @@ Run the home deployment from the intended checkout:
 ./deploy.bash --dry-run
 ./deploy.bash
 ```
+
+After the first CLI installation, initialize Codex API authentication from
+the private rendered credential:
+
+```sh
+bash "$HOME/.local/agents/scripts/setup-codex-auth.sh"
+```
+
+Existing ChatGPT logins are preserved. The agents deploy keeps API credentials
+in sync on later deployments; the daemon's workers use Codex's private cache.
 
 Both deploy drivers support NixOS. Native package-manager operations belong
 in the infra NixOS definition; home deploy must not try apt, pacman, or

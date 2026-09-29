@@ -32,8 +32,17 @@ check 'agents checkout' test -f "$agents_root/deploy"
 check 'infra checkout' test -f "$infra_root/deploy"
 check 'secrets checkout' test -e "$secrets_root/.git"
 
-for tool in bash zsh git mise node python uv sops age nvim claude codex paseo t3 pi linear-cli; do
+for tool in bash zsh git mise node python uv sops age nvim claude codex paseo t3 pi linear-cli htop mosh git-extras git-restore-mtime psql iotop bpftrace nvtop coderabbit cc make pkg-config; do
     check "$tool executes" "$tool" --version
+done
+check 'atop executes' atop -V
+check 'netcat executes' nc -h
+check 'socat executes' socat -V
+check 'testssl executes' bash -c 'tool=$(command -v testssl || command -v testssl.sh) && "$tool" --version'
+for completion in _bun _opencode; do
+    completion_path=${XDG_CACHE_HOME:-$HOME/.cache}/zsh/fpath/$completion
+    check "$completion generated" test -s "$completion_path"
+    check "$completion parses" zsh -n "$completion_path"
 done
 
 check 'Python native standard-library modules' python -c 'import ctypes, ssl, sqlite3, lzma, bz2; ssl.create_default_context(); sqlite3.connect(":memory:")'
@@ -54,10 +63,12 @@ done
 for service in pull-dotfiles.service agents-check.service converge-check.service; do
     check "$service last run succeeded" bash -c '[[ $(systemctl --user show "$1" -p Result --value) == success && $(systemctl --user show "$1" -p ExecMainStatus --value) == 0 && $(systemctl --user show "$1" -p ExecMainStartTimestampMonotonic --value) -gt 0 ]]' smoke "$service"
 done
-for service in caddy portless-proxy tailscaled paseo-daemon; do
+for service in caddy portless-proxy tailscaled paseo-daemon atop atopacct keyd; do
     check "$service active" systemctl is-active "$service"
 done
+check 'atop rotation timer active' systemctl is-active atop-rotate.timer
 check 'Caddy serves verified HTTPS locally' bash -c '[[ $(curl -fsS --max-time 15 --resolve pluto.webfront.app:443:127.0.0.1 -o /dev/null -w "%{http_code}" https://pluto.webfront.app) == 200 ]]'
+check 'Python verifies HTTPS with the default CA bundle' python -c 'import socket,ssl; connection=socket.create_connection(("127.0.0.1",443),timeout=15); ssl.create_default_context().wrap_socket(connection,server_hostname="pluto.webfront.app").close()'
 check 'Paseo CLI and daemon pins agree' python "$dotfiles_root/scripts/tests/check-paseo-pins.py" --dotfiles "$dotfiles_root" --infra "$infra_root"
 check 'running Paseo daemon has the declared version' bash -o pipefail -c 'expected=$(python "$1/scripts/tests/check-paseo-pins.py" --dotfiles "$1" --infra "$2" --print-daemon-tool) || exit; paseo daemon status | grep -Fx "daemonVersion: ${expected##*@}"' smoke "$dotfiles_root" "$infra_root"
 check 'Paseo codex policy plugin is running' bash -o pipefail -c 'paseo plugin ls --json | python -c '\''import json,sys; rows=json.load(sys.stdin); sys.exit(0 if any(r.get("id")=="codex-policy" and r.get("enabled") and r.get("status")=="running" for r in rows) else 1)'\'''
