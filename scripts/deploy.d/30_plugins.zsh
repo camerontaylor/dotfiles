@@ -56,7 +56,7 @@ while read -r _pl_sha _pl_path _pl_url; do
             # Working repo, off-pin: refresh its refs so the checkout below
             # can see the pinned rev (old shallow checkouts fetch new tips).
             printf '%s\n' "  ...moving $_pl_path to pinned rev"
-            git -C $_pl_dir fetch --quiet origin || true
+            git -C "$_pl_dir" fetch --quiet origin || true
         else
             # Legacy gitfile pointing at a pruned .git/modules (or a
             # half-written clone) — re-clone, mirroring the old fragment's
@@ -67,7 +67,7 @@ while read -r _pl_sha _pl_path _pl_url; do
     else
         printf '%s\n' "  ...fetching $_pl_path"
     fi
-    if ! git -C $_pl_dir rev-parse --git-dir > /dev/null 2>&1; then
+    if ! git -C "$_pl_dir" rev-parse --git-dir > /dev/null 2>&1; then
         # --filter=blob:none keeps the fetch light where the server supports
         # partial clone (GitHub does); full clone is the fallback.
         git clone --quiet --filter=blob:none --no-checkout "$_pl_url" "$_pl_dir" 2> /dev/null \

@@ -248,17 +248,32 @@ exit 0''')
                                self.repo / "scripts/deploy.d/lib/helpers.zsh", fragment)
                 self.assertIn("mise upgrade --yes", self.log())
 
-    # ── npm globals: per-package + --libc ─────────────────────────────────
+    # ── npm globals: batch fast path, failure isolation, --libc ────────────
 
-    def test_npm_per_package_installs_with_libc_flag(self):
+    def test_npm_batch_success_and_per_package_retries_with_libc_flag(self):
         self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragment = self.copy("scripts/deploy.d/70_runtime_installs.zsh")
         packages = self.repo / ".default-npm-packages"
         packages.write_text("t3\npi\noxlint\n")
         self.fake_mise()
-        # npm fails ONLY for pi: the other two must still land.
-        self.fake("npm", 'printf "npm %s\\n" "$*" >> "$CALLS"; '
-                         'case "$*" in *pi*) exit 1;; esac; exit 0')
+        installed = self.base / "npm installed"
+        self.env["NPM_FIXTURE_INSTALLS"] = str(installed)
+        # Simulate the npm process boundary, not the fragment's retry policy.
+        # A failed invocation materializes nothing; successful invocations
+        # record their packages, making survivor installation observable.
+        self.fake("npm", '''printf "npm %s\\n" "$*" >> "$CALLS"
+[ "$1" = install ] || exit 0
+shift
+for package do
+    if [ "${FAKE_NPM_FAIL_PI:-0}" = 1 ] && [ "$package" = pi ]; then
+        echo "synthetic npm failure for pi" >&2
+        exit 1
+    fi
+done
+for package do
+    case "$package" in -*) continue;; esac
+    printf 'installed %s\\n' "$package" > "$NPM_FIXTURE_INSTALLS/$package"
+done''')
         # A successful `mise exec node` represents an installed node prefix.
         # Supply it so the retired-global sweep sees a realistic install tree
         # rather than an unmatched zsh glob from an inconsistent fake mise.
@@ -266,22 +281,33 @@ exit 0''')
         node_bin.mkdir(parents=True)
         (node_bin / "npm").symlink_to(self.bin / "npm")
         self.env["NPM_CONFIG_USERCONFIG"] = "/dev/null"
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                self.calls.unlink(missing_ok=True)
-                result = self.run_shell(shell, '. "$1"; upgrade_mode=false; . "$2"',
-                                        self.repo / "scripts/deploy.d/lib/helpers.zsh",
-                                        fragment)
-                calls = self.log()
-                self.assertIn("npm install -g --libc=glibc t3", calls)
-                self.assertIn("npm install -g --libc=glibc pi", calls)
-                self.assertIn("npm install -g --libc=glibc oxlint", calls,
-                              "a pi failure must not abort the remaining installs")
-                installs = [line for line in calls.splitlines()
-                            if line.startswith("npm install ")]
-                self.assertEqual(installs, [f"npm install -g --libc=glibc {p}"
-                                           for p in ("t3", "pi", "oxlint")])
-                self.assertIn("pi failed", result)
+        for fail_pi in (False, True):
+            self.env["FAKE_NPM_FAIL_PI"] = "1" if fail_pi else "0"
+            for shell in SHELLS:
+                with self.subTest(shell=shell, fail_pi=fail_pi):
+                    self.calls.unlink(missing_ok=True)
+                    if installed.exists():
+                        shutil.rmtree(installed)
+                    installed.mkdir()
+                    result = self.run_shell(shell, '. "$1"; upgrade_mode=false; . "$2"',
+                                            self.repo / "scripts/deploy.d/lib/helpers.zsh",
+                                            fragment)
+                    installs = [line for line in self.log().splitlines()
+                                if line.startswith("npm install ")]
+                    expected = ["npm install -g --libc=glibc t3 pi oxlint"]
+                    if fail_pi:
+                        expected += [f"npm install -g --libc=glibc {p}"
+                                     for p in ("t3", "pi", "oxlint")]
+                    self.assertEqual(installs, expected,
+                                     "successful batches need one install; failed batches isolate retries")
+                    survivors = {"t3", "oxlint"} if fail_pi else {"t3", "pi", "oxlint"}
+                    self.assertEqual({p.name for p in installed.iterdir()}, survivors)
+                    if fail_pi:
+                        self.assertIn("pi failed", result)
+                        self.assertIn("synthetic npm failure for pi", result)
+                        self.assertIn("package(s) failed: pi", result)
+                    else:
+                        self.assertNotIn("pi failed", result)
 
     # ── Pluto fork runtime ────────────────────────────────────────────────
 
@@ -493,6 +519,8 @@ exit 0''')
     # ── pinned plugin submodules ──────────────────────────────────────────
 
     def plugin_fixture(self):
+        self.repo = self.base / "plugin repo with spaces"
+        self.env["SCRIPT_DIR"] = str(self.repo)
         self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragment = self.copy("scripts/deploy.d/30_plugins.zsh")
         (self.repo / "zsh/plugins").mkdir(parents=True)
