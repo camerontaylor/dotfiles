@@ -36,7 +36,7 @@ for tool in bash zsh git mise node python uv sops age nvim claude codex paseo t3
     check "$tool executes" "$tool" --version
 done
 check 'atop executes' atop -V
-check 'netcat executes' nc -h
+check 'netcat connects to the local HTTPS listener' nc -z -w 5 127.0.0.1 443
 check 'socat executes' socat -V
 check 'testssl executes' bash -c 'tool=$(command -v testssl || command -v testssl.sh) && "$tool" --version'
 for completion in _bun _opencode; do
