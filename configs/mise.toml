@@ -140,14 +140,18 @@ btop = { version = "1.4.7", os = ["linux"] }
 # from the 0.7.0 beta install until 2026-09-06. The paseo *skills* assume a
 # working bare `paseo`, and they were silently Mac-only without this.
 #
-# KEEP THIS PIN IN SYNC with the daemon's, which the agents repo's
-# scripts/setup-paseo.sh writes into paseo-daemon.service's ExecStart
-# (`mise exec npm:@getpaseo/cli@<ver>`).
-# They are deliberately separate — the unit pins so a config change can never
-# perturb a running daemon — but a CLI newer than the daemon it talks to is a
-# skew bug, so bump both together. Do NOT loosen this to "beta": `mise upgrade`
-# on every deploy would then walk the CLI ahead of the pinned daemon unattended.
-"npm:@getpaseo/cli" = { version = "0.8.0-beta.1", os = ["linux"] }
+# KEEP THIS PIN IN SYNC with the daemon's base version. Pluto's daemon runs
+# the FORK package `npm:@camerontaylor/paseo-cli` at the exact version the
+# infra repo declares (0.9.1-fork.1 = the 0.9.1 stock base + fork suffix);
+# its ExecStart resolves it via `mise exec` and 70_runtime_installs.zsh
+# materializes it with a direct `mise install <ref>` — NOT through this
+# config, so the bare `paseo` on PATH stays STOCK and there is deliberately
+# no second entry for the fork here (one version, one channel, per package).
+# This entry exists so the bare `paseo` shim resolves everywhere on Linux;
+# scripts/tests/check-paseo-pins.py (agents) asserts the two pins share a
+# base. Do NOT loosen this to a floating range: `mise upgrade` would walk
+# the CLI ahead of the pinned daemon unattended.
+"npm:@getpaseo/cli" = { version = "0.9.1", os = ["linux"] }
 
 [env]
 # Claude Code's built-in auto-updater would rewrite its install out from

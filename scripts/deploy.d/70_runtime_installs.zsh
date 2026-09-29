@@ -38,6 +38,19 @@ unset _claude_target
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
+# npm filters an optional platform dependency (t3's @t3code/t3-linux-x64, …)
+# by os/arch AND libc, and on pluto that binary package was observed missing
+# while the CLI died with "no build available for this platform" (audit
+# 2026-09-29, F1). The libc override is official npm config (`--libc`,
+# docs.npmjs.com/cli/v11/using-npm/config#libc) — NOT --target_libc, which is
+# the old node-pre-gyp spelling. NixOS is glibc-based, so key off /etc/NIXOS
+# (ldd's banner wording varies: "GLIBC"/"GNU libc"); other Linux keeps npm's
+# own detection unless ldd reports a glibc runtime.
+npm_libc_flag=
+if [[ -e /etc/NIXOS ]] || { [[ $DOTFILES_OS == Linux ]] && ldd --version 2>/dev/null | grep -qi glibc; }; then
+    npm_libc_flag=--libc=glibc
+fi
+
 if (( DEPLOY_DRY_RUN )); then
     printf '%s\n' "  [dry-run] would install npm globals through mise node's npm"
 elif have mise; then
@@ -135,12 +148,36 @@ elif have mise; then
         done < $npm_packages_file
 
         if (( ${#npm_packages[@]} > 0 )); then
+            # Per-package installs, NOT one batch: a single failing package
+            # (a bad publish, a rejected postinstall, a platform-optional
+            # gap) fails the whole `npm install -g` line and every declared
+            # CLI goes missing together, silently — on pluto `pi` was
+            # OBSERVED absent while `omp` survived (audit 2026-09-29, F2;
+            # root cause not established). One process per package keeps the
+            # survivors installed and the failure named + diagnosable.
             printf '%s\n' "Installing npm globals through mise node's npm..."
-            if mise exec node -- npm install -g "${npm_packages[@]}" > /dev/null 2>&1; then
+            npm_failed=()
+            for npm_package in "${npm_packages[@]}"; do
+                npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global.XXXXXX") || npm_log=
+                if [[ -z $npm_log ]]; then
+                    npm_failed+=("$npm_package")
+                    continue
+                fi
+                if mise exec node -- npm install -g ${npm_libc_flag:-} "$npm_package" > "$npm_log" 2>&1; then
+                    rm -f "$npm_log"
+                else
+                    npm_failed+=("$npm_package")
+                    printf '%s\n' "  ...$npm_package failed; last lines of output:"
+                    tail -n 5 "$npm_log" | sed 's/^/    | /'
+                    rm -f "$npm_log"
+                fi
+            done
+            if (( ${#npm_failed[@]} == 0 )); then
                 printf '%s\n' "  ...done"
             else
-                printf '%s\n' "  ...failed to install npm globals"
+                printf '%s\n' "  ...${#npm_failed[@]} package(s) failed: ${npm_failed[*]}" >&2
             fi
+            unset npm_failed npm_log
         fi
 
         # corepack is in the npm globals list AFTER pnpm, so its bin shim wins
@@ -160,6 +197,24 @@ elif have mise; then
 
     mise reshim --force -y > /dev/null 2>&1 || true
     hash -r
+
+    # Declared-but-broken CLIs slipped through the quiet install path on
+    # pluto (audit 2026-09-29): t3 resolved but died without its platform
+    # optional, pi was observed absent. Verify loudly on every deploy —
+    # warn only; a missing CLI must not fail the fleet's unattended
+    # pull-deploy (warn-not-fail, 66_infra precedent). linear-cli is checked
+    # separately, AFTER the cargo leg later in this fragment (on a fresh box
+    # that leg runs below this block — checking here would false-warn).
+    for rt_check in t3 pi; do
+        if have "$rt_check"; then
+            if ! "$rt_check" --version > /dev/null 2>&1; then
+                printf '%s\n' "  WARNING: $rt_check is on PATH but --version fails; check its optional platform package" >&2
+            fi
+        else
+            printf '%s\n' "  WARNING: $rt_check is declared but not on PATH; install it and re-run deploy" >&2
+        fi
+    done
+    unset rt_check
 
     # One-shot teardown of the abandoned Vite+ node manager. vp hijacked
     # node/npm/pnpm through ~/.vite-plus/bin shims that only interactive
@@ -232,23 +287,115 @@ fi
 # linear-cli: git-only upstream, no mise/aqua/ubi backend exists (the crates
 # release is stale; only the git master branch builds) — the one deliberate
 # cargo-of-git install left (documented exception, docs/cli-tools.md).
+#
+# ~/.cargo/bin must be on the deploy shell's PATH BEFORE the probes: cargo
+# drops the binary there, but a post-merge/cron deploy shell carries no
+# interactive PATH wiring, so `have linear-cli` stayed false forever, the
+# install re-ran every deploy, and the CLI never resolved for the user
+# (pluto audit 2026-09-29, F3).
+if [[ -d $HOME/.cargo/bin ]]; then
+    case ":$PATH:" in
+        *":$HOME/.cargo/bin:"*) ;;
+        *) export PATH="$HOME/.cargo/bin:$PATH" ;;
+    esac
+fi
+# linear-cli build failures must be diagnosable: a cargo-of-git install is a
+# SOURCE build (C toolchain, openssl headers, …), and swallowing the output
+# into /dev/null left pluto failing with zero evidence. Capture to a bounded
+# persistent log, print an excerpt, keep the log for root to inspect.
+_linear_log_dir=${XDG_STATE_HOME:-$HOME/.local/state}
+_linear_log=$_linear_log_dir/linear-cli-install.log
 if have cargo; then
-    if ! have linear-cli; then
+    deploy_mkdir -p "$_linear_log_dir"
+    if ! have linear-cli && [[ ! -x $HOME/.cargo/bin/linear-cli ]]; then
         printf '%s\n' "Installing linear-cli via cargo..."
-        if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked > /dev/null 2>&1; then
+        if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked > "$_linear_log" 2>&1; then
+            rm -f "$_linear_log"
             printf '%s\n' "  ...done"
         else
-            printf '%s\n' "  ...failed to install linear-cli"
+            # A cargo-of-git build needs a C toolchain to link, which a stock
+            # NixOS host does not ship (nix-ld only covers prebuilt binaries).
+            if ! have cc && ! have gcc && ! have clang; then
+                printf '%s\n' "  ...failed to install linear-cli (no C toolchain found; on NixOS add gcc to the host's systemPackages)"
+            else
+                printf '%s\n' "  ...failed to install linear-cli"
+            fi
+            printf '%s\n' "  last lines of the build log:"
+            tail -n 15 "$_linear_log" | sed 's/^/    | /'
+            printf '%s\n' "  full log: $_linear_log"
         fi
-    elif $upgrade_mode; then
+    fi
+    # Post-cargo-leg verify (fresh boxes install linear-cli above; see the
+    # t3/pi verify note for why this runs after, not before).
+    if have linear-cli && ! linear-cli --version > /dev/null 2>&1; then
+        printf '%s\n' "  WARNING: linear-cli is on PATH but --version fails" >&2
+    fi
+    if $upgrade_mode; then
         printf '%s\n' "Upgrading linear-cli via cargo..."
-        if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked --force > /dev/null 2>&1; then
+        if cargo install --git https://github.com/Finesssee/linear-cli.git --branch master --locked --force > "$_linear_log" 2>&1; then
+            rm -f "$_linear_log"
             printf '%s\n' "  ...done"
         else
-            printf '%s\n' "  ...failed to upgrade linear-cli"
+            printf '%s\n' "  ...failed to upgrade linear-cli; last lines:"
+            tail -n 15 "$_linear_log" | sed 's/^/    | /'
+            printf '%s\n' "  full log: $_linear_log"
         fi
     fi
 fi
+unset _linear_log _linear_log_dir
+
+# Pluto (NixOS) daemon runtime: the bare `paseo` on PATH stays the STOCK CLI
+# pinned in configs/mise.toml; the paseo-daemon unit runs the FORK package
+# (npm:@camerontaylor/paseo-cli) at the exact version the infra repo
+# declares. Materialize the fork here with a direct `mise install <ref>` —
+# never via mise.toml/use — so there is exactly one fork channel and no
+# duplicate third pin (the checker asserts base-version agreement). NixOS
+# only: the Macs run the daemon from the app bundle. 66_infra runs before
+# this fragment, so a fresh machine has the infra checkout here. Warn-not-
+# fail throughout: named failure lines, deploy stays green.
+#
+# The typed bracket option is the official per-tool npm-backend setting
+# (mise docs, dev-tools/backends/npm): the fork package was first published
+# 2026-09-13 — 16 days before the 2026-09-29 first install — which is inside
+# mise's 30-day minimumPackageAge threshold (43200 minutes), so the gate
+# rejects it without allow_low_downloads=true — approved for THIS selector
+# only, no global trust loosening. Exec/ref syntax stays plain. Scope is
+# pluto only: a NixOS host whose short hostname is pluto (uname -n is
+# portable across BSD/GNU; no `hostname` dependency).
+paseo_host=$(uname -n 2>/dev/null) || paseo_host=
+paseo_host=${paseo_host%%.*}
+if [[ -e /etc/NIXOS && $paseo_host == pluto ]] && have mise && have python3; then
+    paseo_infra_dir=${INFRA_DIR:-$HOME/.local/infra}
+    if [[ ! -d $paseo_infra_dir ]]; then
+        printf '%s\n' "  WARNING: INFRA_DIR $paseo_infra_dir missing; cannot resolve the pinned fork paseo daemon ref" >&2
+    # The checker's stdout IS the validated ref (a failed check exits
+    # non-zero and prints its own named diagnostic on stderr, passed
+    # through) — a failed checker NEVER installs anything.
+    elif paseo_ref=$(python3 "$SCRIPT_DIR/scripts/tests/check-paseo-pins.py" \
+            --dotfiles "$SCRIPT_DIR" --infra "$paseo_infra_dir" --print-daemon-tool); then
+        paseo_install_ref="${paseo_ref%@*}[allow_low_downloads=true]@${paseo_ref##*@}"
+        paseo_install_log=${XDG_STATE_HOME:-$HOME/.local/state}/paseo-fork-install.log
+        deploy_mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}"
+        printf '%s\n' "Materializing fork paseo daemon runtime ($paseo_ref)..."
+        if mise install "$paseo_install_ref" > "$paseo_install_log" 2>&1; then
+            rm -f "$paseo_install_log"
+            if paseo_ver=$(mise exec "$paseo_ref" -- paseo --version 2>/dev/null); then
+                printf '%s\n' "  ...done (fork paseo --version: ${paseo_ver:-unknown})"
+            else
+                printf '%s\n' "  WARNING: fork install ok but 'mise exec $paseo_ref -- paseo --version' failed" >&2
+            fi
+        else
+            printf '%s\n' "  WARNING: mise install '$paseo_install_ref' failed; last lines:"
+            tail -n 15 "$paseo_install_log" | sed 's/^/    | /'
+            printf '%s\n' "  full log: $paseo_install_log"
+        fi
+        unset paseo_install_ref paseo_install_log paseo_ver
+    else
+        printf '%s\n' "  WARNING: check-paseo-pins.py rejected the pins; fork daemon NOT materialized (see its diagnostic above)" >&2
+    fi
+    unset paseo_infra_dir paseo_ref
+fi
+unset paseo_host
 
 # ghx (GitHub CLI caching layer) retired 2026-08: gh is mise-managed again
 # (configs/mise.toml). Drift-correct hosts that still carry ghx's curl install:

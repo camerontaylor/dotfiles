@@ -10,7 +10,7 @@
 # install gigabytes mid-"dry-run". Preview and stop, 73_tailscale.zsh's
 # per-step "[dry-run] would:" idiom compressed to fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Mise bootstrap skipped in dry-run (would: install mise if missing, 'mise install', 'mise upgrade', brew fallbacks)"
+    printf '%s\n' "Mise bootstrap skipped in dry-run (would: install mise if missing, 'mise install', 'mise upgrade' only under --upgrade, brew fallbacks)"
     return 0
 fi
 
@@ -201,8 +201,16 @@ if have mise; then
     printf '%s\n' "Installing mise tools (node, bun, python, etc.)..."
     run_mise_step "mise install" 30 mise install
 
-    printf '%s\n' "Upgrading mise tools..."
-    run_mise_step "mise upgrade" 20 mise upgrade --yes
+    # Upgrade ONLY under --upgrade. An ordinary deploy must converge to the
+    # pinned versions in configs/mise.toml, not float them: every upgrade
+    # prunes the old install dir, so runtimes restart under live services for
+    # no reason (the openclaw post-mortem below is the costed example).
+    if $upgrade_mode; then
+        printf '%s\n' "Upgrading mise tools..."
+        run_mise_step "mise upgrade" 20 mise upgrade --yes
+    else
+        printf '%s\n' "Skipping mise tool upgrade (pin changes still apply via 'mise install'; pass --upgrade to float)"
+    fi
 
     node_prefix_after=$(mise where node 2>/dev/null)
     if [[ -n $node_prefix_after && $node_prefix_after != $node_prefix_before ]]; then

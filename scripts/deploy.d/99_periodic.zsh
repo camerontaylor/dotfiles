@@ -3,6 +3,28 @@
 # crontab fallback. Each branch is idempotent — re-running rewrites the unit.
 
 printf '%s\n' "Installing periodic update task..."
+
+# Resolve git at INSTALL time to a STABLE absolute path. Scheduled units must
+# reference an absolute executable, and /usr/bin/git is not universal (NixOS
+# has no /usr/bin — exit 203 is systemd's could-not-exec). Prefer
+# garbage-collection-proof profile paths first: a bare `command -v` on NixOS
+# can land on /nix/store/<hash>-git, which a later GC or system switch deletes
+# out from under the unit.
+pull_git_bin=
+for pull_path_dir in /run/current-system/sw/bin "$HOME/.nix-profile/bin" "/etc/profiles/per-user/${USER:-}/bin" /usr/local/bin /usr/bin; do
+    if [[ -x $pull_path_dir/git ]]; then
+        pull_git_bin=$pull_path_dir/git
+        break
+    fi
+done
+if [[ -z $pull_git_bin ]]; then
+    pull_git_bin=$(command -v git 2>/dev/null) || pull_git_bin=
+fi
+if [[ -z $pull_git_bin ]]; then
+    printf '%s\n' "  WARNING: git not found; not installing a periodic pull task" >&2
+    return 0
+fi
+
 if have systemctl; then
     printf '%s\n' "  ...systemd detected, installing timer for periodic updates..."
 
@@ -23,6 +45,17 @@ if have systemctl; then
         return 0
     fi
 
+    # The timer's service runs a non-interactive session: no login shell, no
+    # profile, so the default PATH carries no mise shims and (on NixOS) no
+    # profile bin dir. `git pull` fires the post-merge hook, which needs
+    # zsh/bash/node — build the unit's PATH from dirs that exist here.
+    pull_unit_path=
+    pull_path_dir=
+    for pull_path_dir in "$HOME/.local/bin" "$HOME/.local/share/mise/shims" /run/current-system/sw/bin "$HOME/.nix-profile/bin" "/etc/profiles/per-user/${USER:-}/bin" /nix/var/nix/profiles/default/bin /usr/local/bin /usr/bin /bin; do
+        [[ -d $pull_path_dir ]] || continue
+        pull_unit_path=${pull_unit_path:+$pull_unit_path:}$pull_path_dir
+    done
+
     service_name=pull-dotfiles.service
     service_content="[Unit]
 Description=Pull dotfiles update
@@ -30,7 +63,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/git -c user.name=systemd.update -c user.email=systemd@localhost pull --force
+Environment=PATH=$pull_unit_path
+ExecStart=$pull_git_bin -c user.name=systemd.update -c user.email=systemd@localhost pull --force
 WorkingDirectory=$SCRIPT_DIR"
     printf '%s\n' "$service_content" > $systemd_unit_dir/$service_name
 
@@ -75,7 +109,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     # second left a raw `&&` in the plist: invalid XML that `plutil -lint`
     # rejects while launchd's own parser happens to accept it, so the breakage
     # was latent rather than loud.
-    launchd_command="cd $(sh_quote "$SCRIPT_DIR") && git -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    launchd_command="cd $(sh_quote "$SCRIPT_DIR") && $(sh_quote "$pull_git_bin") -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\">
@@ -117,7 +151,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job for periodic updates..."
-    cron_task="cd $SCRIPT_DIR && git -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    cron_task="cd $SCRIPT_DIR && $pull_git_bin -c user.name=cron.update -c user.email=cron@localhost pull --force"
     cron_schedule="0 0 * * * $cron_task"
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would: install crontab job: $cron_schedule"

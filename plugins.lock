@@ -10,6 +10,11 @@
 # keep rows sorted by path.
 0b1cfa9a77412c3b51da5b1b213c672227f9fbb4 configs/ranger-plugins/archives https://github.com/maximtrp/ranger-archives.git
 e116ff9c5c1c2ed6bcdb2e0a6e547099876a8116 nvim/plugins/blink.cmp https://github.com/Saghen/blink.cmp.git
+# blink.lib is REQUIRED at this blink.cmp pin: v2 hard-errors without it
+# ("blink.cmp v2 requires saghen/blink.lib installed via your package manager").
+# Pin lifted from the `blink-lib` node of blink.cmp's own flake.lock at the
+# pinned rev, so the two always move together — bump both rows as a pair.
+b127d48bf8e9ac9cf41f6e0fbead317503f76558 nvim/plugins/blink.lib https://github.com/saghen/blink.lib.git
 6fb43a1754956198f94df141de5e185a12a52c4d nvim/plugins/codecompanion https://github.com/olimorris/codecompanion.nvim.git
 eae7abc8ba13d2e13605a601c8508c759f20bfc8 nvim/plugins/codecompanion-spinner https://github.com/franco-ruggeri/codecompanion-spinner.nvim.git
 c8c0f255e8090ed90dd9d5dd2e8672994f8e3671 nvim/plugins/committia https://github.com/rhysd/committia.vim.git

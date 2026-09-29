@@ -32,15 +32,31 @@ if ! have keyd; then
     return 0
 fi
 
-# keyd present. Install the config if it differs from what's tracked.
-if sudo cmp -s "$keyd_src" "$keyd_target" 2>/dev/null; then
-    printf '%s\n' "keyd config up to date; skipping"
+# NixOS: /etc/keyd may be Nix-owned (declarations beat imperative writes at
+# every switch), and activation belongs in the host flake — never write /etc
+# imperatively there. Preview-style guidance, zero mutations.
+if [[ -e /etc/NIXOS ]]; then
+    printf '%s\n' "keyd on NixOS: manage it declaratively instead of /etc/keyd, e.g.:"
+    printf '%s\n' "  services.keyd.enable = true;"
+    printf '%s\n' "  environment.etc.\"keyd/default.conf\".text = builtins.readFile ./keyd/default.conf;"
+    printf '%s\n' "  (skipping imperative install on this host)"
     return 0
 fi
 
+# Preview BEFORE the change probe: `sudo cmp` needs root and can trigger a
+# sudo prompt even in --dry-run, and dry-run must mutate nothing (not even
+# authenticate). The preview therefore can't report "up to date" — it states
+# intent instead.
 if (( DEPLOY_DRY_RUN )); then
+    printf '%s\n' "  [dry-run] would: sudo cmp -s $(tilde_collapse "$keyd_src") $keyd_target (install only if they differ)"
     printf '%s\n' "  [dry-run] would: sudo install -Dm644 $(tilde_collapse "$keyd_src") $keyd_target (backing up any existing)"
     printf '%s\n' "  [dry-run] would: sudo systemctl enable --now keyd && sudo keyd reload"
+    return 0
+fi
+
+# keyd present. Install the config if it differs from what's tracked.
+if sudo cmp -s "$keyd_src" "$keyd_target" 2>/dev/null; then
+    printf '%s\n' "keyd config up to date; skipping"
     return 0
 fi
 

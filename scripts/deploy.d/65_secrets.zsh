@@ -14,7 +14,10 @@
 # MUTATES NOTHING — no clone, no render, no quarantine, no backup. deploy.zsh
 # stays green, because the fleet auto-deploys unattended on every `git pull`.
 
-secrets_repo=$HOME/.local/secrets
+# SECRETS_DIR overrides the checkout location (sandboxed runs, worktrees).
+# Worktrees keep `.git` as a FILE pointing at the common dir, so every
+# presence test below must accept either spelling — `-e`, not `-d`.
+secrets_repo=${SECRETS_DIR:-$HOME/.local/secrets}
 secrets_slug=camerontaylor/dotfiles-secrets
 secrets_remote=git@github.com:camerontaylor/dotfiles-secrets.git
 age_key_dir=$XDG_CONFIG_HOME/sops/age
@@ -76,7 +79,7 @@ fi
 # checkable once the clone exists; before that, the clone itself is the gate.
 if have age-keygen && [[ -f $secrets_repo/.sops.yaml ]]; then
     age_public_key=$(age-keygen -y $age_key_dir/keys.txt 2>/dev/null)
-    if [[ -n $age_public_key ]] && ! grep -Fq "$age_public_key" $secrets_repo/.sops.yaml; then
+    if [[ -n $age_public_key ]] && ! grep -Fq "$age_public_key" "$secrets_repo/.sops.yaml"; then
         printf '%s\n' ""
         printf '%s\n' "WARNING: this machine's age key is not registered for sops decryption."
         printf '%s\n' "  Nothing in ~/.local/secrets can be decrypted here."
@@ -93,7 +96,7 @@ fi
 
 # ── clone or pull the secrets repo ─────────────────────────────────────────
 
-if [[ ! -d $secrets_repo/.git ]]; then
+if [[ ! -e $secrets_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would clone $secrets_slug -> $secrets_repo"
     else
@@ -124,7 +127,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         cloned=0
         if (( gh_ok )); then
             printf '%s\n' "Cloning $secrets_slug via gh..."
-            if gh repo clone $secrets_slug $secrets_repo -- -q > /dev/null 2>&1; then
+            if gh repo clone "$secrets_slug" "$secrets_repo" -- -q > /dev/null 2>&1; then
                 cloned=1
                 printf '%s\n' "  ...done"
             else
@@ -133,7 +136,7 @@ if [[ ! -d $secrets_repo/.git ]]; then
         fi
         if (( cloned == 0 )); then
             printf '%s\n' "Cloning $secrets_slug via ssh..."
-            if git clone -q $secrets_remote $secrets_repo > /dev/null 2>&1; then
+            if git clone -q "$secrets_remote" "$secrets_repo" > /dev/null 2>&1; then
                 cloned=1
                 printf '%s\n' "  ...done"
             else
@@ -151,7 +154,7 @@ else
         printf '%s\n' "  [dry-run] would: git -C $secrets_repo pull --ff-only"
     else
         printf '%s\n' "Updating secrets repo..."
-        if git -C $secrets_repo pull --ff-only -q > /dev/null 2>&1; then
+        if git -C "$secrets_repo" pull --ff-only -q > /dev/null 2>&1; then
             printf '%s\n' "  ...done"
         else
             # Never merge or reset here — a wrong resolution in this repo means
@@ -166,21 +169,39 @@ fi
 
 # ── git ergonomics + the secrets-repo's own post-merge hook ────────────────
 
-if [[ -d $secrets_repo/.git ]]; then
+if [[ -e $secrets_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] git -C $secrets_repo config diff.sops.textconv 'sops -d'"
     else
         # Per-clone config is not tracked, so it has to be re-asserted here
         # (same pattern as the codex-clean filter in 60_git_hooks.zsh).
-        git -C $secrets_repo config diff.sops.textconv "sops -d" \
+        git -C "$secrets_repo" config diff.sops.textconv "sops -d" \
             || printf '%s\n' "  WARNING: could not set diff.sops.textconv in $secrets_repo" >&2
 
         # Re-render after a manual `git pull` in the secrets repo, closing the
         # "pulled by hand, forgot to render" gap. The renderer is
         # standalone-safe precisely so this hook path works.
         if [[ -f $secrets_repo/scripts/post-merge ]]; then
-            deploy_mkdir -p $secrets_repo/.git/hooks
-            deploy_ln -sfn ../../scripts/post-merge $secrets_repo/.git/hooks/post-merge
+            # `git rev-parse --git-path hooks` is worktree-correct: it lands in
+            # the SHARED common hooks dir even when .git is a file. A plain
+            # $secrets_repo/.git/hooks path would write into (or beside) a
+            # stray file and silently install nothing.
+            secrets_hooks_dir=$(git -C "$secrets_repo" rev-parse --git-path hooks 2>/dev/null) || secrets_hooks_dir=
+            if [[ -z $secrets_hooks_dir ]]; then
+                secrets_hooks_dir=$secrets_repo/.git/hooks
+            fi
+            if [[ $secrets_hooks_dir != /* ]]; then
+                secrets_hooks_dir=$secrets_repo/$secrets_hooks_dir
+            fi
+            deploy_mkdir -p "$secrets_hooks_dir"
+            if [[ $secrets_hooks_dir == "$secrets_repo/.git/hooks" ]]; then
+                deploy_ln -sfn ../../scripts/post-merge "$secrets_hooks_dir/post-merge"
+            else
+                # Worktree: the hooks dir lives under the main checkout's .git,
+                # so the historical ../../ relative target would resolve into
+                # the wrong tree — link absolute instead.
+                deploy_ln -sfn "$secrets_repo/scripts/post-merge" "$secrets_hooks_dir/post-merge"
+            fi
         else
             printf '%s\n' "  note: $secrets_repo/scripts/post-merge missing; no re-render hook installed"
         fi
@@ -192,10 +213,14 @@ fi
 if [[ -r $SCRIPT_DIR/scripts/secrets-render.zsh ]]; then
     printf '%s\n' "Rendering secrets..."
     # DEPLOY_DRY_RUN is exported by deploy.zsh, so --dry-run needs no plumbing.
+    # DOTFILES_DIR + SECRETS_DIR are passed EXPLICITLY (67_agents pattern): an
+    # inherited stale DOTFILES_DIR must not redirect the renderer's worktree
+    # candidate tests at another checkout, and the renderer must render for
+    # the SECRETS_DIR override this fragment resolved, not its own default.
     # A render failure warns but does NOT fail the deploy: the fleet pulls
     # unattended, and a transient sops/network problem must not leave every box
     # aborting mid-deploy. Staleness is caught by the render marker instead.
-    if ! zsh $SCRIPT_DIR/scripts/secrets-render.zsh; then
+    if ! DOTFILES_DIR="$SCRIPT_DIR" SECRETS_DIR="$secrets_repo" zsh "$SCRIPT_DIR/scripts/secrets-render.zsh"; then
         printf '%s\n' "  WARNING: secrets render reported failures (named above)." >&2
         printf '%s\n' "           Rendered targets already on disk are untouched." >&2
     fi
@@ -206,6 +231,16 @@ fi
 unset -f secrets_bootstrap_help 2>/dev/null || true
 
 # Reload systemd to pick up any user units whose EnvironmentFile just changed.
+# daemon-reload IS a mutation (it pokes the user manager over D-Bus), so the
+# zero-mutation dry-run contract requires the guard.
 if have systemctl; then
-    systemctl --user daemon-reload 2>/dev/null
+    if (( DEPLOY_DRY_RUN )); then
+        printf '%s\n' "  [dry-run] would: systemctl --user daemon-reload"
+    else
+        # `|| warn`, never a bare call: under the bash driver's errexit a
+        # failed reload (no user bus in a post-merge hook shell) aborts the
+        # whole deploy; zsh only tolerated the same failure silently.
+        systemctl --user daemon-reload 2>/dev/null \
+            || printf '%s\n' "  WARNING: systemctl --user daemon-reload failed (no user bus?); units may need a manual reload" >&2
+    fi
 fi

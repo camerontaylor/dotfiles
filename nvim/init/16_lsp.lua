@@ -7,6 +7,11 @@ require('lazydev').setup({
   },
 })
 
+-- Armed FALSE before setup() so a failed require/launch can never inherit a
+-- stale true; scripts/tests/nvim-load-probe.sh asserts
+-- vim.g.blink_cmp_configured, which 16_lsp.lua sets true immediately after
+-- setup() returns below.
+vim.g.blink_cmp_configured = false
 require('blink.cmp').setup({
   cmdline = {
     enabled = false,
@@ -56,6 +61,12 @@ require('blink.cmp').setup({
     },
   },
 })
+
+-- setup() RETURNED: mark configured so scripts/tests/nvim-load-probe.sh
+-- asserts reality, not intent. Placement is load-bearing — before setup()
+-- the flag is a lie on every broken startup; after it, only a successful
+-- require + configure can set it.
+vim.g.blink_cmp_configured = true
 
 require('mason').setup()
 require('mason-lspconfig').setup()

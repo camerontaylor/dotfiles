@@ -135,16 +135,22 @@ fi
 cd $SCRIPT_DIR
 export SCRIPT_DIR
 
-# Default XDG paths.
-XDG_CACHE_HOME=$HOME/.cache
-XDG_CONFIG_HOME=$HOME/.config
-XDG_DATA_HOME=$HOME/.local/share
-XDG_STATE_HOME=$HOME/.local/state
+# Default XDG paths — a caller-supplied value (a worktree run, a sandboxed
+# test, a redirected state home) is preserved, not clobbered. Exported:
+# fragments' children (renderers, sibling deploys) key off them.
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 
 # Begin deploy log. `mkdir` MUST precede the `tee` redirect so the first-ever
 # run on a fresh machine doesn't fail with "no such file or directory".
-mkdir -p $XDG_STATE_HOME
-exec > >(tee -a "$XDG_STATE_HOME/dotfiles-deploy.log") 2>&1
+# Skipped under --dry-run: creating $XDG_STATE_HOME and appending to the
+# persistent log ARE mutations, and dry-run must mutate nothing.
+if (( DEPLOY_DRY_RUN == 0 )); then
+    mkdir -p "$XDG_STATE_HOME"
+    exec > >(tee -a "$XDG_STATE_HOME/dotfiles-deploy.log") 2>&1
+fi
 print "=== deploy started at $(date -Iseconds) (upgrade_mode=$upgrade_mode dry_run=$DEPLOY_DRY_RUN force=$DEPLOY_FORCE only=${deploy_only:-all}) ==="
 
 export DOTFILES_OS=$(uname -s)

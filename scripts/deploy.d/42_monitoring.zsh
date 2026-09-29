@@ -26,6 +26,16 @@ if [[ $DOTFILES_OS != Linux ]]; then
     return 0
 fi
 
+# NixOS: system packages, units and sysctls are declarative — imperative
+# writes to /etc/sysctl.d and `sudo sysctl` are undone by the next switch,
+# and pacman/apt are meaningless. Point at the flake seam and leave.
+if [[ -e /etc/NIXOS ]]; then
+    printf '%s\n' "monitoring on NixOS: manage declaratively in the host flake, e.g.:"
+    printf '%s\n' "  environment.systemPackages = with pkgs; [ atop iotop-c bpftrace nvtop ];"
+    printf '%s\n' "  systemd.services.atop / boot.kernel.sysctl.\"kernel.perf_event_paranoid\" = 1;"
+    return 0
+fi
+
 # os-release is designed to be sourced; do it in a subshell so its vars don't
 # leak. Arch-family derivatives (cachyos/manjaro/endeavouros) set ID or ID_LIKE
 # to "arch". Mirrors 40_tools.zsh / 41_net_tools.zsh.

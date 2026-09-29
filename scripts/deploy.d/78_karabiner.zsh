@@ -29,6 +29,14 @@ if [[ -e $kb_target && ! $kb_src -nt $kb_target ]]; then
     return 0
 fi
 
+# Preview BEFORE generating: the generator is a mutation (writes
+# karabiner.json + a .bak), so dry-run states intent and stops — it must not
+# invoke bun/tsx at all, and the freshness probe above stays read-only.
+if (( DEPLOY_DRY_RUN )); then
+    printf '%s\n' "  [dry-run] would: generate $kb_target from karabiner.ts via bun/tsx (backing up any existing)"
+    return 0
+fi
+
 printf '%s\n' "Generating Karabiner config from karabiner.ts..."
 
 # bun executes TypeScript directly and is installed by mise (50_mise.zsh, which

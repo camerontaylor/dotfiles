@@ -16,7 +16,11 @@
 # path survives as defense-in-depth. Both writers are --ff-only + idempotent,
 # so they can never fight (domain plan 1 §O3 coexistence decision).
 
-infra_repo=$HOME/.local/infra
+# INFRA_DIR overrides the checkout location (sandboxed runs, worktrees).
+# Presence is tested with `-e .git`: a worktree keeps `.git` as a FILE
+# pointing at the common dir, so `-d` would misread a healthy worktree as
+# absent and try to clone over it (or pull the wrong target).
+infra_repo=${INFRA_DIR:-$HOME/.local/infra}
 infra_slug=camerontaylor/infra
 infra_remote=git@github.com:camerontaylor/infra.git
 
@@ -27,7 +31,7 @@ fi
 
 # ── clone or pull the infra repo ───────────────────────────────────────────
 
-if [[ ! -d $infra_repo/.git ]]; then
+if [[ ! -e $infra_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
         # Never clone under dry-run: a clone is a mutation. With no checkout
         # there is no ./deploy to hand --dry-run to either, so this one line
