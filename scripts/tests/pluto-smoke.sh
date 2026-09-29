@@ -54,6 +54,8 @@ check 'agents reserved env slot' test -L "$dotfiles_root/zsh/env.d/96_agents.zsh
 check 'secrets render readiness marker' test -s "$state_root/secrets-render-ok"
 check 'secrets marker matches deployed checkouts' bash -c 'grep -Fxq "dotfiles_head=$(git -C "$1" rev-parse HEAD)" "$3" && grep -Fxq "secrets_head=$(git -C "$2" rev-parse HEAD)" "$3"' smoke "$dotfiles_root" "$secrets_root" "$state_root/secrets-render-ok"
 check 'Caddy environment is private' bash -c 'file=$1; [[ -s $file && $(stat -c %a "$file") == 600 ]]' smoke "$state_root/caddy/env"
+check 'Codex selected credential is private' bash -c 'file=$1; [[ -s $file && $(stat -L -c %a "$file") == 600 ]]' smoke "$state_root/codex/env"
+check 'Codex auth cache is private' bash -c 'file=$1; [[ -s $file && $(stat -L -c %a "$file") == 600 ]]' smoke "${CODEX_HOME:-$HOME/.codex}/auth.json"
 check 'rendered secrets are private' bash -c 'file=$1; [[ -s $file && $(stat -c %a "$file") == 600 ]]' smoke "$state_root/secrets/zsh/90_secrets.zsh"
 
 for timer in pull-dotfiles.timer agents-check.timer converge-check.timer; do
@@ -67,6 +69,9 @@ for service in caddy portless-proxy tailscaled paseo-daemon atop atopacct keyd; 
     check "$service active" systemctl is-active "$service"
 done
 check 'atop rotation timer active' systemctl is-active atop-rotate.timer
+check 'Paseo watchdog timer enabled' systemctl is-enabled paseo-watchdog.timer
+check 'Paseo watchdog timer active' systemctl is-active paseo-watchdog.timer
+check 'Paseo watchdog last run succeeded' bash -c '[[ $(systemctl show paseo-watchdog.service -p Result --value) == success && $(systemctl show paseo-watchdog.service -p ExecMainStatus --value) == 0 && $(systemctl show paseo-watchdog.service -p ExecMainStartTimestampMonotonic --value) -gt 0 ]]'
 check 'Caddy serves verified HTTPS locally' bash -c '[[ $(curl -fsS --max-time 15 --resolve pluto.webfront.app:443:127.0.0.1 -o /dev/null -w "%{http_code}" https://pluto.webfront.app) == 200 ]]'
 check 'Python verifies HTTPS with the default CA bundle' python -c 'import socket,ssl; connection=socket.create_connection(("127.0.0.1",443),timeout=15); ssl.create_default_context().wrap_socket(connection,server_hostname="pluto.webfront.app").close()'
 check 'Paseo CLI and daemon pins agree' python "$dotfiles_root/scripts/tests/check-paseo-pins.py" --dotfiles "$dotfiles_root" --infra "$infra_root"

@@ -36,8 +36,9 @@ Run the home deployment from the intended checkout:
 ./deploy.bash
 ```
 
-After the first CLI installation, initialize Codex API authentication from
-the private rendered credential:
+Full deployment finalizes Codex API authentication after CLI installation.
+On first bootstrap, it also renders the selected credential after the agents
+checkout is created. To run the agents-owned synchronization separately:
 
 ```sh
 bash "$HOME/.local/agents/scripts/setup-codex-auth.sh"
