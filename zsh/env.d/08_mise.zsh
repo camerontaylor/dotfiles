@@ -4,6 +4,11 @@ export MISE_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/mise"
 export MISE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/mise"
 export MISE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mise"
 
+# Portable Python builds need NixOS's CA bundle for verified HTTPS.
+if [[ -e /etc/NIXOS && -z ${SSL_CERT_FILE:-} && -r /etc/ssl/certs/ca-certificates.crt ]]; then
+    export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+fi
+
 # Add mise shims to PATH for non-interactive shells and scripts.
 # Full hook-based activation happens in rc.d/22_mise.zsh for interactive shells.
 [[ -d "$MISE_DATA_DIR/shims" ]] && path_prepend "$MISE_DATA_DIR/shims"
