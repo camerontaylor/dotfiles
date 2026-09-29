@@ -11,6 +11,7 @@ import shlex
 import shutil
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -104,7 +105,7 @@ class NixosIntegration(unittest.TestCase):
                     f'printf "{name} %s DOTFILES_DIR=%s\\n" "$*" '
                     '"${DOTFILES_DIR:-}" >> "$CALLS"\nexit "$DEPLOY_RC"\n')
                 deploy.chmod(0o755)
-        key = self.home / ".config/sops/age/keys.txt"
+        key = Path(self.env["XDG_CONFIG_HOME"]) / "sops/age/keys.txt"
         key.parent.mkdir(parents=True)
         key.write_text("synthetic test fixture, not an age key\n")
         renderer = self.repo / "scripts/secrets-render.zsh"
@@ -280,8 +281,43 @@ class NixosIntegration(unittest.TestCase):
                                 "driver ignored provided XDG_STATE_HOME")
                 self.assertFalse((self.home / ".local/state/dotfiles-deploy.log").exists())
 
+    def test_periodic_cron_migrates_legacy_job_without_duplicates(self):
+        helpers = self.copy("scripts/deploy.d/lib/helpers.zsh")
+        fragment = self.copy("scripts/deploy.d/99_periodic.zsh")
+        store = self.base / "crontab"
+        self.env["CRON_STORE"] = str(store)
+        self.env["DEPLOY_DRY_RUN"] = "0"
+        crontab = self.bin / "crontab"
+        crontab.write_text(f"#!{sys.executable}\n" + '''import os, pathlib, sys
+store = pathlib.Path(os.environ["CRON_STORE"])
+if sys.argv[1:] == ["-l"]:
+    print(store.read_text(), end="")
+elif sys.argv[1:] == ["-"]:
+    replacement = sys.stdin.read()
+    store.write_text(replacement)
+else:
+    sys.exit(2)
+''')
+        crontab.chmod(0o755)
+        legacy = (f"0 0 * * * cd {self.repo} && {self.home}/.nix-profile/bin/git "
+                  "-c user.name=cron.update -c user.email=cron@localhost pull --force\n")
+        unrelated = "15 3 * * * echo unrelated-job\n"
+        code = '. "$1"; have() { case "$1" in systemctl|launchctl) return 1;; *) command -v "$1" >/dev/null 2>&1;; esac; }; . "$2"'
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                store.write_text(unrelated + legacy)
+                self.run_shell(shell, code, helpers, fragment)
+                first = store.read_text()
+                self.assertIn(unrelated, first)
+                self.assertEqual(first.count("pull --force"), 1)
+                self.assertNotIn(legacy, first)
+                self.run_shell(shell, code, helpers, fragment)
+                self.assertEqual(store.read_text(), first)
+
     @unittest.skipIf(os.geteuid() == 0, "real fragment chooses /etc for root; HOME isolation requires non-root")
     def test_periodic_unit_executes_git_from_non_fhs_path(self):
+        custom_config = self.home / "config with spaces"
+        self.env["XDG_CONFIG_HOME"] = str(custom_config)
         self.fixture_siblings()
         helpers = self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragment = self.copy("scripts/deploy.d/99_periodic.zsh")
@@ -299,7 +335,7 @@ class NixosIntegration(unittest.TestCase):
         for shell in SHELLS:
             with self.subTest(shell=shell):
                 self.run_shell(shell, '. "$1"; . "$2"', helpers, fragment)
-                unit = self.home / ".config/systemd/user/pull-dotfiles.service"
+                unit = custom_config / "systemd/user/pull-dotfiles.service"
                 self.assertTrue(unit.exists(), "periodic user unit was not placed")
                 lines = unit.read_text().splitlines()
                 command = next(line.removeprefix("ExecStart=") for line in lines

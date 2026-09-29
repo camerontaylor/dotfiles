@@ -38,7 +38,7 @@ if have systemctl; then
         systemctl_cmd=(systemctl --user)
         printf '%s\n' "  ...running as regular user, installing user timer..."
     fi
-    deploy_mkdir -p $systemd_unit_dir
+    deploy_mkdir -p "$systemd_unit_dir"
 
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would: write $systemd_unit_dir/pull-dotfiles.{service,timer} and enable the timer"
@@ -66,7 +66,7 @@ Type=oneshot
 Environment=PATH=$pull_unit_path
 ExecStart=$pull_git_bin -c user.name=systemd.update -c user.email=systemd@localhost pull --force
 WorkingDirectory=$SCRIPT_DIR"
-    printf '%s\n' "$service_content" > $systemd_unit_dir/$service_name
+    printf '%s\n' "$service_content" > "$systemd_unit_dir/$service_name"
 
     timer_name=pull-dotfiles.timer
     timer_content="[Unit]
@@ -79,9 +79,9 @@ Persistent=true
 
 [Install]
 WantedBy=timers.target"
-    printf '%s\n' "$timer_content" > $systemd_unit_dir/$timer_name
+    printf '%s\n' "$timer_content" > "$systemd_unit_dir/$timer_name"
 
-    if ${systemctl_cmd[@]} daemon-reload > /dev/null && ${systemctl_cmd[@]} enable --now $timer_name > /dev/null; then
+    if "${systemctl_cmd[@]}" daemon-reload > /dev/null && "${systemctl_cmd[@]}" enable --now "$timer_name" > /dev/null; then
        printf '%s\n' "  ...done"
     else
        printf '%s\n' "Failed to install systemd timer. Check permissions and systemd setup"
@@ -101,8 +101,8 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     # NOT $XDG_STATE_HOME — launchd cannot open log paths on an external
     # volume (see launchd_log_dir in lib/helpers.zsh).
     launchd_logs=$(launchd_log_dir)
-    deploy_mkdir -p $launchd_dir
-    deploy_mkdir -p $launchd_logs
+    deploy_mkdir -p "$launchd_dir"
+    deploy_mkdir -p "$launchd_logs"
 
     # sh_quote for the SHELL layer, xml_escape at interpolation for the XML
     # layer — two different escapes for two different parsers. Omitting the
@@ -140,10 +140,10 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
         printf '%s\n' "  [dry-run] would: write $launchd_plist and launchctl bootstrap gui/$EUID"
         return 0
     fi
-    printf '%s\n' "$launchd_content" > $launchd_plist
+    printf '%s\n' "$launchd_content" > "$launchd_plist"
 
-    launchctl bootout gui/$EUID $launchd_plist > /dev/null 2>&1 || true
-    if launchctl bootstrap gui/$EUID $launchd_plist > /dev/null 2>&1 \
+    launchctl bootout gui/$EUID "$launchd_plist" > /dev/null 2>&1 || true
+    if launchctl bootstrap gui/$EUID "$launchd_plist" > /dev/null 2>&1 \
         && launchctl enable gui/$EUID/$launchd_label > /dev/null 2>&1; then
        printf '%s\n' "  ...done"
     else
@@ -151,11 +151,13 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job for periodic updates..."
-    cron_task="cd $SCRIPT_DIR && $pull_git_bin -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    # Remove the pre-quoting spelling as well when migrating existing jobs.
+    cron_legacy_task="cd $SCRIPT_DIR && $pull_git_bin -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    cron_task="cd $(sh_quote "$SCRIPT_DIR") && $(sh_quote "$pull_git_bin") -c user.name=cron.update -c user.email=cron@localhost pull --force"
     cron_schedule="0 0 * * * $cron_task"
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would: install crontab job: $cron_schedule"
-    elif cat <(grep --ignore-case --invert-match --fixed-strings $cron_task <(crontab -l)) <(echo $cron_schedule) | crontab -; then
+    elif cat <(grep --ignore-case --invert-match --fixed-strings -e "$cron_task" -e "$cron_legacy_task" <(crontab -l)) <(printf '%s\n' "$cron_schedule") | crontab -; then
         printf '%s\n' "  ...done"
     else
         printf '%s\n' "Please add \`cd $SCRIPT_DIR && git pull\` to your crontab or just ignore this, you can always update dotfiles manually"
