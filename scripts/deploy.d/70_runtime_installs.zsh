@@ -148,36 +148,67 @@ elif have mise; then
         done < $npm_packages_file
 
         if (( ${#npm_packages[@]} > 0 )); then
-            # Per-package installs, NOT one batch: a single failing package
-            # (a bad publish, a rejected postinstall, a platform-optional
-            # gap) fails the whole `npm install -g` line and every declared
-            # CLI goes missing together, silently — on pluto `pi` was
-            # OBSERVED absent while `omp` survived (audit 2026-09-29, F2;
-            # root cause not established). One process per package keeps the
-            # survivors installed and the failure named + diagnosable.
-            printf '%s\n' "Installing npm globals through mise node's npm..."
+            # Batch install FIRST: even on pluto's already-provisioned host
+            # (49 bins audited before), N per-package `npm install -g`
+            # invocations each pay npm's full startup + resolution cost — the
+            # manual deploy observed several minutes on the npm leg alone,
+            # putting the post-merge 300s timeout at risk. One batched
+            # install installs the whole list in a single resolution pass,
+            # with the official --libc override (see npm_libc_flag above)
+            # and captured output.
+            printf '%s\n' "Installing npm globals through mise node's npm (batch)..."
             npm_failed=()
-            for npm_package in "${npm_packages[@]}"; do
-                npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global.XXXXXX") || npm_log=
-                if [[ -z $npm_log ]]; then
-                    npm_failed+=("$npm_package")
-                    continue
-                fi
-                if mise exec node -- npm install -g ${npm_libc_flag:-} "$npm_package" > "$npm_log" 2>&1; then
-                    rm -f "$npm_log"
-                else
-                    npm_failed+=("$npm_package")
-                    printf '%s\n' "  ...$npm_package failed; last lines of output:"
-                    tail -n 5 "$npm_log" | sed 's/^/    | /'
-                    rm -f "$npm_log"
-                fi
-            done
-            if (( ${#npm_failed[@]} == 0 )); then
+            npm_batch_ok=false
+            npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global-batch.XXXXXX") || npm_log=
+            if [[ -z $npm_log ]]; then
+                # No tempfile available — fall straight through to the
+                # per-package loop below rather than skipping the leg.
+                printf '%s\n' "  ...batch log tempfile unavailable; falling back to per-package installs" >&2
+            elif mise exec node -- npm install -g ${npm_libc_flag:-} "${npm_packages[@]}" > "$npm_log" 2>&1; then
+                npm_batch_ok=true
+                rm -f "$npm_log"
                 printf '%s\n' "  ...done"
+            else
+                # Batch failed — warn once, then fall through to per-package
+                # installs so one bad package (bad publish, rejected
+                # postinstall, platform-optional gap — on pluto `pi` was
+                # OBSERVED absent while `omp` survived, audit 2026-09-29 F2)
+                # cannot take every declared CLI down with it.
+                printf '%s\n' "  ...batch install failed; retrying each package individually. Last lines of batch output:" >&2
+                tail -n 5 "$npm_log" | sed 's/^/    | /' >&2
+                rm -f "$npm_log"
+            fi
+
+            # Per-package installs: skipped entirely when the batch succeeded;
+            # run for EVERY declared package when it did not — a failure never
+            # skips the remaining packages, and each failure is named with a
+            # captured-output excerpt.
+            if [[ $npm_batch_ok == false ]]; then
+                for npm_package in "${npm_packages[@]}"; do
+                    npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global.XXXXXX") || npm_log=
+                    if [[ -z $npm_log ]]; then
+                        npm_failed+=("$npm_package")
+                        continue
+                    fi
+                    if mise exec node -- npm install -g ${npm_libc_flag:-} "$npm_package" > "$npm_log" 2>&1; then
+                        rm -f "$npm_log"
+                    else
+                        npm_failed+=("$npm_package")
+                        printf '%s\n' "  ...$npm_package failed; last lines of output:"
+                        tail -n 5 "$npm_log" | sed 's/^/    | /'
+                        rm -f "$npm_log"
+                    fi
+                done
+            fi
+            if (( ${#npm_failed[@]} == 0 )); then
+                if [[ $npm_batch_ok == false ]]; then
+                    printf '%s\n' "  ...done (per-package retry: all packages installed)"
+                fi
+                # batch-success "done" already printed by the batch leg
             else
                 printf '%s\n' "  ...${#npm_failed[@]} package(s) failed: ${npm_failed[*]}" >&2
             fi
-            unset npm_failed npm_log
+            unset npm_failed npm_batch_ok npm_log
         fi
 
         # corepack is in the npm globals list AFTER pnpm, so its bin shim wins
