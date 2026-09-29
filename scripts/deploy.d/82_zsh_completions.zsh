@@ -11,6 +11,15 @@
 #   fzf     — fzf-tab plugin handles the interactive UX
 #   engram, oxlint, biome, happy — no upstream completion
 #   moreutils binaries (sponge/ts/chronic/vipe), flock — trivial CLI surface
+#
+# SHELL matters: bun and opencode pick their completion language from $SHELL,
+# NOT from a positional argument (opencode ignores the trailing "zsh"; bun's
+# positional-less `bun completions` follows suit). Deploy fragments run under
+# a native bash login, so without the explicit SHELL=zsh below both emit
+# bash-format output that can never pass #compdef validation — the source of
+# the "failed to generate" lines on every pluto deploy (2026-09-29). With
+# SHELL=zsh, `bun completions` prints proper `#compdef bun` zsh to stdout and
+# writes nothing to ~/.zshrc (destination is stdout-only here).
 
 cache_fpath="$XDG_CACHE_HOME/zsh/fpath"
 
@@ -20,7 +29,12 @@ if (( DEPLOY_DRY_RUN )); then
     return 0
 fi
 
-mkdir -p $cache_fpath
+mkdir -p "$cache_fpath"
+
+# Generators run with SHELL forced to a real zsh so language-by-SHELL tools
+# emit zsh. `command -v zsh` covers mise/NixOS zsh; the /bin/zsh fallback
+# only names the language for tools that merely basename $SHELL.
+zsh_bin=$(command -v zsh 2>/dev/null || printf '/bin/zsh')
 
 # Each entry: <binary>:<subcommand-and-args producing #compdef output>:<dest filename>
 # Subcommand string is split on whitespace at invocation time.
@@ -48,41 +62,48 @@ for entry in "${generators[@]}"; do
         continue
     fi
 
-    # Word-split subcmd at invocation; capture into a tmp file so a partial
-    # failure mid-stream doesn't leave a half-broken completion installed.
-    # NB: `local tmp` standalone at script-source level (no enclosing
-    # function) acts as a typeset *query* and prints `tmp=<previous value>`
-    # on the second loop iteration onward. Combining declaration with
-    # assignment (`local tmp=$(…)`) avoids the query path.
-    #
-    # Strip leading blank lines via `sed '/./,$!d'` (portable BSD+GNU):
-    # some generators (notably `sops completion zsh`) emit a leading blank,
-    # which puts `#compdef sops` on line 2 — but compinit's autoload-on-tag
-    # mechanism requires `#compdef NAME` on line 1.
-    tmp=$(mktemp "${TMPDIR:-/tmp}/zsh-comp-${tool}.XXXXXX")
+    # Capture to tmp, validate, then atomically mv — a partial failure
+    # mid-stream never leaves a half-broken completion installed. Leading
+    # blanks are stripped (sed '/./,$!d', BSD+GNU): compinit requires
+    # `#compdef NAME` on line 1 and some generators (sops) emit one.
+    tmp_raw=$(mktemp "${TMPDIR:-/tmp}/zsh-comp-${tool}-raw.XXXXXX")
+    tmp=$(mktemp "$cache_fpath/.zsh-comp-${tool}.XXXXXX")
     # ${=var} forced word-split is zsh-only; an unquoted $(…) command
     # substitution splits in both shells.
     subcmd_words=()
     for _w in $(printf '%s\n' "$subcmd"); do
         subcmd_words+=("$_w")
     done
-    if "$tool" "${subcmd_words[@]}" 2>/dev/null | sed '/./,$!d' > $tmp \
+    # Two-stage, no pipeline: capture the generator to tmp_raw and check ITS
+    # exit status directly — under `tool | sed > tmp && …` a generator that
+    # dies mid-stream can still leave sed-exiting-0 partial output, and
+    # without pipefail the pipeline status would mask the failure. The dest
+    # is replaced ONLY on rc=0 + non-empty + `#compdef` on line 1; any other
+    # outcome leaves the previous completion untouched.
+    gen_rc=0
+    SHELL="$zsh_bin" "$tool" "${subcmd_words[@]}" > "$tmp_raw" 2>/dev/null || gen_rc=$?
+    if (( gen_rc == 0 )) \
+        && sed '/./,$!d' "$tmp_raw" > "$tmp" \
         && [[ -s $tmp ]] \
-        && head -1 $tmp | grep -q "^#compdef\b"; then
-        mv $tmp $dest_path
+        && head -1 "$tmp" | grep -q "^#compdef\b"; then
+        mv -f "$tmp" "$dest_path"
         printf '%s\n' "  ...wrote $dest_name"
         generated_count=$((generated_count+1))
     else
-        rm -f $tmp
-        printf '%s\n' "  ...failed to generate $dest_name from \`$tool $subcmd\`"
+        first_line=$(head -1 "$tmp_raw" 2>/dev/null | cut -c1-60)
+        rm -f "$tmp"
+        printf '%s\n' "  ...failed to generate $dest_name from \`$tool $subcmd\` (rc=$gen_rc, first line: $first_line)"
     fi
+    # tmp_raw survives the success path (mv consumed only tmp): remove it on
+    # every outcome.
+    rm -f "$tmp_raw"
 done
 
 # `sg` is the binary name of ast-grep. The native generator emits a
 # `#compdef ast-grep` script, so reuse that completion under the sg name
 # via a 2-line shim rather than regenerating identical content.
 if have sg; then
-    cat > $cache_fpath/_sg <<'COMPDEF'
+    cat > "$cache_fpath/_sg" <<'COMPDEF'
 #compdef sg
 (( $+functions[_ast-grep] )) || autoload -Uz _ast-grep
 _ast-grep "$@"
@@ -97,7 +118,7 @@ fi
 # files would sit unused until the cache naturally aged out.
 compdump="$XDG_CACHE_HOME/zsh/compdump"
 if [[ -f $compdump ]]; then
-    rm -f $compdump $compdump.zwc
+    rm -f "$compdump" "$compdump.zwc"
     printf '%s\n' "  ...invalidated compdump (next shell will regenerate)"
 fi
 

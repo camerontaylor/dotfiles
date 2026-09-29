@@ -248,66 +248,298 @@ exit 0''')
                                self.repo / "scripts/deploy.d/lib/helpers.zsh", fragment)
                 self.assertIn("mise upgrade --yes", self.log())
 
-    # ── npm globals: batch fast path, failure isolation, --libc ────────────
+    # ── npm globals: local inventory, integrity, upgrade, failure isolation ─
 
-    def test_npm_batch_success_and_per_package_retries_with_libc_flag(self):
+    def npm_fixture(self, specs, versions):
+        import json
         self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragment = self.copy("scripts/deploy.d/70_runtime_installs.zsh")
-        packages = self.repo / ".default-npm-packages"
-        packages.write_text("t3\npi\noxlint\n")
+        (self.repo / ".default-npm-packages").write_text("\n".join(specs) + "\n")
         self.fake_mise()
-        installed = self.base / "npm installed"
-        self.env["NPM_FIXTURE_INSTALLS"] = str(installed)
-        # Simulate the npm process boundary, not the fragment's retry policy.
-        # A failed invocation materializes nothing; successful invocations
-        # record their packages, making survivor installation observable.
-        self.fake("npm", '''printf "npm %s\\n" "$*" >> "$CALLS"
-[ "$1" = install ] || exit 0
-shift
-for package do
-    if [ "${FAKE_NPM_FAIL_PI:-0}" = 1 ] && [ "$package" = pi ]; then
-        echo "synthetic npm failure for pi" >&2
-        exit 1
-    fi
-done
-for package do
-    case "$package" in -*) continue;; esac
-    printf 'installed %s\\n' "$package" > "$NPM_FIXTURE_INSTALLS/$package"
-done''')
-        # A successful `mise exec node` represents an installed node prefix.
-        # Supply it so the retired-global sweep sees a realistic install tree
-        # rather than an unmatched zsh glob from an inconsistent fake mise.
-        node_bin = self.home / ".local/share/mise/installs/node/24.0.0/bin"
-        node_bin.mkdir(parents=True)
-        (node_bin / "npm").symlink_to(self.bin / "npm")
-        self.env["NPM_CONFIG_USERCONFIG"] = "/dev/null"
-        for fail_pi in (False, True):
-            self.env["FAKE_NPM_FAIL_PI"] = "1" if fail_pi else "0"
+        # Only this fixture exposes real node: it runs the production local
+        # parser, never npm APIs or a network operation. All npm calls are fake.
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "npm inventory contracts require real node")
+        resolved = subprocess.check_output(
+            [node, "-p", "process.execPath"], text=True).strip()
+        (self.bin / "node").unlink()
+        (self.bin / "node").symlink_to(resolved)
+        self.npm_prefix = self.home / ".local/share/mise/installs/node/24 with spaces"
+        (self.npm_prefix / "bin").mkdir(parents=True)
+        self.inventory = self.base / "inventory.json"
+        self.inventory.write_text(json.dumps({"dependencies": {
+            name: {"version": version} for name, version in versions.items()}}))
+        self.npm_argv = self.base / "npm-argv.jsonl"
+        self.npm_installed = self.base / "installed.jsonl"
+        self.env.update(NPM_FIXTURE_PREFIX=str(self.npm_prefix),
+                        NPM_FIXTURE_INVENTORY=str(self.inventory),
+                        NPM_FIXTURE_ARGV=str(self.npm_argv),
+                        NPM_FIXTURE_INSTALLED=str(self.npm_installed),
+                        NPM_INVENTORY_MODE="valid", NPM_FAIL_SPEC="",
+                        T3_PROBE_RC="0", PI_PROBE_RC="0",
+                        NPM_CONFIG_USERCONFIG="/dev/null")
+        # Model process results, not the implementation's install decisions.
+        # Failed npm transactions install nothing; successful ones record specs.
+        npm = self.bin / "npm"
+        npm.write_text("#!" + sys.executable + "\n" + '''import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+with open(os.environ["NPM_FIXTURE_ARGV"], "a") as stream:
+    stream.write(json.dumps(args) + "\\n")
+if args == ["prefix", "-g"]:
+    print(os.environ["NPM_FIXTURE_PREFIX"])
+elif args == ["ls", "-g", "--depth", "0", "--json"]:
+    mode = os.environ["NPM_INVENTORY_MODE"]
+    print("not JSON" if mode == "garbage" else
+          Path(os.environ["NPM_FIXTURE_INVENTORY"]).read_text())
+    sys.exit(1 if mode == "fail" else 0)
+elif args and args[0] == "install":
+    specs = [arg for arg in args[1:] if not arg.startswith("-")]
+    if os.environ["NPM_FAIL_SPEC"] in specs:
+        print("synthetic npm failure for " + os.environ["NPM_FAIL_SPEC"], file=sys.stderr)
+        sys.exit(1)
+    with open(os.environ["NPM_FIXTURE_INSTALLED"], "a") as stream:
+        for spec in specs:
+            stream.write(json.dumps(spec) + "\\n")
+elif args and args[0] == "uninstall":
+    pass
+else:
+    sys.exit("unexpected npm operation: " + repr(args))
+''')
+        npm.chmod(0o755)
+        (self.npm_prefix / "bin/npm").symlink_to(npm)
+        for cli, rc in (("t3", "T3_PROBE_RC"), ("pi", "PI_PROBE_RC")):
+            self.fake(cli, f'printf "{cli} %s\\n" "$*" >> "$CALLS"; exit "${{{rc}}}"')
+        for name, version in versions.items():
+            package = self.npm_prefix / "lib/node_modules" / name
+            package.mkdir(parents=True)
+            command = name.rsplit("/", 1)[-1]
+            (package / "package.json").write_text(json.dumps(
+                {"name": name, "version": version, "bin": {command: "cli.js"}}))
+            (package / "cli.js").write_text("// fixture command\n")
+            (package / "cli.js").chmod(0o755)
+            (self.npm_prefix / "bin" / command).symlink_to(package / "cli.js")
+        return fragment
+
+    def npm_package_json(self, name, value):
+        import json
+        (self.npm_prefix / "lib/node_modules" / name / "package.json").write_text(
+            json.dumps(value))
+
+    def npm_run(self, shell, fragment, upgrade=False):
+        import json
+        self.calls.unlink(missing_ok=True)
+        self.npm_argv.unlink(missing_ok=True)
+        self.npm_installed.unlink(missing_ok=True)
+        output = self.run_shell(shell, '. "$1"; upgrade_mode=$3; . "$2"',
+                                self.repo / "scripts/deploy.d/lib/helpers.zsh",
+                                fragment, "true" if upgrade else "false")
+        calls = [json.loads(line) for line in self.npm_argv.read_text().splitlines()]
+        self.assertEqual(calls.count(["prefix", "-g"]), 1)
+        self.assertEqual(calls.count(["ls", "-g", "--depth", "0", "--json"]), 1)
+        self.assertTrue(all(call[0] in ("prefix", "ls", "uninstall", "install")
+                            for call in calls), "inventory must use only local npm queries")
+        # Parser/inventory/decision and batch/retry temp logs must be cleaned.
+        for pattern in ("npm-inventory-parser.*", "npm-inventory.*",
+                        "npm-decisions.*", "npm-global-batch.*", "npm-global.*"):
+            self.assertEqual(list(self.base.glob(pattern)), [])
+        installs = [call for call in calls if call[0] == "install"]
+        survivors = ([json.loads(line) for line in self.npm_installed.read_text().splitlines()]
+                     if self.npm_installed.exists() else [])
+        return output, installs, survivors
+
+    def npm_assert_batch(self, installs, specs):
+        self.assertEqual(installs, [["install", "-g", "--libc=glibc", *specs]]
+                         if specs else [])
+
+    def test_npm_warm_latest_unversioned_and_binless_libraries_skip(self):
+        versions = {"t3": "0.1.0", "@scope/tool": "2.0.0",
+                    "happy-dom": "1.0.0", "@ast-grep/napi": "3.0.0"}
+        fragment = self.npm_fixture(
+            ["t3@latest", "@scope/tool", "happy-dom", "@ast-grep/napi@latest"], versions)
+        for name in ("happy-dom", "@ast-grep/napi"):
+            self.npm_package_json(name, {"version": versions[name]})
+            (self.npm_prefix / "bin" / name.rsplit("/", 1)[-1]).unlink()
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                _, installs, survivors = self.npm_run(shell, fragment)
+                self.npm_assert_batch(installs, [])
+                self.assertEqual(survivors, [])
+
+    def test_npm_missing_subset_and_empty_prefix_batch(self):
+        specs = ["t3@latest", "@scope/tool", "oxlint"]
+        fragment = self.npm_fixture(specs, {"t3": "0.1.0", "oxlint": "1.0.0"})
+        for empty in (False, True):
+            if empty:
+                self.inventory.write_text('{"dependencies":{}}')
+                shutil.rmtree(self.npm_prefix / "lib")
             for shell in SHELLS:
-                with self.subTest(shell=shell, fail_pi=fail_pi):
-                    self.calls.unlink(missing_ok=True)
-                    if installed.exists():
-                        shutil.rmtree(installed)
-                    installed.mkdir()
-                    result = self.run_shell(shell, '. "$1"; upgrade_mode=false; . "$2"',
-                                            self.repo / "scripts/deploy.d/lib/helpers.zsh",
-                                            fragment)
-                    installs = [line for line in self.log().splitlines()
-                                if line.startswith("npm install ")]
-                    expected = ["npm install -g --libc=glibc t3 pi oxlint"]
-                    if fail_pi:
-                        expected += [f"npm install -g --libc=glibc {p}"
-                                     for p in ("t3", "pi", "oxlint")]
-                    self.assertEqual(installs, expected,
-                                     "successful batches need one install; failed batches isolate retries")
-                    survivors = {"t3", "oxlint"} if fail_pi else {"t3", "pi", "oxlint"}
-                    self.assertEqual({p.name for p in installed.iterdir()}, survivors)
-                    if fail_pi:
-                        self.assertIn("pi failed", result)
-                        self.assertIn("synthetic npm failure for pi", result)
-                        self.assertIn("package(s) failed: pi", result)
-                    else:
-                        self.assertNotIn("pi failed", result)
+                with self.subTest(shell=shell, empty=empty):
+                    _, installs, survivors = self.npm_run(shell, fragment)
+                    expected = specs if empty else ["@scope/tool"]
+                    self.npm_assert_batch(installs, expected)
+                    self.assertEqual(survivors, expected)
+
+    def test_npm_exact_pins_and_upgrade_channel_boundaries(self):
+        specs = ["t3@latest", "@scope/tool", "plain", "oxlint@1.2.3",
+                 "@scope/pinned@2.3.4-beta.1", "drift@1.2.3"]
+        fragment = self.npm_fixture(specs, {"t3": "0.1.0", "@scope/tool": "0.1.0",
+            "plain": "0.1.0", "oxlint": "1.2.3",
+            "@scope/pinned": "2.3.4-beta.1", "drift": "1.2.2"})
+        for upgrade in (False, True):
+            for shell in SHELLS:
+                with self.subTest(shell=shell, upgrade=upgrade):
+                    _, installs, survivors = self.npm_run(shell, fragment, upgrade)
+                    expected = (["t3@latest", "@scope/tool@latest", "plain@latest"]
+                                if upgrade else [])
+                    expected += ["drift@1.2.3"]
+                    self.npm_assert_batch(installs, expected)
+                    self.assertEqual(survivors, expected)
+
+    def test_npm_failed_inventory_valid_stdout_and_garbage_are_conservative(self):
+        specs = ["t3@latest", "@scope/tool@1.2.3"]
+        fragment = self.npm_fixture(specs, {"t3": "0.1.0", "@scope/tool": "1.2.3"})
+        for mode in ("fail", "garbage"):
+            self.env["NPM_INVENTORY_MODE"] = mode
+            for shell in SHELLS:
+                with self.subTest(shell=shell, mode=mode):
+                    _, installs, survivors = self.npm_run(shell, fragment)
+                    self.npm_assert_batch(installs, specs)
+                    self.assertEqual(survivors, specs)
+
+    def test_npm_uncertain_installed_selectors_are_reinstalled_verbatim(self):
+        specs = ["t3@beta", "@scope/tool@^2.0.0", "oxlint@latest"]
+        fragment = self.npm_fixture(specs, {"t3": "1.0.0", "@scope/tool": "2.0.0",
+                                           "oxlint": "1.0.0"})
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                _, installs, survivors = self.npm_run(shell, fragment)
+                self.npm_assert_batch(installs, specs[:2])
+                self.assertEqual(survivors, specs[:2])
+
+    def test_npm_broken_integrity_exact_pin_probes_and_dedup(self):
+        specs = ["t3@1.2.3", "@earendil-works/pi-coding-agent@2.0.0", "oxlint"]
+        versions = {"t3": "1.2.3", "@earendil-works/pi-coding-agent": "2.0.0",
+                    "oxlint": "1.0.0"}
+        fragment = self.npm_fixture(specs, versions)
+        for defect in ("dangling-bin", "unreadable-json", "nonstring-version",
+                       "t3-probe", "pi-probe", "bin-and-probe"):
+            for shell in SHELLS:
+                with self.subTest(shell=shell, defect=defect):
+                    package = self.npm_prefix / "lib/node_modules/t3"
+                    self.npm_package_json("t3", {"version": "1.2.3", "bin": {"t3": "cli.js"}})
+                    (package / "cli.js").write_text("// healthy fixture\n")
+                    (package / "cli.js").chmod(0o755)
+                    self.env.update(T3_PROBE_RC="0", PI_PROBE_RC="0")
+                    if defect in ("dangling-bin", "bin-and-probe"):
+                        (package / "cli.js").unlink()
+                    if defect == "unreadable-json":
+                        (package / "package.json").unlink()
+                    if defect == "nonstring-version":
+                        self.npm_package_json("t3", {"version": 123})
+                    if defect in ("t3-probe", "bin-and-probe"):
+                        self.env["T3_PROBE_RC"] = "1"
+                    if defect == "pi-probe":
+                        self.env["PI_PROBE_RC"] = "1"
+                    _, installs, survivors = self.npm_run(shell, fragment)
+                    expected = [specs[1] if defect == "pi-probe" else specs[0]]
+                    self.npm_assert_batch(installs, expected)
+                    self.assertEqual(survivors, expected)
+
+    def test_npm_undeclared_broken_cli_warns_without_install(self):
+        fragment = self.npm_fixture(["oxlint"], {"oxlint": "1.0.0"})
+        self.env.update(T3_PROBE_RC="1", PI_PROBE_RC="1")
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                output, installs, _ = self.npm_run(shell, fragment)
+                self.npm_assert_batch(installs, [])
+                self.assertIn("WARNING: t3", output)
+                self.assertIn("WARNING: pi", output)
+                self.assertIn("not declared", output)
+
+    def test_npm_batch_failure_retries_only_unsatisfied_and_preserves_survivors(self):
+        specs = ["t3@latest", "@scope/bad@latest", "oxlint"]
+        fragment = self.npm_fixture(specs, {"t3": "0.1.0"})
+        self.env["NPM_FAIL_SPEC"] = "@scope/bad@latest"
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                output, installs, survivors = self.npm_run(shell, fragment)
+                pending = specs[1:]
+                self.assertEqual(installs,
+                    [["install", "-g", "--libc=glibc", *pending]] +
+                    [["install", "-g", "--libc=glibc", spec] for spec in pending])
+                self.assertEqual(survivors, ["oxlint"])
+                self.assertIn("@scope/bad@latest failed", output)
+                self.assertIn("synthetic npm failure for @scope/bad@latest", output)
+                self.assertIn("package(s) failed: @scope/bad@latest", output)
+
+    def npm_extract_parser(self):
+        # Extract literal production JS via its documented marker seam.
+        extracted = subprocess.check_output(["sed", "-n",
+            "/npm-inventory-parser BEGIN/,/npm-inventory-parser END/p",
+            str(ROOT / "scripts/deploy.d/70_runtime_installs.zsh")], text=True)
+        parser = self.base / "parser.js"
+        parser.write_text("\n".join(extracted.splitlines()[1:-1]) + "\n")
+        return parser
+
+    def test_npm_bins_require_executable_regular_targets(self):
+        spec = "tool@1.2.3"
+        fragment = self.npm_fixture([spec], {"tool": "1.2.3"})
+        parser = self.npm_extract_parser()
+        target = self.npm_prefix / "lib/node_modules/tool/cli.js"
+        # Keep the prefix/bin symlink present throughout. Only its target
+        # changes, so mere link existence cannot satisfy these assertions.
+        for kind, verdict in (("healthy-0755", "satisfied"),
+                              ("nonexec-0644", "broken"),
+                              ("directory", "broken"),
+                              ("dangling", "broken")):
+            if target.is_dir():
+                target.rmdir()
+            else:
+                target.unlink(missing_ok=True)
+            if kind == "directory":
+                target.mkdir(mode=0o755)
+            elif kind != "dangling":
+                target.write_text("#!/bin/sh\nexit 0\n")
+                target.chmod(0o755 if kind == "healthy-0755" else 0o644)
+            with self.subTest(parser_target=kind):
+                result = subprocess.run([str(self.bin / "node"), str(parser),
+                    str(self.inventory), str(self.npm_prefix), spec],
+                    text=True, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.split(), [spec, "tool", "1.2.3", verdict])
+            for shell in SHELLS:
+                with self.subTest(shell=shell, target=kind):
+                    _, installs, survivors = self.npm_run(shell, fragment)
+                    expected = [] if verdict == "satisfied" else [spec]
+                    self.npm_assert_batch(installs, expected)
+                    self.assertEqual(survivors, expected)
+
+    def test_npm_real_inventory_parser_verdicts_and_selector_classes(self):
+        specs = ["t3@latest", "t3@1.2.3-beta.1", "t3@1.2.3-beta.2", "missing",
+                 "@scope/tool", "@scope/tool@2.0.0", "@scope/tool@2.0.1",
+                 "happy-dom", "@ast-grep/napi@latest", "broken@1.2.3"]
+        specs += ["t3@" + selector for selector in ("next", "beta", "^1.2.3", "~1", ">1", "*")]
+        self.npm_fixture(specs, {"t3": "1.2.3-beta.1", "@scope/tool": "2.0.0",
+            "happy-dom": "1.0.0", "@ast-grep/napi": "3.0.0", "broken": "1.2.3"})
+        for name in ("happy-dom", "@ast-grep/napi"):
+            self.npm_package_json(name, {"version": "1.0.0"})
+        (self.npm_prefix / "bin/broken").unlink()
+        parser = self.npm_extract_parser()
+        result = subprocess.run([str(self.bin / "node"), str(parser),
+            str(self.inventory), str(self.npm_prefix), *specs],
+            text=True, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = [line.split() for line in result.stdout.splitlines()]
+        self.assertTrue(all(len(row) == 4 for row in rows), result.stdout)
+        self.assertEqual([row[0] for row in rows], specs)
+        expected = ["satisfied", "satisfied", "pinmismatch", "missing",
+                    "satisfied", "satisfied", "pinmismatch", "satisfied",
+                    "satisfied", "broken"] + ["uncertain"] * 6
+        self.assertEqual([row[3] for row in rows], expected)
+        self.assertEqual(rows[3], ["missing", "missing", "-", "missing"])
+        self.assertEqual(rows[4][1:3], ["@scope/tool", "2.0.0"])
+        self.assertFalse(self.npm_argv.exists(), "standalone parser must never invoke npm")
 
     # ── Pluto fork runtime ────────────────────────────────────────────────
 

@@ -148,67 +148,239 @@ elif have mise; then
         done < $npm_packages_file
 
         if (( ${#npm_packages[@]} > 0 )); then
-            # Batch install FIRST: even on pluto's already-provisioned host
-            # (49 bins audited before), N per-package `npm install -g`
-            # invocations each pay npm's full startup + resolution cost — the
-            # manual deploy observed several minutes on the npm leg alone,
-            # putting the post-merge 300s timeout at risk. One batched
-            # install installs the whole list in a single resolution pass,
-            # with the official --libc override (see npm_libc_flag above)
-            # and captured output.
-            printf '%s\n' "Installing npm globals through mise node's npm (batch)..."
-            npm_failed=()
-            npm_batch_ok=false
-            npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global-batch.XXXXXX") || npm_log=
-            if [[ -z $npm_log ]]; then
-                # No tempfile available — fall straight through to the
-                # per-package loop below rather than skipping the leg.
-                printf '%s\n' "  ...batch log tempfile unavailable; falling back to per-package installs" >&2
-            elif mise exec node -- npm install -g ${npm_libc_flag:-} "${npm_packages[@]}" > "$npm_log" 2>&1; then
-                npm_batch_ok=true
-                rm -f "$npm_log"
-                printf '%s\n' "  ...done"
-            else
-                # Batch failed — warn once, then fall through to per-package
-                # installs so one bad package (bad publish, rejected
-                # postinstall, platform-optional gap — on pluto `pi` was
-                # OBSERVED absent while `omp` survived, audit 2026-09-29 F2)
-                # cannot take every declared CLI down with it.
-                printf '%s\n' "  ...batch install failed; retrying each package individually. Last lines of batch output:" >&2
-                tail -n 5 "$npm_log" | sed 's/^/    | /' >&2
-                rm -f "$npm_log"
+            # Warm deploys install only globals that are missing, broken or
+            # pin-mismatched, decided from one LOCAL inventory (npm prefix -g
+            # + npm ls -g --depth 0 --json; no registry traffic). --upgrade
+            # additionally refreshes @latest/unversioned entries. Uncertainty
+            # always installs, never skips.
+
+            # Standalone node script; tests extract the text between the two
+            # marker comment lines inside the heredoc and run it under a real
+            # node. Usage:
+            #   node parser.js <inventory.json> <global-prefix> <spec>...
+            # inventory.json is the raw `npm ls -g --depth 0 --json` output.
+            # stdout, space-separated per spec (no field contains spaces):
+            #   <spec> <name> <installedVersion|->
+            #   <verdict: satisfied|missing|pinmismatch|broken|uncertain>
+            npm_parser=$(mktemp "${TMPDIR:-/tmp}/npm-inventory-parser.XXXXXX") || npm_parser=
+            if [[ -n $npm_parser ]]; then
+                cat > "$npm_parser" <<'NPM_INVENTORY_PARSER_EOF'
+// --- npm-inventory-parser BEGIN ---
+var fs = require('fs');
+var invPath = process.argv[2], prefix = process.argv[3];
+var specs = process.argv.slice(4);
+var deps;
+try { deps = JSON.parse(fs.readFileSync(invPath, 'utf8')).dependencies || {}; }
+catch (e) { deps = null; }
+function emit(spec, name, ver, verdict) {
+    process.stdout.write(spec + ' ' + name + ' ' + ver + ' ' + verdict + '\n');
+}
+for (var i = 0; i < specs.length; i++) {
+    var spec = specs[i];
+    var at = spec.lastIndexOf('@');
+    var name = at > 0 ? spec.slice(0, at) : spec;
+    var want = at > 0 ? spec.slice(at + 1) : 'latest';
+    if (want === '') want = 'latest';
+    if (deps === null || !name) { emit(spec, name || spec, '-', 'uncertain'); continue; }
+    var dep = deps[name];
+    var installed = dep && typeof dep.version === 'string' ? dep.version : null;
+    if (!installed) { emit(spec, name, '-', 'missing'); continue; }
+    // Selector classes: '' / 'latest' -> channel (any version satisfies);
+    // strict exact semver (1 / 2 / 3 components + optional prerelease, no
+    // build metadata) -> pin compare; anything else (tags, ranges, *) ->
+    // 'uncertain' so the caller conservatively reinstalls.
+    var exact = want.match(/^[0-9]+(\.[0-9]+){0,2}(-[0-9A-Za-z.]+)?$/);
+    if (exact) {
+        if (installed.replace(/^v/, '') !== want.replace(/^v/, '')) {
+            emit(spec, name, installed, 'pinmismatch'); continue;
+        }
+    } else if (want !== 'latest') {
+        emit(spec, name, installed, 'uncertain'); continue;
+    }
+    // Local integrity: a readable package.json with a version is required;
+    // a bin map, when declared, must resolve to an EXECUTABLE REGULAR FILE
+    // (through the <prefix>/bin link) — existsSync alone passes directories
+    // and non-executable scripts, which are broken CLIs, not installed ones.
+    // Library globals with NO bin are valid (happy-dom, @ast-grep/napi).
+    var pkgJson = prefix + '/lib/node_modules/' + name + '/package.json';
+    var pkg = null;
+    try { pkg = JSON.parse(fs.readFileSync(pkgJson, 'utf8')); } catch (e) {}
+    var bins = pkg && typeof pkg.bin !== 'undefined' ? pkg.bin : null;
+    var broken = !pkg || typeof pkg.version !== 'string';
+    if (!broken && bins) {
+        var binNames = typeof bins === 'string' ? [name.split('/').pop()] : Object.keys(bins);
+        for (var b = 0; b < binNames.length; b++) {
+            var binPath = prefix + '/bin/' + binNames[b];
+            var ok = false;
+            try {
+                ok = fs.statSync(binPath).isFile() &&
+                     fs.accessSync(binPath, fs.constants.X_OK) === undefined;
+            } catch (e) { ok = false; }
+            if (!ok) { broken = true; break; }
+        }
+    }
+    if (broken) { emit(spec, name, installed, 'broken'); continue; }
+    emit(spec, name, installed, 'satisfied');
+}
+// --- npm-inventory-parser END ---
+NPM_INVENTORY_PARSER_EOF
             fi
 
-            # Per-package installs: skipped entirely when the batch succeeded;
-            # run for EVERY declared package when it did not — a failure never
-            # skips the remaining packages, and each failure is named with a
-            # captured-output excerpt.
-            if [[ $npm_batch_ok == false ]]; then
-                for npm_package in "${npm_packages[@]}"; do
-                    npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global.XXXXXX") || npm_log=
-                    if [[ -z $npm_log ]]; then
-                        npm_failed+=("$npm_package")
-                        continue
-                    fi
-                    if mise exec node -- npm install -g ${npm_libc_flag:-} "$npm_package" > "$npm_log" 2>&1; then
-                        rm -f "$npm_log"
+            npm_inv=$(mktemp "${TMPDIR:-/tmp}/npm-inventory.XXXXXX") || npm_inv=
+            npm_decisions=$(mktemp "${TMPDIR:-/tmp}/npm-decisions.XXXXXX") || npm_decisions=
+            npm_prefix=
+            npm_ls_ok=true
+            if [[ -n $npm_inv && -n $npm_decisions ]]; then
+                npm_prefix=$(mise exec node -- npm prefix -g 2>/dev/null) || npm_prefix=
+                # npm ls exits non-zero on problems while still printing
+                # (partial) JSON — a non-zero status means the inventory is
+                # NOT trusted even when the stdout looks valid; uncertainty
+                # falls back to installing everything below.
+                mise exec node -- npm ls -g --depth 0 --json > "$npm_inv" 2>/dev/null || npm_ls_ok=false
+            fi
+
+            npm_install=()
+            if [[ $npm_ls_ok == false || -z $npm_parser || -z $npm_prefix ||
+                  -z $npm_inv || -z $npm_decisions || ! -s $npm_inv ]]; then
+                # Inventory unavailable — conservative: install everything.
+                printf '%s\n' "  ...npm inventory unavailable; installing all declared globals" >&2
+                npm_install=("${npm_packages[@]}")
+            elif ! mise exec node -- node "$npm_parser" "$npm_inv" "$npm_prefix" \
+                    "${npm_packages[@]}" > "$npm_decisions" 2>/dev/null; then
+                printf '%s\n' "  ...npm inventory parse failed; installing all declared globals" >&2
+                npm_install=("${npm_packages[@]}")
+            else
+                while read -r _npm_spec _npm_name _npm_inst _npm_verdict; do
+                    [ -z "$_npm_spec" ] && continue
+                    case $_npm_verdict in
+                        satisfied)
+                            # Skip in default mode. Under --upgrade, refresh
+                            # @latest/unversioned channels ONLY; an exact pin
+                            # already at its desired version is never bumped.
+                            if $upgrade_mode; then
+                                # Classify the selector exactly like the
+                                # parser does: strip a LEADING scope @ first,
+                                # else '@scope/pkg' would read 'pkg' as a
+                                # version suffix and never refresh.
+                                _npm_chk=${_npm_spec#@}
+                                case $_npm_chk in
+                                    *@*) _npm_want=${_npm_chk##*@} ;;
+                                    *)   _npm_want=latest ;;
+                                esac
+                                if [[ -z $_npm_want || $_npm_want == latest ]]; then
+                                    npm_install+=("$_npm_name@latest")
+                                fi
+                            fi
+                            ;;
+                        missing|broken|pinmismatch|uncertain)
+                            # Reinstall with the ORIGINAL spec so an exact
+                            # pin is restored as name@pin, never name@latest.
+                            npm_install+=("$_npm_spec")
+                            ;;
+                    esac
+                done < "$npm_decisions"
+            fi
+
+            # D6 gap the inventory cannot see: the bin link exists but the
+            # CLI dies (t3's absent platform-optional).
+            # A failing --version probe queues the DECLARED spec for
+            # reinstall — the original entry, so an exact pin is repaired as
+            # name@pin, never silently bumped to latest. A CLI that breaks
+            # but is not declared here is only warned about, never repaired.
+            for _rt in t3 pi; do
+                if have "$_rt" && ! "$_rt" --version > /dev/null 2>&1; then
+                    case $_rt in
+                        t3) _rt_pkg=t3 ;;
+                        pi) _rt_pkg=@earendil-works/pi-coding-agent ;;
+                    esac
+                    _rt_decl=
+                    for _rt_q in "${npm_packages[@]}"; do
+                        case $_rt_q in
+                            "$_rt_pkg"|"$_rt_pkg"@*) _rt_decl=$_rt_q; break ;;
+                        esac
+                    done
+                    if [[ -n $_rt_decl ]]; then
+                        npm_install+=("$_rt_decl")
+                        printf '%s\n' "  ...$_rt is on PATH but --version fails; queuing $_rt_decl for reinstall" >&2
                     else
-                        npm_failed+=("$npm_package")
-                        printf '%s\n' "  ...$npm_package failed; last lines of output:"
-                        tail -n 5 "$npm_log" | sed 's/^/    | /'
-                        rm -f "$npm_log"
+                        printf '%s\n' "  WARNING: $_rt is on PATH but --version fails and it is not declared in $npm_packages_file" >&2
+                    fi
+                fi
+                unset _rt_pkg _rt_decl _rt_q
+            done
+            unset _rt _npm_spec _npm_name _npm_inst _npm_verdict _npm_want _npm_chk
+
+            # Dedup the queue preserving order: a package the inventory
+            # already queued (e.g. broken) AND a failing t3/pi probe queue
+            # must install/retry once, not twice.
+            npm_queued=()
+            for _npm_q in "${npm_install[@]}"; do
+                _npm_seen=false
+                for _npm_u in "${npm_queued[@]}"; do
+                    if [[ $_npm_q == "$_npm_u" ]]; then
+                        _npm_seen=true
+                        break
                     fi
                 done
-            fi
-            if (( ${#npm_failed[@]} == 0 )); then
-                if [[ $npm_batch_ok == false ]]; then
-                    printf '%s\n' "  ...done (per-package retry: all packages installed)"
+                if [[ $_npm_seen == false ]]; then
+                    npm_queued+=("$_npm_q")
                 fi
-                # batch-success "done" already printed by the batch leg
+            done
+            npm_install=("${npm_queued[@]}")
+            unset npm_queued _npm_q _npm_u
+
+            if (( ${#npm_install[@]} == 0 )); then
+                printf '%s\n' "  ...all npm globals satisfied; nothing to install (refresh @latest with --upgrade)"
             else
-                printf '%s\n' "  ...${#npm_failed[@]} package(s) failed: ${npm_failed[*]}" >&2
+                # ONE batch install for the unsatisfied set (single npm
+                # resolution pass, official --libc override, captured
+                # output). On batch failure: warn once with an excerpt,
+                # then retry EACH queued package individually — a bad
+                # package never takes the others down, and nothing is
+                # skipped.
+                printf '%s\n' "Installing npm globals through mise node's npm (${#npm_install[@]} of ${#npm_packages[@]})..."
+                npm_failed=()
+                npm_batch_ok=false
+                npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global-batch.XXXXXX") || npm_log=
+                if [[ -z $npm_log ]]; then
+                    printf '%s\n' "  ...batch log tempfile unavailable; falling back to per-package installs" >&2
+                elif mise exec node -- npm install -g ${npm_libc_flag:-} "${npm_install[@]}" > "$npm_log" 2>&1; then
+                    npm_batch_ok=true
+                    rm -f "$npm_log"
+                    printf '%s\n' "  ...done"
+                else
+                    printf '%s\n' "  ...batch install failed; retrying each package individually. Last lines of batch output:" >&2
+                    tail -n 5 "$npm_log" | sed 's/^/    | /' >&2
+                    rm -f "$npm_log"
+                fi
+                if [[ $npm_batch_ok == false ]]; then
+                    for npm_package in "${npm_install[@]}"; do
+                        npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-global.XXXXXX") || npm_log=
+                        if [[ -z $npm_log ]]; then
+                            npm_failed+=("$npm_package")
+                            continue
+                        fi
+                        if mise exec node -- npm install -g ${npm_libc_flag:-} "$npm_package" > "$npm_log" 2>&1; then
+                            rm -f "$npm_log"
+                        else
+                            npm_failed+=("$npm_package")
+                            printf '%s\n' "  ...$npm_package failed; last lines of output:"
+                            tail -n 5 "$npm_log" | sed 's/^/    | /'
+                            rm -f "$npm_log"
+                        fi
+                    done
+                fi
+                if (( ${#npm_failed[@]} == 0 )); then
+                    if [[ $npm_batch_ok == false ]]; then
+                        printf '%s\n' "  ...done (per-package retry: all packages installed)"
+                    fi
+                else
+                    printf '%s\n' "  ...${#npm_failed[@]} package(s) failed: ${npm_failed[*]}" >&2
+                fi
+                unset npm_failed npm_batch_ok npm_log
             fi
-            unset npm_failed npm_batch_ok npm_log
+            rm -f "$npm_parser" "$npm_inv" "$npm_decisions"
+            unset npm_parser npm_inv npm_decisions npm_prefix npm_install
         fi
 
         # corepack is in the npm globals list AFTER pnpm, so its bin shim wins
@@ -290,19 +462,39 @@ fi
 if ! have coderabbit || $upgrade_mode; then
     printf '%s\n' "Installing/upgrading CodeRabbit CLI..."
     _coderabbit_installer=
-    if _coderabbit_installer=$(mktemp "${TMPDIR:-/tmp}/coderabbit-install.XXXXXX"); then
-        if curl --proto '=https' --tlsv1.2 -fsSL https://cli.coderabbit.ai/install.sh -o "$_coderabbit_installer" &&
-            CI=1 CODERABBIT_INSTALL_DIR="$HOME/.local/bin" PATH="$HOME/.local/bin:$PATH" sh "$_coderabbit_installer" > /dev/null 2>&1; then
-            hash -r
-            printf '%s\n' "  ...done"
-        else
-            printf '%s\n' "  ...failed to install CodeRabbit (non-fatal)"
+    # The official installer (#!/usr/bin/env sh — dash-safe) hard-requires
+    # `unzip` to extract the release archive (checked before it downloads
+    # anything). On NixOS unzip is a system-profile package, not something
+    # this fragment may install — so skip LOUDLY with the prerequisite named
+    # instead of re-running a guaranteed-failure install every deploy
+    # (pluto 2026-09-29: every deploy logged a bare "failed to install" with
+    # the real error swallowed by the /dev/null). Coordinate the system
+    # package with the NixOS config owner; this block self-heals the moment
+    # unzip is present.
+    if ! have unzip; then
+        printf '%s\n' "  ...skipped CodeRabbit install: prerequisite 'unzip' not on PATH (system package; NixOS module owner to add)" >&2
+    elif _coderabbit_installer=$(mktemp "${TMPDIR:-/tmp}/coderabbit-install.XXXXXX") \
+        && _coderabbit_log=$(mktemp "${TMPDIR:-/tmp}/coderabbit-install-log.XXXXXX"); then
+        _cr_rc=0
+        curl --proto '=https' --tlsv1.2 -fsSL https://cli.coderabbit.ai/install.sh -o "$_coderabbit_installer" || _cr_rc=$?
+        if (( _cr_rc == 0 )); then
+            CI=1 CODERABBIT_INSTALL_DIR="$HOME/.local/bin" PATH="$HOME/.local/bin:$PATH" \
+                sh "$_coderabbit_installer" > "$_coderabbit_log" 2>&1 || _cr_rc=$?
         fi
-        rm -f "$_coderabbit_installer"
+        if (( _cr_rc == 0 )) && have coderabbit; then
+            hash -r
+            printf '%s\n' "  ...done ($(coderabbit --version 2>/dev/null | head -1))"
+        else
+            # Named diagnostics: which stage failed and the installer's own
+            # last lines, instead of a bare failure with /dev/null'd cause.
+            _cr_tail=$(tail -2 "$_coderabbit_log" 2>/dev/null | tr -d '\033' | tr '\n' ' ' | cut -c1-160)
+            printf '%s\n' "  ...failed to install CodeRabbit (non-fatal; rc=$_cr_rc${_cr_tail:+; tail: $_cr_tail})" >&2
+        fi
+        rm -f "$_coderabbit_installer" "$_coderabbit_log"
     else
-        printf '%s\n' "  ...failed to create CodeRabbit installer tempfile (non-fatal)"
+        printf '%s\n' "  ...failed to create CodeRabbit installer tempfile (non-fatal)" >&2
     fi
-    unset _coderabbit_installer
+    unset _coderabbit_installer _coderabbit_log _cr_rc _cr_tail
 fi
 
 if ! have cargo; then

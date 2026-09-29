@@ -56,6 +56,9 @@ jobs:
       - name: Dotfiles portability contracts (synthetic home and tools)
         run: python3 scripts/tests/test-dotfiles-lane-contracts.py
 
+      - name: Completion generation contracts (synthetic home and tools)
+        run: python3 scripts/tests/test-zsh-completions-fragment.py
+
       - name: Paseo pin checker self-tests
         run: python3 scripts/tests/check-paseo-pins.py --self-test
 

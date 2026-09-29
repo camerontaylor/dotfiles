@@ -1,7 +1,8 @@
 # npm globals installed through the mise-managed node's npm — by
-# scripts/deploy.d/70_runtime_installs.zsh on every deploy, and by mise itself
+# scripts/deploy.d/70_runtime_installs.zsh when missing or broken, and by mise itself
 # whenever it installs a node version (this file is symlinked to
 # ~/.default-npm-packages, which mise's node backend reads natively).
+# Use deploy --upgrade to refresh installed @latest packages; exact pins stay pinned.
 happy@latest
 happy-dom@latest
 @openai/codex@latest
