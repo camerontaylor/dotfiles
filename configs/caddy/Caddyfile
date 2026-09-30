@@ -349,7 +349,12 @@ bindery.wedrifid.dev {
 
 stash.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:9999
+	handle_path /ai-overhaul/* {
+		reverse_proxy 100.87.185.24:4153
+	}
+	handle {
+		reverse_proxy 100.87.185.24:9999
+	}
 }
 
 # Calibre-Web-Automated. No request_body directive: Caddy imposes no body
