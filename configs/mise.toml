@@ -119,13 +119,13 @@ btop = { version = "1.4.7", os = ["linux"] }
 # twice before adding any cargo: backend that builds from source.
 # moor (was: scripts/install-moor.sh curl of the release binary). Upstream
 # ships darwin x64/arm64 + linux assets, so no per-host conditional needed.
-"ubi:walles/moor" = "2"
+"github:walles/moor" = "2"
 # wtp, Linux leg only (was: the release-asset curl in install-wtp.zsh).
 # Upstream publishes no darwin-x86_64 asset, so an ungated entry would
 # hard-fail `mise install` on the Intel Macs (neptune) the way delta/fd/age
 # once did; macOS keeps install-wtp.zsh (brew tap, arm64 release asset as
 # brew-failure fallback) — declared in ownership-declared.toml.
-"ubi:satococoa/wtp" = { version = "2", os = ["linux"] }
+"github:satococoa/wtp" = { version = "2", os = ["linux"] }
 
 # paseo CLI, Linux-only. The Macs get `paseo` from the app bundle (a symlink
 # into /Applications/Paseo.app/Contents/Resources/bin/paseo, installed by the

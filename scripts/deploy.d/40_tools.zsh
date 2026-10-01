@@ -125,7 +125,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
     fi
 fi
 
-# wtp, macOS only — Linux is mise-managed (ubi:satococoa/wtp,
+# wtp, macOS only — Linux is mise-managed (github:satococoa/wtp,
 # configs/mise.toml). Upstream publishes no darwin-x86_64 release asset, so
 # the Intel Macs can't take the mise route (same trap as delta/fd/age) and
 # the script's brew-tap-first logic stays.

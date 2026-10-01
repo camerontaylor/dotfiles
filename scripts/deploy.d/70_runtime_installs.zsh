@@ -229,7 +229,7 @@ if ! have cargo; then
     fi
 fi
 
-# linear-cli: git-only upstream, no mise/aqua/ubi backend exists (the crates
+# linear-cli: git-only upstream, no mise/aqua/github backend exists (the crates
 # release is stale; only the git master branch builds) — the one deliberate
 # cargo-of-git install left (documented exception, docs/cli-tools.md).
 if have cargo; then
