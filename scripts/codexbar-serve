@@ -24,7 +24,7 @@
 
 set -u
 
-state_dir=$HOME/.local/state/codexbar
+state_dir=${XDG_STATE_HOME:-$HOME/.local/state}/codexbar
 env_file=$state_dir/env
 
 if [ ! -r "$env_file" ]; then
@@ -59,10 +59,15 @@ fi
 # --refresh-interval is a cache TTL, not a poll; nobody asking means no
 # upstream API calls. --identity redacted keeps emails out of snapshot
 # responses that cross the network.
+# The dashboard includes local transcript cost scans as well as quota fetches.
+# Neptune's Codex scan took 48s on 2026-10-01; a 30s request budget marked
+# working providers as failed. Cold background usage plus cost collection also
+# exhausted a 120s budget; allow five minutes for the sequential initial build.
+# Subsequent requests use the 180s cache and stale-while-revalidate responses.
 exec /usr/local/bin/codexbar serve \
     --host "$ts_ip" \
     --port 8791 \
     --refresh-interval 180 \
-    --request-timeout 30 \
+    --request-timeout 300 \
     --identity redacted \
     --allow-plain-http
