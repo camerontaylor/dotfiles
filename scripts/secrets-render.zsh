@@ -255,10 +255,22 @@ _row services/codexbar/env.yaml           dotenv "$STATE_HOME/codexbar/env"     
 _row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
+# Stack dotenv snapshots (2026-10-02): all live keys, including empty slots.
+# Minted app keys are preserved in ciphertext; edit these sources via sops.
+_row services/immich/compose-env.yaml     dotenv "$HOME/repos/deploy/immich/.env"          600 immich ''
+_row services/arr/compose-env.yaml        dotenv "$HOME/repos/deploy/arr/.env"             600 arr    ''
+# These two directory gates are local to the mapping table; the renderer and
+# its gate vocabulary are unchanged. Never create a deploy dir on other hosts.
+if [[ -d $HOME/repos/deploy/rss ]]; then
+    _row services/rss/compose-env.yaml       dotenv "$HOME/repos/deploy/rss/.env"          600 all ''
+fi
+if [[ -d $HOME/repos/deploy/syncthing ]]; then
+    _row services/syncthing/compose-env.yaml dotenv "$HOME/repos/deploy/syncthing/.env"    600 all ''
+fi
 # slskd's Soulseek credentials + primary API key (music lane of the arr stack
 # on makemake, added 2026-09-17). A SEPARATE dotenv from the stack's own .env
-# rather than folding into it: .env holds keys the apps minted themselves and
-# is not rendered from here, so a render that owned it would clobber them.
+# rather than folding into it: these credentials are consumed by env_file,
+# while compose-env.yaml preserves the stack .env and its app-minted keys.
 # Compose reads this file via the slskd service's `env_file:`, not via ${}
 # substitution — substitution only ever reads the project-default .env.
 _row services/arr/slskd-env.yaml          dotenv "$HOME/repos/deploy/arr/.slskd-env"   600 arr    ''
@@ -343,12 +355,10 @@ LEGACY_PLAINTEXTS=(
 # services/arr/deploy-env.yaml and services/arr/bindery-env.yaml (2026-09-22)
 # are the same case, widened. Backup-only for two different reasons, both
 # deliberate:
-#   * deploy-env.yaml mirrors the credential rows of ~/repos/deploy/arr/.env
-#     plus prowlarr's API key. That .env must NOT become render-owned --
-#     services.toml says so explicitly, because it also carries keys the arrs
-#     minted themselves and a render that owned the file would clobber them on
-#     every pass. The qBittorrent and Calibre-Web-Automated logins in it were
-#     set by a human and cannot be re-derived from anything on disk.
+#   * deploy-env.yaml backs up credentials from .env plus application-owned
+#     keys that are not in .env (including prowlarr, Stash and Whisparr).
+#     Since 2026-10-02 compose-env.yaml separately owns the complete live .env;
+#     this backup remains intact so those additional credentials are not lost.
 #   * bindery-env.yaml holds the live Hardcover token and Bindery's API key,
 #     which exist ONLY inside ~/arr/config/bindery/bindery.db -- entered
 #     through the web UI, never written to .env (its HARDCOVER_TOKEN slot is
@@ -356,8 +366,10 @@ LEGACY_PLAINTEXTS=(
 #     Jan 1, so it is not regenerable locally at all.
 # Everything above sits under ~/arr/config or the un-git'd deploy tree, which
 # services.toml still records as outside every backup tier.
+# Conditional mapping sources are intentional gate-outs when their deploy
+# directory is absent, not unmapped files.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml)
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
