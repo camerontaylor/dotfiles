@@ -135,12 +135,44 @@ elif have mise; then
         done < $npm_packages_file
 
         if (( ${#npm_packages[@]} > 0 )); then
+            # Heal interrupted-reify damage BEFORE installing. An install pass
+            # that dies mid-flight (the post-merge hook's `timeout 300` landing
+            # on a genuinely slow npm night, OOM, Ctrl-C) leaves the packages
+            # present but their bin links removed — npm unlinks before
+            # relinking — and every one of them then dies through the mise
+            # shims with "No version is set for shim" while node_modules looks
+            # perfectly intact (makemake 2026-10-02 00:00: the entire globals
+            # layer died this way, taking codex/t3/dsh/pnpm with it). rebuild
+            # -g re-derives the bin links from what is already installed:
+            # local, idempotent, no network. It cannot repair a truncated
+            # package tree — the per-package retry below reinstalls those.
+            printf '%s\n' "Relinking npm global bins (npm rebuild -g)..."
+            mise exec node -- npm rebuild -g "${npm_packages[@]}" > /dev/null 2>&1 || true
+            printf '%s\n' "  ...done"
+
             printf '%s\n' "Installing npm globals through mise node's npm..."
-            if mise exec node -- npm install -g "${npm_packages[@]}" > /dev/null 2>&1; then
+            _npm_log=$(mktemp "${TMPDIR:-/tmp}/npm-globals.XXXXXX")
+            if mise exec node -- npm install -g "${npm_packages[@]}" > "$_npm_log" 2>&1; then
                 printf '%s\n' "  ...done"
             else
-                printf '%s\n' "  ...failed to install npm globals"
+                # One slow, hung or failing package rolls the whole
+                # transactional install back. Retry per-package so progress is
+                # monotonic — a later kill leaves earlier packages done, and
+                # the next pass skips them in seconds instead of redoing the
+                # whole list inside one timeout window.
+                printf '%s\n' "  ...bulk install failed; retrying per-package, failures below:"
+                sed 's/^/      /' "$_npm_log" | tail -8
+                for npm_package in "${npm_packages[@]}"; do
+                    if mise exec node -- npm install -g "$npm_package" > "$_npm_log" 2>&1; then
+                        printf '%s\n' "    $npm_package: ok"
+                    else
+                        printf '%s\n' "    $npm_package: FAILED"
+                        sed 's/^/        /' "$_npm_log" | tail -6
+                    fi
+                done
             fi
+            rm -f "$_npm_log"
+            unset _npm_log
         fi
 
         # corepack is in the npm globals list AFTER pnpm, so its bin shim wins
