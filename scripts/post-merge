@@ -52,8 +52,13 @@ else
 fi
 
 # Run with a wall-clock cap so a hung deploy can't hang every `git pull`.
-# `timeout` is GNU coreutils (Linux stock, macOS via brew). Fall back to direct
-# exec if the binary is missing.
+# 900, not 300: a real npm-globals install (the full .default-npm-packages
+# list, cold cache) legitimately runs 8-10 min, and the 300 cap killed the
+# 2026-10-02 00:00 makemake deploy mid-npm-reify — npm had already unlinked
+# the old bins, so every npm global died through the mise shims until the
+# repair. --kill-after upgrades the SIGTERM to a SIGKILL so the cap is
+# actually a cap. `timeout` is GNU coreutils (Linux stock, macOS via brew).
+# Fall back to direct exec if the binary is missing.
 #
 # Do NOT forward "$@": git invokes post-merge with a single squash-flag arg (0
 # or 1) that the drivers' fail-closed parser would reject as "unknown argument".
