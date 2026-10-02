@@ -37,6 +37,10 @@ elif [[ -z ${XDG_RUNTIME_DIR+x} || -z $XDG_RUNTIME_DIR ]]; then
 fi
 unset _systemd_runtime_dir
 
+# Non-interactive bash children (including agents launched from zsh) load
+# the shared environment through bash's standard startup hook.
+export BASH_ENV="$HOME/.config/bash/env.sh"
+
 # ensure that XDG_RUNTIME_DIR dir exists, as it can be under tmpfs
 # (plain mkdir, not zf_mkdir: the zsh/files builtin is gone under bash, and
 # one early-shell mkdir doesn't buy anything from being a builtin)
