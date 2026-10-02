@@ -9,10 +9,23 @@ if [[ EUID -ne 0 && -d $HOME/.ssh ]]; then
         zf_ln -sfn $SSH_AUTH_SOCK $ssh_auth_sock_link
         ssh_auth_sock_selected=1
     elif (( ! ssh_session )); then
-        if (( ${+commands[gpgconf]} )); then
-            gpgconf --launch gpg-agent 2>/dev/null
-            gpg_agent_ssh_sock=$(gpgconf --list-dirs agent-ssh-socket 2>/dev/null)
+        # Agent IPC can stall indefinitely. Bound each call, including a
+        # TERM-resistant client; only timeout's own process group is signalled.
+        # Without a timeout tool, use the existing socket fallbacks below.
+        gpg_agent_ssh_sock=
+        gpgconf_timeout=
+        if (( ${+commands[timeout]} )); then
+            gpgconf_timeout=$commands[timeout]
+        elif (( ${+commands[gtimeout]} )); then
+            gpgconf_timeout=$commands[gtimeout]
         fi
+        if (( ${+commands[gpgconf]} )) && [[ -n $gpgconf_timeout ]]; then
+            if "$gpgconf_timeout" --kill-after=1s 2s gpgconf --launch gpg-agent 2>/dev/null; then
+                gpg_agent_ssh_sock=$("$gpgconf_timeout" --kill-after=1s 2s \
+                    gpgconf --list-dirs agent-ssh-socket 2>/dev/null) || gpg_agent_ssh_sock=
+            fi
+        fi
+        unset gpgconf_timeout
 
         if [[ -n $gpg_agent_ssh_sock && -S $gpg_agent_ssh_sock ]]; then
             zf_ln -sfn $gpg_agent_ssh_sock $ssh_auth_sock_link
