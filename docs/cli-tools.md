@@ -36,6 +36,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `bat` | mise | `cat` with syntax highlighting + paging. |
 | `fzf` | mise | Interactive fuzzy finder; the engine behind `bag`, `fgb`, `fgd`, `fgl`, `fz`. |
 | `zoxide` | mise | Frecency-ranked `cd`. `z <partial>` jumps to a directory you've visited. |
+| `jq` | mise | JSON processor. macOS also ships `/usr/bin/jq`; mise covers the Linux hosts that don't (NixOS, minimal Ubuntu). |
 | `yq` | mise | YAML/JSON/XML processor (`jq` for YAML). |
 | `moor` | mise | Pager — a friendlier `less`. |
 | `htop` | pkg | Interactive process viewer. Config symlinked from this repo. |
