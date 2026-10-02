@@ -255,6 +255,12 @@ _row services/codexbar/env.yaml           dotenv "$STATE_HOME/codexbar/env"     
 _row services/converge/ntfy-topic.enc     blob   "$STATE_HOME/converge/ntfy-topic"          600 all    ''
 _row services/immich/b2-env.yaml          dotenv "$HOME/repos/deploy/immich/.b2-env"       600 immich ''
 _row services/immich/restic-password.enc  blob   "$HOME/repos/deploy/immich/.restic-password" 600 immich ''
+# Immich admin API key (2026-10-02): was hand-provisioned; now render-owned,
+# byte-identical to the key it replaced. Consumers: bin/setup-immich and
+# hart-immich-backup.service. The fleet-status collector does NOT use it.
+_row services/immich/api-key.enc          blob   "$HOME/repos/deploy/immich/.api-key"      600 immich ''
+# fleet-status collector's scoped Immich key (queue.read only), dotenv.
+_row services/fleet-status/collector-env.yaml dotenv "$STATE_HOME/fleet-status/immich-env" 600 immich ''
 # Stack dotenv snapshots (2026-10-02): all live keys, including empty slots.
 # Minted app keys are preserved in ciphertext; edit these sources via sops.
 _row services/immich/compose-env.yaml     dotenv "$HOME/repos/deploy/immich/.env"          600 immich ''
