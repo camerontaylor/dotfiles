@@ -57,8 +57,9 @@ if have brew && $upgrade_mode; then
     # receipt. Anything added here needs the same justification: a channel brew
     # cannot express. codexbar is here for the same reason — Sparkle owns the
     # app's version once installed, and a brew upgrade would downgrade it
-    # underneath the live quota collector.
-    brew_upgrade_skip=( paseo codexbar )
+    # underneath the live quota collector. orbstack likewise self-updates
+    # (Sparkle, auto_updates), and neptune's copy carries no Caskroom receipt.
+    brew_upgrade_skip=( paseo codexbar orbstack )
     brew_outdated=() brew_upgradable=()
     # `brew outdated --quiet` prints one name per line, formulae and casks
     # alike; a while-read replaces ${(f)} splitting and a membership scan
@@ -438,6 +439,27 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
         brew_cask_install_or_upgrade codexbar || true
     fi
 fi
+
+# OrbStack cask — neptune ONLY. Runs triton, the Ubuntu machine coding agents
+# are dispatched to (infra docs/neptune-agent-vm-plan.md): macOS spawn,
+# Gatekeeper and TCC overhead made agent test runs 35-45x slower on the host
+# than in a Linux guest on the same box. Replaced colima (fixed memory
+# reservation; launchd-exec'd binary reading the offload volume).
+#
+# INSTALL-ONLY, and app-bundle-gated like Paseo: OrbStack updates itself, and
+# on a never-onboarded box the cask's postflight (`orbctl _internal
+# brew-postflight`) hung at 0% CPU for 8+ minutes on neptune 2026-10-02 —
+# even `orbctl version` blocks until the app's first-run window is clicked
+# through. neptune's copy was therefore installed from the Intel DMG, so it has
+# /Applications/OrbStack.app but no Caskroom receipt.
+_orb_host=$(scutil --get LocalHostName 2>/dev/null) || _orb_host=$(hostname -s 2>/dev/null) || _orb_host=""
+if [[ $DOTFILES_OS == Darwin && $_orb_host == neptune ]] && have brew; then
+    if [[ ! -d /Applications/OrbStack.app ]] && ! brew list --cask orbstack > /dev/null 2>&1; then
+        printf '%s\n' "Installing OrbStack (first launch needs a person: onboarding)..."
+        brew_cask_install_or_upgrade orbstack || true
+    fi
+fi
+unset _orb_host
 
 # Paseo cask — self-hosted orchestrator for Claude Code / Codex / Copilot /
 # OpenCode / Pi agents, reachable from the phone over Tailscale. The cask ships
