@@ -287,6 +287,18 @@ fleet.wedrifid.dev {
 	header /manifest.webmanifest Content-Type "application/manifest+json"
 	header / Cache-Control "no-cache"
 	header /index.html Cache-Control "no-cache"
+
+	# The live status snapshot. Written by makemake's fleet-status-collect
+	# into the sidecar dir /var/www/fleet-status (2750 ctaylor:caddy), which
+	# sits OUTSIDE /var/www/fleet so install-fleet-page's --delete can never
+	# touch it. The exclusive handle keeps the block-level no-cache from
+	# applying: the snapshot must be no-store so a tile is never older than
+	# the file it was rendered from. caddy reads it through the setgid bit.
+	handle /status.json {
+		header Cache-Control "no-store"
+		root * /var/www/fleet-status
+		file_server
+	}
 }
 
 # ── acquisition: the *arr lane ─────────────────────────────────────────────
