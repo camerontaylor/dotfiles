@@ -6,7 +6,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. External code is vendored as pinned plug
 
 ## Commands
 - `./deploy.zsh` — full install dispatcher; sources fragments from `scripts/deploy.d/NN_*.zsh` in numeric order
-  - `--upgrade` / `-u` — also run brew/mise/cargo upgrades
+  - `--upgrade` / `-u` — also run brew/mise/cargo upgrades and refresh npm globals
   - `--dry-run` / `-n` — fragments print intentions without mutating
   - `--only NAME` — run only fragments whose basename matches NAME (repeatable)
 - `./deploy.bash` — bash twin of the driver: same CLI, same fragments (fragment bodies are dual-shell by contract); both drivers assert `/bin/bash` ≥ 3.2 at startup

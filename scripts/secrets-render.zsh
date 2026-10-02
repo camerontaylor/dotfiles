@@ -21,10 +21,24 @@
 #   ... --convert-dotenv    filter: KEY=value on stdin -> export lines on stdout
 #                           (used by ~/.local/secrets/scripts/verify-render.zsh
 #                            so the harness tests this exact converter)
+#   ... --select-dotenv K1,K2
+#                           filter: KEY=value on stdin -> the selected verbatim
+#                           KEY=value lines on stdout (systemd EnvironmentFile
+#                           format: no `export`, no quoting). Fails when any
+#                           selected key is absent.
+#   ... --print-map         print the mapping table (src|kind|dst|mode|gate|post
+#                           records), one per line, and exit. Metadata only —
+#                           never touches sops; used by the secrets repo's test
+#                           harness to build fixtures from the real mapping
+#                           instead of a duplicated copy of it.
 #
 # Environment:
 #   DEPLOY_DRY_RUN=1   print intentions, mutate nothing
 #   SECRETS_DIR        override the secrets clone (default ~/.local/secrets)
+#   DOTFILES_DIR       override the dotfiles checkout targets render into
+#                      (default: self-located from this script's path; set and
+#                      a real directory wins, e.g. a copied renderer candidate
+#                      testing against the live checkout)
 #
 # Exit status: 0 when every gated target rendered, 1 otherwise.
 
@@ -64,6 +78,53 @@ _sh_quote() {
     printf '%s' "$out'"
 }
 
+# systemd EnvironmentFile selector: pass through only the wanted keys, verbatim
+# (systemd parses KEY=value itself — no `export`, no shell quoting). Duplicate
+# keys are made explicit: the FIRST occurrence wins and later duplicates of an
+# already-emitted key are dropped, because systemd would let the LAST duplicate
+# win and a downstream unit must not depend on sops' emission order. Fails when
+# any wanted key was absent, so a renamed/rotated-away key fails the render
+# loudly instead of leaving caddy with a stale or empty token file. Kept free
+# of zsh-only parameter expansion, matching the portability bar of
+# secrets_convert_dotenv above (the script is invoked via zsh by deploy and
+# post-merge, but the shared converter functions must survive a bash -n sweep).
+secrets_select_dotenv() {
+    local _want=$1 _line _k _w _hit
+    local -a _wanted _found
+    _w=${_want},
+    while [[ -n $_w ]]; do
+        _wanted+=(${_w%%,*})
+        _w=${_w#*,}
+    done
+    _found=()
+    # `|| [[ -n $_line ]]`: same trailing-newline contract as
+    # secrets_convert_dotenv — a nonempty final line without `\n` is still
+    # processed (CodeRabbit finding).
+    while IFS= read -r _line || [[ -n $_line ]]; do
+        [[ -z $_line || $_line == \#* ]] && continue
+        _k=${_line%%=*}
+        _hit=0
+        for _w in "${_wanted[@]}"; do
+            if [[ $_k == "$_w" ]]; then _hit=1; break; fi
+        done
+        (( _hit )) || continue
+        for _w in "${_found[@]}"; do
+            if [[ $_k == "$_w" ]]; then _hit=0; break; fi
+        done
+        (( _hit )) || continue
+        printf '%s\n' "$_line"
+        _found+=("$_k")
+    done
+    for _w in "${_wanted[@]}"; do
+        _hit=0
+        for _k in "${_found[@]}"; do
+            if [[ $_k == "$_w" ]]; then _hit=1; break; fi
+        done
+        (( _hit )) || return 1
+    done
+    return 0
+}
+
 # Join arguments with ", " — zsh's ${(j:, :)arr} join in portable form.
 _join_commas() {
     local _j= _e
@@ -81,7 +142,10 @@ _var_ref_re='^\$[A-Za-z_][A-Za-z_0-9]*$'
 
 secrets_convert_dotenv() {
     local line key val
-    while IFS= read -r line; do
+    # `|| [[ -n $line ]]`: `read` drops a final nonempty line that lacks a
+    # trailing newline — a truncated or hand-assembled dotenv must still be
+    # fully converted (CodeRabbit finding; matches secrets_select_dotenv).
+    while IFS= read -r line || [[ -n $line ]]; do
         [[ -z $line ]] && continue
         [[ $line == \#* ]] && continue
         key=${line%%=*}
@@ -97,11 +161,24 @@ secrets_convert_dotenv() {
 # ── Argument parsing ───────────────────────────────────────────────────────
 
 _dry=${DEPLOY_DRY_RUN:-0}
+_print_map=0
 while (( $# > 0 )); do
     case $1 in
         --convert-dotenv)
             secrets_convert_dotenv
             exit 0
+            ;;
+        --select-dotenv)
+            shift
+            [[ $# -gt 0 ]] || {
+                printf '%s\n' "secrets-render: --select-dotenv requires a comma-separated key list" >&2
+                exit 2
+            }
+            secrets_select_dotenv $1
+            exit $?
+            ;;
+        --print-map)
+            _print_map=1
             ;;
         --dry-run|-n)
             _dry=1
@@ -129,11 +206,25 @@ while [[ -L $_self ]]; do
     _self=$(readlink "$_self")
     [[ $_self != /* ]] && _self=$_self_dir/$_self
 done
-DOTFILES_DIR=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
+_self_dotfiles=$(dirname -- "$(cd -P -- "$(dirname -- "$_self")" && pwd)")
 # With systemd-homed the physical path is the storage location /home/user.homedir
 # rather than the mounted /home/user — massage it back.
-if [[ $DOTFILES_DIR == $HOME.homedir* ]]; then
-    DOTFILES_DIR=${DOTFILES_DIR/.homedir/}
+if [[ $_self_dotfiles == $HOME.homedir* ]]; then
+    _self_dotfiles=${_self_dotfiles/.homedir/}
+fi
+# A caller-provided DOTFILES_DIR wins (SECRETS_DIR-style env seam): the root
+# one-off candidate test on pluto runs a copied renderer from /tmp and must
+# still render into the LIVE dotfiles targets ($DOTFILES/ssh/..., portless
+# PEMs, marker git-head) rather than beside the copy. Set-and-a-directory
+# wins; set-but-bogus fails loudly rather than silently self-locating;
+# unset falls back to self-location (the historical behaviour).
+if [[ -n ${DOTFILES_DIR:-} ]]; then
+    if [[ ! -d $DOTFILES_DIR ]]; then
+        printf '%s\n' "secrets-render: DOTFILES_DIR override is not a directory: $DOTFILES_DIR" >&2
+        exit 1
+    fi
+else
+    DOTFILES_DIR=$_self_dotfiles
 fi
 
 SECRETS_REPO=${SECRETS_DIR:-$HOME/.local/secrets}
@@ -149,22 +240,13 @@ if [[ -z ${SOPS_AGE_KEY_FILE:-} && -f $CONFIG_HOME/sops/age/keys.txt ]]; then
     export SOPS_AGE_KEY_FILE=$CONFIG_HOME/sops/age/keys.txt
 fi
 
-if [[ ! -d $SECRETS_REPO ]]; then
-    printf '%s\n' "secrets-render: $SECRETS_REPO not found — nothing to render." >&2
-    printf '%s\n' "  Bootstrap it with: ./deploy.zsh --only 65_secrets" >&2
-    exit 1
-fi
-
-if ! command -v sops > /dev/null 2>&1; then
-    printf '%s\n' "secrets-render: sops not found in PATH; run 'mise install' first." >&2
-    exit 1
-fi
-
-# A box that has never completed a render gets its pre-existing targets backed
-# up before they are first overwritten (see _render_row). Captured up front so
-# writing the marker at the end cannot change the answer mid-run.
-FIRST_RENDER=0
-[[ -f $MARKER ]] || FIRST_RENDER=1
+# The selector pipeline must fail the row when EITHER side fails. Without
+# pipefail a sops decrypt error could be masked whenever the selector happens
+# to succeed, and a partial/empty dotenv would overwrite a good target. Every
+# other pipeline here already treats failure as fatal, so script-wide pipefail
+# only tightens (the shellenv branch's grep -c guard becomes redundant, not
+# wrong).
+setopt pipefail
 
 # ── Mapping table ──────────────────────────────────────────────────────────
 #
@@ -179,10 +261,10 @@ FIRST_RENDER=0
 # with ${rec%%|*}/${rec#*|}, identical in both.
 #
 #   field 1  src   path inside $SECRETS_REPO
-#   field 2  kind  shellenv | dotenv | blob | copy
+#   field 2  kind  shellenv | dotenv | dotenv-select:KEYS | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | immich | libris | ollie-notes | infra | arr | adguard
+#   field 5  gate  all | ceres | pluto | agents | immich | libris | ollie-notes | infra | arr | adguard
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -221,6 +303,27 @@ _row "shell/96_audiobookshelf_secrets.yaml" shellenv "$RENDER_STATE/zsh/96_audio
 # reads no auth env, so there is nothing for a deploy .env to hold. The key is
 # what the phone's share-sheet shortcut sends as `Authorization: Bearer ytp_…`.
 _row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secrets.zsh" 600 infra ''
+
+# Caddy's Cloudflare DNS-01 token as a systemd EnvironmentFile, for the NixOS
+# flake's services.caddy on pluto (infra repo nixos/hosts/pluto.nix). Rendered
+# from the SAME shell/91_cloudflare_secrets.yaml ciphertext as the shellenv row
+# above — no second copy of the ciphertext — but SELECTED down to the one key
+# caddy reads ({env.CF_API_TOKEN} in the Caddyfile): a systemd EnvironmentFile
+# must hold exactly the vars its unit consumes, not the whole shell env.
+# Gate `pluto` (hostname), NOT `all`: fleet shell ciphertext does not imply
+# every host should gain a service env artifact, and a rotated-away CF key
+# must fail only the native caddy host's readiness — ceres keeps its own
+# existing caddy setup untouched; no fleet semantic expansion. The NixOS unit
+# points EnvironmentFile= at this user-owned path — the system manager reads
+# the file as root BEFORE the unit's sandbox/User= apply, so no root copy into
+# /etc is needed.
+_row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_API_TOKEN' "$STATE_HOME/caddy/env" 600 pluto ''
+
+# Codex CLI's OpenAI credential for service context: OPENAI_API_KEY renders to
+# the shell env only, which the paseo daemon's workers never see (401 at
+# api.openai.com, 2026-09-29). Selected single-key dotenv; the agents lane owns
+# consumption. Gate = agents checkout, honouring AGENTS_DIR.
+_row "shell/90_secrets.yaml" 'dotenv-select:OPENAI_API_KEY' "$STATE_HOME/codex/env" 600 agents ''
 
 # Services. openclaw is ceres-only (server-side config for a bridge that runs
 # on exactly one box); the immich rows are gated on the deploy dir already
@@ -377,12 +480,56 @@ LEGACY_PLAINTEXTS=(
 UNMAPPED_ALLOW=()
 UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml)
 
+# Metadata mode: emit the mapping table and exit BEFORE any preflight, so it
+# works on a box with no sops, no age key and no secrets clone yet — the test
+# harness and the bootstrap layer consume the mapping before the repo exists.
+if (( _print_map )); then
+    for _row_rec in "${MAP_ROWS[@]}"; do
+        printf '%s\n' "$_row_rec"
+    done
+    exit 0
+fi
+
+# ── Preflight (render paths only) ──────────────────────────────────────────
+
+if [[ ! -d $SECRETS_REPO ]]; then
+    printf '%s\n' "secrets-render: $SECRETS_REPO not found — nothing to render." >&2
+    printf '%s\n' "  Bootstrap it with: ./deploy.zsh --only 65_secrets" >&2
+    exit 1
+fi
+
+# NixOS (pluto): a non-login invocation — git hook, systemd transient unit, or
+# the root one-off bootstrap — may not carry the system profile or a user nix
+# profile in PATH even though sops is installed. Augment before declaring sops
+# missing; a no-op where those dirs do not exist (macOS fleet).
+if ! command -v sops > /dev/null 2>&1; then
+    for _nixpath in /run/current-system/sw/bin $HOME/.nix-profile/bin \
+                    /nix/var/nix/profiles/default/bin; do
+        [[ -d $_nixpath ]] || continue
+        [[ ":$PATH:" == *":$_nixpath:"* ]] && continue
+        PATH+=":$_nixpath"
+    done
+fi
+
+if ! command -v sops > /dev/null 2>&1; then
+    printf '%s\n' "secrets-render: sops not found in PATH; run 'mise install' first (or add sops to NixOS system packages)." >&2
+    exit 1
+fi
+
+# A box that has never completed a render gets its pre-existing targets backed
+# up before they are first overwritten (see _render_row). Captured up front so
+# writing the marker at the end cannot change the answer mid-run.
+FIRST_RENDER=0
+[[ -f $MARKER ]] || FIRST_RENDER=1
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 _gate_open() {
     case $1 in
         all)    return 0 ;;
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
+        pluto)  [[ $(hostname -s 2>/dev/null) == pluto ]] ;;
+        agents) [[ -d ${AGENTS_DIR:-$HOME/.local/agents} ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
         arr)    [[ -d $HOME/repos/deploy/arr ]] ;;
@@ -470,6 +617,14 @@ for _row_rec in "${MAP_ROWS[@]}"; do
             ;;
         dotenv)
             sops -d --output-type dotenv $src > $tmp 2>/dev/null || ok=0
+            ;;
+        dotenv-select:*)
+            # Verbatim KEY=value (systemd EnvironmentFile). The selector fails
+            # when a wanted key is absent, so a rotated-away key fails this
+            # row — and the run — instead of leaving a stale token file.
+            sops -d --output-type dotenv $src 2>/dev/null \
+                | secrets_select_dotenv ${kind#dotenv-select:} > $tmp || ok=0
+            [[ -s $tmp ]] || ok=0
             ;;
         blob)
             sops -d --input-type binary --output-type binary $src > $tmp 2>/dev/null || ok=0

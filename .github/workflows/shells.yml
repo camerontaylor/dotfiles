@@ -13,7 +13,7 @@
 # are skipped by the drivers' own --dry-run gates.
 #
 # Kept minutes-fast: no network in CI (plugin fetch never runs under
-# --dry-run), and every leg is a parse/print exercise.
+# --dry-run). Contract tests use disposable homes and synthetic tools.
 name: shells
 
 on:
@@ -49,6 +49,21 @@ jobs:
 
       - name: Agents sibling failure semantics
         run: python3 scripts/tests/test-agents-chain.py
+
+      - name: NixOS integration contracts (synthetic home and tools)
+        run: python3 scripts/tests/test-nixos-integration.py
+
+      - name: Dotfiles portability contracts (synthetic home and tools)
+        run: python3 scripts/tests/test-dotfiles-lane-contracts.py
+
+      - name: First-install agents authentication finalizer
+        run: python3 scripts/tests/test-agents-auth-finalizer.py
+
+      - name: Completion generation contracts (synthetic home and tools)
+        run: python3 scripts/tests/test-zsh-completions-fragment.py
+
+      - name: Paseo pin checker self-tests
+        run: python3 scripts/tests/check-paseo-pins.py --self-test
 
       # Ownership gate (fleet-consolidation M2): duplicate install mechanisms
       # and undeclared service artifacts fail the build. CI checks out only

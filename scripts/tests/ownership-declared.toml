@@ -157,6 +157,10 @@ writers = ["scripts/deploy.d/99_periodic.zsh"]
 manifest_ids = ["systemd-unit:system:caddy.service"]
 writers = ["scripts/setup-caddy.sh"]
 
+[service_artifact."configs/codexbar/com.github.ctaylor.codexbar-serve.plist"]
+writers = ["scripts/deploy.d/78_codexbar_serve.zsh"]
+reason = "macOS collector template rendered only for configs/codexbar/collectors.conf hosts; dotfiles owns the host-local collector installation, while agents owns its consumers and runbook. The template is not installed on Linux/NixOS. Host disposition remains in infra manifests; no collector manifest row is asserted without a live probe."
+
 [service_artifact."configs/smb-mounts/com.github.ctaylor.smb-mount.plist"]
 writers = ["scripts/deploy.d/76_smb_mounts.zsh"]
 reason = "tracked template, rendered copy (awk @HOME@/@SCRIPT@ substitution) into ~/Library/LaunchAgents on the Macs listed in configs/smb-mounts/mounts.conf only; client half of the ceres Samba share, whose server half is hand-run via setup-ceres-share.sh. No manifest_ids yet: launchd:agent:com.github.ctaylor.smb-mount only exists once a listed Mac has deployed — attest it here after saturn/neptune converge."

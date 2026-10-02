@@ -28,7 +28,11 @@
 # remote diverges loudly here on every deploy (66 semantics) — expected
 # during the carve-out.
 
-agents_repo=$HOME/.local/agents
+# AGENTS_DIR overrides the checkout location (sandboxed runs, worktrees).
+# Presence is tested with `-e .git`: a worktree keeps `.git` as a FILE
+# pointing at the common dir, so `-d` would misread a healthy worktree as
+# absent and try to clone over it (or pull the wrong target).
+agents_repo=${AGENTS_DIR:-$HOME/.local/agents}
 agents_slug=camerontaylor/agents
 agents_remote=git@github.com:camerontaylor/agents.git
 
@@ -39,7 +43,7 @@ fi
 
 # ── clone or pull the agents repo ───────────────────────────────────────────
 
-if [[ ! -d $agents_repo/.git ]]; then
+if [[ ! -e $agents_repo/.git ]]; then
     if (( DEPLOY_DRY_RUN )); then
         # Never clone under dry-run: a clone is a mutation. With no checkout
         # there is no ./deploy to hand --dry-run to either, so this one line

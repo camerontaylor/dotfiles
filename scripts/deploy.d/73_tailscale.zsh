@@ -83,6 +83,14 @@ if [[ $DOTFILES_OS == Darwin ]]; then
     fi
 else
     if ! have tailscale; then
+        # NixOS: the distro install.sh has no NixOS support and imperative
+        # packages fight the declaration. Point at the flake seam instead.
+        if [[ -e /etc/NIXOS ]]; then
+            printf '%s\n' "Tailscale not installed on NixOS — enable it declaratively, not via install.sh:"
+            printf '%s\n' "  services.tailscale.enable = true;   # in the host's flake, then nixos-rebuild"
+            printf '%s\n' "  (then re-run deploy to join the tailnet)"
+            return 0
+        fi
         printf '%s\n' "Installing Tailscale..."
         # Distro-aware install. Tailscale's install.sh handles most families
         # (apt/dnf/zypper) well, but on Arch it shells out to `pacman -S` against
