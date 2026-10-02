@@ -264,7 +264,7 @@ setopt pipefail
 #   field 2  kind  shellenv | dotenv | dotenv-select:KEYS | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | pluto | agents | immich | libris | ollie-notes | infra | arr | adguard
+#   field 5  gate  all | ceres | pluto | agents | immich | libris | ollie-notes | infra | arr | adguard | webfront
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -425,8 +425,8 @@ _row services/ollie-notes/b2-env.yaml         dotenv "$HOME/.config/ollie-notes-
 _row ssh/config             copy "$DOTFILES_DIR/ssh/config"           600 all sshlink
 _row ssh/id_ed25519.enc     blob "$DOTFILES_DIR/ssh/id_ed25519"       600 all sshlink
 _row ssh/id_ed25519.pub     copy "$DOTFILES_DIR/ssh/id_ed25519.pub"   644 all sshlink
-_row ssh/webfront_claw.enc  blob "$DOTFILES_DIR/ssh/webfront_claw"    600 all sshlink
-_row ssh/webfront_claw.pub  copy "$DOTFILES_DIR/ssh/webfront_claw.pub" 644 all sshlink
+_row ssh/webfront_claw.enc  blob "$DOTFILES_DIR/ssh/webfront_claw"    600 webfront sshlink
+_row ssh/webfront_claw.pub  copy "$DOTFILES_DIR/ssh/webfront_claw.pub" 644 webfront sshlink
 
 # portless local CA + server cert, behind the ~/.portless symlink.
 _row portless/ca.pem              copy "$DOTFILES_DIR/configs/portless/ca.pem"         644 all ''
@@ -536,6 +536,9 @@ _gate_open() {
         adguard) [[ -d $HOME/repos/deploy/adguard ]] ;;
         infra)  [[ -d $HOME/.local/infra ]] ;;
         ollie-notes) [[ $(hostname -s 2>/dev/null) == saturn ]] ;;
+        # Every host except makemake: webfront work was removed from makemake
+        # on 2026-10-02 (owner request), so its key no longer belongs there.
+        webfront) [[ $(hostname -s 2>/dev/null) != makemake ]] ;;
         *)      return 1 ;;
     esac
 }
