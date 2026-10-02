@@ -27,6 +27,10 @@ neovim = "0"
 ripgrep = "14"
 ast-grep = "0"
 gh = "2"
+# jq: macOS ships /usr/bin/jq, but NixOS (pluto) and minimal Ubuntu (triton)
+# have none — cq-toolkit's workflow-template tests exec the real jq and fail
+# 21 tests without it (pluto, 2026-10-02).
+jq = "1"
 glab = "1"
 # Needed so the global `cargo`/`rustc`/etc. mise shims actually resolve.
 # scripts/deploy.d/70_runtime_installs.zsh installs rust via rustup (not
