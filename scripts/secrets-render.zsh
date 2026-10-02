@@ -308,7 +308,7 @@ _row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secr
 # flake's services.caddy on pluto (infra repo nixos/hosts/pluto.nix). Rendered
 # from the SAME shell/91_cloudflare_secrets.yaml ciphertext as the shellenv row
 # above — no second copy of the ciphertext — but SELECTED down to the one key
-# caddy reads ({env.CF_API_TOKEN} in the Caddyfile): a systemd EnvironmentFile
+# caddy reads ({env.CF_WEDRIFID_TOKEN} in the Caddyfile): a systemd EnvironmentFile
 # must hold exactly the vars its unit consumes, not the whole shell env.
 # Gate `pluto` (hostname), NOT `all`: fleet shell ciphertext does not imply
 # every host should gain a service env artifact, and a rotated-away CF key
@@ -317,7 +317,7 @@ _row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secr
 # points EnvironmentFile= at this user-owned path — the system manager reads
 # the file as root BEFORE the unit's sandbox/User= apply, so no root copy into
 # /etc is needed.
-_row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_API_TOKEN' "$STATE_HOME/caddy/env" 600 pluto ''
+_row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_WEDRIFID_TOKEN' "$STATE_HOME/caddy/env" 600 pluto ''
 
 # Codex CLI's OpenAI credential for service context: OPENAI_API_KEY renders to
 # the shell env only, which the paseo daemon's workers never see (401 at

@@ -1,74 +1,5 @@
-# Auto-generated for ceres (mirror of pluto setup)
-# TLS termination for *.ceres.webfront.app via Cloudflare DNS-01 challenge
-# Proxies to portless on localhost:8080, rewriting Host to match portless TLD
-# t3.ceres.webfront.app is carved out to reach the T3 Code server on localhost:3773
-
-t3.ceres.webfront.app {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-
-	# T3 Code web GUI — WebSocket server bound to localhost:3773 (`t3 serve`).
-	# This specific site address wins over the *.ceres.webfront.app wildcard
-	# below, so T3 traffic reaches 3773 instead of portless on 8080.
-	# reverse_proxy upgrades WebSocket automatically; TLS here satisfies the
-	# browser mixed-content rule for an HTTPS page talking to a backend.
-	reverse_proxy localhost:3773
-}
-
-*.ceres.webfront.app {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-
-	# Rewrite Host: foo.ceres.webfront.app → foo.ceres (portless TLD = hostname)
-	reverse_proxy localhost:8080 {
-		header_up Host {http.request.host.labels.3}.ceres
-	}
-}
-
-ceres.webfront.app {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-
-	respond "ceres dev server" 200
-}
-
-# Langfuse web — telemetry.webfront.app → langfuse-web container on localhost:3000
-# CNAME on Cloudflare: telemetry.webfront.app → ceres.webfront.app
-# DNS-01 cert via Cloudflare token (same as other blocks above)
-telemetry.webfront.app {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-
-	reverse_proxy localhost:3000
-}
-
-# OpenClaw MCP bridge — claude.ai custom connector endpoint (added 2026-07-14)
-# Specific site address wins over the *.ceres.webfront.app wildcard above,
-# so this reaches the bridge on 3111 instead of portless on 8080.
-# Connector URL used in claude.ai MUST be https://mcp.ceres.webfront.app/mcp
-mcp.ceres.webfront.app {
-	tls {
-		dns cloudflare {env.CF_API_TOKEN}
-	}
-
-	# hart wiki MCP (port 3112) — /wiki/* plus its RFC 8414/9728 metadata
-	# paths. Everything else stays with the openclaw-mcp bridge on 3111,
-	# including the bridge's own /.well-known/* at the root.
-	@wiki path /wiki /wiki/* /.well-known/oauth-authorization-server/wiki* /.well-known/oauth-protected-resource/wiki*
-	handle @wiki {
-		reverse_proxy localhost:3112
-	}
-	handle {
-		reverse_proxy localhost:3111
-	}
-}
-
 # ── snippet: the wedrifid.dev tailnet gate ──────────────────────────────────
-# Every wedrifid.dev vhost below imports this, and it is the whole of the
+# Every tailnet wedrifid.dev vhost imports this, and it is the whole of the
 # security boundary. Spelled once rather than per-block because there are now
 # twenty-odd of them and a block that silently omitted it would be genuinely
 # internet-facing, not merely misconfigured:
@@ -83,8 +14,8 @@ mcp.ceres.webfront.app {
 # lacks `abort @external` and is not declared exposure="public" in the catalog.
 #
 # DNS-01 is mandatory: Let's Encrypt cannot reach a CGNAT address to do HTTP-01.
-# CF_WEDRIFID_TOKEN is the personal Cloudflare account — a different account
-# from webfront.app's CF_API_TOKEN above, and the two are not interchangeable.
+# CF_WEDRIFID_TOKEN is the personal Cloudflare account token, scoped to
+# wedrifid.dev DNS edits. All fleet TLS routes use this credential.
 (wedrifid_tailnet) {
 	tls {
 		dns cloudflare {env.CF_WEDRIFID_TOKEN}
@@ -93,12 +24,73 @@ mcp.ceres.webfront.app {
 	abort @external
 }
 
+# Hand-authored ceres ingress; fleet domain migration 2026-10-02
+# TLS termination for *.ceres.wedrifid.dev via Cloudflare DNS-01 challenge
+# Proxies to portless on localhost:8080, rewriting Host to match portless TLD
+# t3.ceres.wedrifid.dev is carved out to reach the T3 Code server on localhost:3773
+
+t3.ceres.wedrifid.dev {
+	import wedrifid_tailnet
+
+	# T3 Code web GUI — WebSocket server bound to localhost:3773 (`t3 serve`).
+	# This specific site address wins over the *.ceres.wedrifid.dev wildcard
+	# below, so T3 traffic reaches 3773 instead of portless on 8080.
+	# reverse_proxy upgrades WebSocket automatically; TLS here satisfies the
+	# browser mixed-content rule for an HTTPS page talking to a backend.
+	reverse_proxy localhost:3773
+}
+
+*.ceres.wedrifid.dev {
+	import wedrifid_tailnet
+
+	# Rewrite Host: foo.ceres.wedrifid.dev → foo.ceres (portless TLD = hostname)
+	reverse_proxy localhost:8080 {
+		header_up Host {http.request.host.labels.3}.ceres
+	}
+}
+
+ceres.wedrifid.dev {
+	import wedrifid_tailnet
+
+	respond "ceres dev server" 200
+}
+
+# Langfuse web — telemetry.wedrifid.dev → langfuse-web container on localhost:3000
+# DNS-only A record: telemetry.wedrifid.dev → 100.82.17.115
+# DNS-01 cert via Cloudflare token (same as other blocks above)
+telemetry.wedrifid.dev {
+	import wedrifid_tailnet
+
+	reverse_proxy localhost:3000
+}
+
+# OpenClaw MCP bridge — tailnet endpoint (public connectors use mcp.wedrifid.dev)
+# Specific site address wins over the *.ceres.wedrifid.dev wildcard above,
+# so this reaches the bridge on 3111 instead of portless on 8080.
+# Tailnet connector URL: https://mcp.ceres.wedrifid.dev/mcp
+mcp.ceres.wedrifid.dev {
+	import wedrifid_tailnet
+
+	route {
+		abort @external
+		# hart wiki MCP (port 3112) — /wiki/* plus its RFC 8414/9728 metadata
+		# paths. Everything else stays with the openclaw-mcp bridge on 3111,
+		# including the bridge's own /.well-known/* at the root.
+		@wiki path /wiki /wiki/* /.well-known/oauth-authorization-server/wiki* /.well-known/oauth-protected-resource/wiki*
+		handle @wiki {
+			reverse_proxy localhost:3112
+		}
+		handle {
+			reverse_proxy localhost:3111
+		}
+	}
+}
+
 # Immich — tailnet-only (added 2026-08-26, photo-steward).
 # Unlike mcp/fred/miniflux.wedrifid.dev (orange-cloud CNAMEs into the
 # Cloudflare Tunnel), this is a grey-cloud A record straight at ceres's
 # Tailscale IP: Cloudflare answers DNS only and never proxies traffic.
-# Separate token because wedrifid.dev is the personal Cloudflare account
-# while webfront.app (CF_API_TOKEN above) is a different account entirely.
+# Uses the same personal-account DNS token as the fleet development routes.
 # DNS-01 is mandatory: Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
 immich.wedrifid.dev {
 	import wedrifid_tailnet
@@ -117,7 +109,7 @@ immich.wedrifid.dev {
 # upstream moved to neptune 2026-09-10). Same shape as immich.wedrifid.dev
 # above: grey-cloud A record at ceres's Tailscale IP, DNS-01 cert (Let's
 # Encrypt cannot reach 100.82.17.115), personal-account token because
-# wedrifid.dev != webfront.app.
+# DNS-01 uses the wedrifid.dev-scoped token.
 # Backend is the com.github.ctaylor.codexbar-serve LaunchAgent on neptune
 # (100.84.239.15, direct LAN peer of ceres), bound to its Tailscale address.
 # The collector lives on a Mac because CodexBar's cookie-based sources are
@@ -193,7 +185,7 @@ appreciation.wedrifid.dev {
 # Plex Media Server — tailnet-only (added 2026-09-11). Backend on makemake.
 # Same shape as immich.wedrifid.dev above: grey-cloud A record straight at
 # ceres's Tailscale IP, personal-account token because wedrifid.dev is a
-# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# personal Cloudflare account. DNS-01 is mandatory —
 # Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
 #
 # NOTE: this vhost is for browsers. The Plex *apps* do not use it; they pick
@@ -232,7 +224,7 @@ plex.wedrifid.dev {
 # Audiobookshelf — audiobook server on makemake, tailnet-only (added 2026-09-17).
 # Same shape as immich/plex.wedrifid.dev above: grey-cloud A record straight at
 # ceres's Tailscale IP, personal-account token because wedrifid.dev is a
-# different Cloudflare account from webfront.app. DNS-01 is mandatory —
+# personal Cloudflare account. DNS-01 is mandatory —
 # Let's Encrypt cannot reach 100.82.17.115 (CGNAT).
 #
 # SINGLE upstream, wired LAN only (changed same day, owner direction): the
@@ -349,11 +341,14 @@ bindery.wedrifid.dev {
 
 stash.wedrifid.dev {
 	import wedrifid_tailnet
-	handle_path /ai-overhaul/* {
-		reverse_proxy 100.87.185.24:4153
-	}
-	handle {
-		reverse_proxy 100.87.185.24:9999
+	route {
+		abort @external
+		handle_path /ai-overhaul/* {
+			reverse_proxy 100.87.185.24:4153
+		}
+		handle {
+			reverse_proxy 100.87.185.24:9999
+		}
 	}
 }
 

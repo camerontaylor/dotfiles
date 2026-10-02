@@ -1,9 +1,9 @@
 # ZeroTier → Tailscale migration runbook
 
 Migrate the dev fleet from ZeroTier to Tailscale **drop-in** (keep the
-`*.webfront.app` names; re-point their A records) using a
+`*.wedrifid.dev` names; re-point their A records) using a
 **coexist-then-cut-over** rollout. Integrations: MagicDNS (alongside
-webfront.app), a subnet router for LAN-only boxes, and Tailscale SSH + ACLs.
+wedrifid.dev), a subnet router for LAN-only boxes, and Tailscale SSH + ACLs.
 
 Spec: `.omc/specs/deep-dive-migrate-from-zerotier-to.md`
 Trace evidence: `.omc/specs/deep-dive-trace-migrate-from-zerotier-to.md`
@@ -38,7 +38,7 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
 2. 🔒 **Create the tailnet auth key** (admin console → Settings → Keys):
    reusable, non-ephemeral, tagged `tag:fleet`. Copy the `tskey-auth-…` value.
 3. 🔒 **Enable MagicDNS** (admin console → DNS → enable MagicDNS). This is
-   additive; it does not affect the public `*.webfront.app` zone.
+   additive; it does not affect the public `*.wedrifid.dev` zone.
 4. 🔒 **Author the ACL policy** (admin console → Access controls). Minimal start:
    ```jsonc
    {
@@ -134,20 +134,20 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
 > prior personal login still held the name). To get clean MagicDNS names:
 > admin console → **Machines** → delete each stale/offline duplicate → then on
 > the live node, **⋯ → Edit machine name** and rename `<name>-1` → `<name>`.
-> MagicDNS updates immediately. Re-point `*.webfront.app` at the node's `100.x`
+> MagicDNS updates immediately. Re-point `*.wedrifid.dev` at the node's `100.x`
 > IP regardless of its MagicDNS label (the A record points at the IP, not the name).
 
 ## Phase 4 — Cut over (the switch; still reversible until Phase 5)
 
 10. 🔒 **Re-point Cloudflare A records** for
-    `{pluto,make,neptune,saturn,ceres,eris}.webfront.app` from their ZeroTier
+    `{pluto,make,neptune,saturn,ceres,eris}.wedrifid.dev` from their ZeroTier
     `10.132.32.x` to the captured Tailscale `100.x` addresses. Lower TTL first
     (e.g. 60s) a day ahead so propagation is quick and reversible.
 11. ✅ Verify name-based access end to end:
     ```sh
-    dig +short ceres.webfront.app            # → 100.x
+    dig +short ceres.wedrifid.dev            # → 100.x
     ssh ceres                                # key-based SSH over the new IP still works
-    curl -fsS https://ceres.webfront.app:8787/…   # Portkey/CCR gateway reachable
+    curl -fsS https://ceres.wedrifid.dev:8787/…   # Portkey/CCR gateway reachable
     ```
     Confirm Caddy TLS (`scripts/setup-caddy.sh`) and `wake-peers`
     (`76_wake_peers.zsh`) still function — both follow DNS, so the re-point is
@@ -180,7 +180,7 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
     - Linux: stop/disable `zerotier-one`, then the distro's uninstall
 16. 🔒 Leave the ZeroTier network/controller in place until you are certain, then
     delete it. ✅ Final check: a FRESH host running `./deploy.zsh` joins the
-    tailnet, `tailscale ssh ceres` works, every `*.webfront.app` fleet name
+    tailnet, `tailscale ssh ceres` works, every `*.wedrifid.dev` fleet name
     resolves to `100.x`, and `./deploy.zsh --only 85_verify_tools` stays green.
 
 ---

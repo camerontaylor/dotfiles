@@ -217,7 +217,7 @@ repos with no deployer. M2 proceeds.
   store: ~61G of leftovers, never backed up; the runbook's §8 not-carried
   list is authoritative). What crosses the reinstall is caddy + portless
   only, so any port a worker starts becomes
-  `https://<name>.pluto.webfront.app` on the LAN/tailnet. Historical note: the tracked
+  `https://<name>.pluto.wedrifid.dev` on the LAN/tailnet. Historical note: the tracked
   `configs/caddy/caddy.service` header says "mirrored from pluto" — it has
   run services before.
 - **eris stays macOS** — Ollie uses it (iPad-familiar UI is worth the

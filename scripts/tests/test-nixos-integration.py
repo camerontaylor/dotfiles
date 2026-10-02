@@ -203,7 +203,7 @@ class NixosIntegration(unittest.TestCase):
         (self.bin / "sops").unlink()
         before = self.snapshot_home()
         output = self.run_shell(SHELLS[1], '"$1" "$2" --print-map', SHELLS[1], renderer)
-        self.assertIn("dotenv-select:CF_API_TOKEN", output)
+        self.assertIn("dotenv-select:CF_WEDRIFID_TOKEN", output)
         self.assertIn(str(self.home / ".local/state/caddy/env"), output)
         self.assertEqual(self.log(), "")
         self.assertEqual(before, self.snapshot_home())
@@ -211,13 +211,13 @@ class NixosIntegration(unittest.TestCase):
     def test_renderer_selector_preserves_values_and_requires_keys(self):
         renderer = self.copy("scripts/secrets-render.zsh")
         for source, expected, status in (
-            ("OTHER=ignored\nCF_API_TOKEN=synthetic=fixture\nCF_API_TOKEN=duplicate\n",
-             "CF_API_TOKEN=synthetic=fixture\n", 0),
-            ("CF_API_TOKEN=synthetic fixture", "CF_API_TOKEN=synthetic fixture\n", 0),
+            ("OTHER=ignored\nCF_WEDRIFID_TOKEN=synthetic=fixture\nCF_WEDRIFID_TOKEN=duplicate\n",
+             "CF_WEDRIFID_TOKEN=synthetic=fixture\n", 0),
+            ("CF_WEDRIFID_TOKEN=synthetic fixture", "CF_WEDRIFID_TOKEN=synthetic fixture\n", 0),
             ("OTHER=ignored\n", "", 1),
         ):
             with self.subTest(source=source):
-                result = subprocess.run([SHELLS[1], str(renderer), "--select-dotenv", "CF_API_TOKEN"],
+                result = subprocess.run([SHELLS[1], str(renderer), "--select-dotenv", "CF_WEDRIFID_TOKEN"],
                     input=source, env=self.env, text=True, capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, status, result.stderr)
                 self.assertEqual(result.stdout, expected)

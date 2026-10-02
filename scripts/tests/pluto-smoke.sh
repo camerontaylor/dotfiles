@@ -72,8 +72,8 @@ check 'atop rotation timer active' systemctl is-active atop-rotate.timer
 check 'Paseo watchdog timer enabled' systemctl is-enabled paseo-watchdog.timer
 check 'Paseo watchdog timer active' systemctl is-active paseo-watchdog.timer
 check 'Paseo watchdog last run succeeded' bash -c '[[ $(systemctl show paseo-watchdog.service -p Result --value) == success && $(systemctl show paseo-watchdog.service -p ExecMainStatus --value) == 0 && $(systemctl show paseo-watchdog.service -p ExecMainStartTimestampMonotonic --value) -gt 0 ]]'
-check 'Caddy serves verified HTTPS locally' bash -c '[[ $(curl -fsS --max-time 15 --resolve pluto.webfront.app:443:127.0.0.1 -o /dev/null -w "%{http_code}" https://pluto.webfront.app) == 200 ]]'
-check 'Python verifies HTTPS with the default CA bundle' python -c 'import socket,ssl; connection=socket.create_connection(("127.0.0.1",443),timeout=15); ssl.create_default_context().wrap_socket(connection,server_hostname="pluto.webfront.app").close()'
+check 'Caddy serves verified HTTPS over the tailnet' bash -c '[[ $(curl -fsS --max-time 15 -o /dev/null -w "%{http_code}" https://pluto.wedrifid.dev) == 200 ]]'
+check 'Python verifies HTTPS with the default CA bundle' python -c 'import socket,ssl; connection=socket.create_connection(("pluto.wedrifid.dev",443),timeout=15); ssl.create_default_context().wrap_socket(connection,server_hostname="pluto.wedrifid.dev").close()'
 check 'Paseo CLI and daemon pins agree' python "$dotfiles_root/scripts/tests/check-paseo-pins.py" --dotfiles "$dotfiles_root" --infra "$infra_root"
 check 'running Paseo daemon has the declared version' bash -o pipefail -c 'expected=$(python "$1/scripts/tests/check-paseo-pins.py" --dotfiles "$1" --infra "$2" --print-daemon-tool) || exit; paseo daemon status | grep -Fx "daemonVersion: ${expected##*@}"' smoke "$dotfiles_root" "$infra_root"
 check 'Paseo codex policy plugin is running' bash -o pipefail -c 'paseo plugin ls --json | python -c '\''import json,sys; rows=json.load(sys.stdin); sys.exit(0 if any(r.get("id")=="codex-policy" and r.get("enabled") and r.get("status")=="running" for r in rows) else 1)'\'''

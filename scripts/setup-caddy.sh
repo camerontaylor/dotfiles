@@ -7,8 +7,7 @@ set -euo pipefail
 # not this script. The script INSTALLS the tracked file; it no longer generates
 # one. Until 2026-08-22 it generated a three-site config inline that had
 # silently diverged from the five-site config live on ceres, so re-running it
-# would have deleted the telemetry.webfront.app and mcp.ceres.webfront.app
-# routes without a word. Read docs/caddy-ingress.md before running this on a
+# would have deleted telemetry and MCP routes without a word. Read docs/caddy-ingress.md before running this on a
 # machine that is already serving, and use --dry-run first.
 #
 # Usage: setup-caddy.sh [--dry-run] [-y|--yes]
@@ -23,10 +22,10 @@ set -euo pipefail
 #
 # Prerequisites:
 #   1. Set the machine's hostname.
-#   2. CF_API_TOKEN: exported by any new shell (89_secrets_loader), or
+#   2. CF_WEDRIFID_TOKEN: exported by any new shell (89_secrets_loader), or
 #      source "$XDG_STATE_HOME"/secrets/zsh/91_cloudflare_secrets.zsh
 #   3. Install portless: mise use -g npm:portless
-#   4. Create Cloudflare DNS records for {hostname}.webfront.app and wildcard.
+#   4. Create Cloudflare DNS records for {hostname}.wedrifid.dev and wildcard.
 
 OS=$(uname -s)
 HOSTNAME=$(hostname -s 2>/dev/null || hostname)
@@ -52,7 +51,7 @@ for arg in "$@"; do
       ;;
   esac
 done
-DOMAIN="${HOSTNAME}.webfront.app"
+DOMAIN="${HOSTNAME}.wedrifid.dev"
 RUN_USER=${SUDO_USER:-$(id -un)}
 if [[ ! "$RUN_USER" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "ERROR: unsafe user name: $RUN_USER"
@@ -253,13 +252,13 @@ launchd_job_running() {
 }
 
 preflight() {
-  if [[ -z "${CF_API_TOKEN:-}" ]]; then
-    echo "ERROR: CF_API_TOKEN not set. Open a new shell, or run:"
+  if [[ -z "${CF_WEDRIFID_TOKEN:-}" ]]; then
+    echo "ERROR: CF_WEDRIFID_TOKEN not set. Open a new shell, or run:"
     echo "  source \"\${XDG_STATE_HOME:-\$HOME/.local/state}\"/secrets/zsh/91_cloudflare_secrets.zsh"
     exit 1
   fi
-  if [[ ! "$CF_API_TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then
-    echo "ERROR: CF_API_TOKEN contains unsupported characters for the service env file."
+  if [[ ! "$CF_WEDRIFID_TOKEN" =~ ^[A-Za-z0-9._-]+$ ]]; then
+    echo "ERROR: CF_WEDRIFID_TOKEN contains unsupported characters for the service env file."
     exit 1
   fi
 
@@ -447,8 +446,10 @@ write_caddyfile() {
 # t3.$DOMAIN is carved out to reach the T3 Code server on localhost:3773
 
 t3.$DOMAIN {
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
 	tls {
-		dns cloudflare {env.CF_API_TOKEN}
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
 	}
 
 	# T3 Code web GUI — WebSocket server bound to localhost:3773 (\`t3 serve\`).
@@ -460,8 +461,10 @@ t3.$DOMAIN {
 }
 
 *.$DOMAIN {
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
 	tls {
-		dns cloudflare {env.CF_API_TOKEN}
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
 	}
 
 	reverse_proxy localhost:8080 {
@@ -470,8 +473,10 @@ t3.$DOMAIN {
 }
 
 $DOMAIN {
+	@external not remote_ip 100.64.0.0/10 fd7a:115c:a1e0::/48
+	abort @external
 	tls {
-		dns cloudflare {env.CF_API_TOKEN}
+		dns cloudflare {env.CF_WEDRIFID_TOKEN}
 	}
 
 	respond "$HOSTNAME dev server" 200
@@ -481,16 +486,14 @@ EOF
 
 write_caddy_env() {
   ensure_caddy_config_dir
-  # This generator only owns CF_API_TOKEN. Other keys live here too -- notably
-  # CF_WEDRIFID_TOKEN for the personal wedrifid.dev Cloudflare account, which
-  # exists NOWHERE ELSE. Truncating this file would destroy it, so carry over
-  # every key we do not manage.
+  # This generator owns CF_WEDRIFID_TOKEN. Preserve every unrelated key,
+  # including the dashboard bearer and any customer-zone credentials.
   local preserved=""
   if [[ -f "$CADDY_ENV_PATH" ]]; then
-    preserved=$(sudo grep -vE '^(CF_API_TOKEN=|#|$)' "$CADDY_ENV_PATH" 2>/dev/null || true)
+    preserved=$(sudo grep -vE '^(CF_WEDRIFID_TOKEN=|#|$)' "$CADDY_ENV_PATH" 2>/dev/null || true)
   fi
   {
-    printf 'CF_API_TOKEN=%s\n' "${CF_API_TOKEN}"
+    printf 'CF_WEDRIFID_TOKEN=%s\n' "${CF_WEDRIFID_TOKEN}"
     [[ -n "$preserved" ]] && printf '%s\n' "$preserved"
   } | sudo tee "$CADDY_ENV_PATH" > /dev/null
   sudo chmod 600 "$CADDY_ENV_PATH"

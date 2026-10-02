@@ -6,7 +6,7 @@ set -euo pipefail
 #
 # Topology (mirrors the portless daemon in setup-caddy.sh):
 #   t3 binds 127.0.0.1:3773 only. Caddy terminates TLS on :443 and reverse-
-#   proxies t3.<host>.webfront.app -> localhost:3773 over the Tailscale mesh.
+#   proxies t3.<host>.wedrifid.dev -> localhost:3773 over the Tailscale mesh.
 #   Nothing exposes 3773 directly; add the t3.<host> Caddy block first.
 #
 #   Linux  -> systemd service (runs as the login user, mise shims on PATH)
@@ -19,7 +19,7 @@ set -euo pipefail
 # EX_CONFIG (78) and zero log output. So t3's daemon logs go under the user's
 # home ($T3_LOG_DIR), exactly like the portless fix.
 #
-# Prereqs: mise (for the t3 CLI), and the t3.<host>.webfront.app Caddy block.
+# Prereqs: mise (for the t3 CLI), and the t3.<host>.wedrifid.dev Caddy block.
 
 T3_PORT=3773
 T3_HOST=127.0.0.1
@@ -276,7 +276,7 @@ verify() {
 
   echo ""
   echo "t3-serve is up on $T3_HOST:$T3_PORT for $HOSTNAME"
-  echo "Reachable via Caddy at: https://t3.$HOSTNAME.webfront.app"
+  echo "Reachable via Caddy at: https://t3.$HOSTNAME.wedrifid.dev"
   echo ""
   if [[ "$OS" == "Linux" ]]; then
     echo "  Service:  sudo systemctl status t3-serve"
