@@ -47,11 +47,14 @@ if [[ ! -x $agents_auth_dir/scripts/setup-codex-auth.sh ]]; then
     return 0
 fi
 
-# Warm steady state: env rendered AND an auth cache exists (-e OR -L: even a
-# dangling owner symlink means the helper would only preserve-and-exit, so
-# dispatching would be duplicate work; preservation itself is helper-owned).
-if [[ -f $agents_auth_env ]] && { [[ -e $agents_auth_home/auth.json ]] || [[ -L $agents_auth_home/auth.json ]]; }; then
-    printf '%s\n' "Codex env + auth cache present; skipping auth finalizer"
+# Warm steady state: an auth cache exists (-e OR -L: even a dangling owner
+# symlink means the helper would only preserve-and-exit, so dispatching would
+# be duplicate work; preservation itself is helper-owned). The rendered env
+# is NOT required: since 2026-10-02 Codex uses ChatGPT OAuth and the renderer
+# no longer produces codex/env, so requiring it made every deploy on an
+# OAuth host re-render and warn.
+if [[ -e $agents_auth_home/auth.json ]] || [[ -L $agents_auth_home/auth.json ]]; then
+    printf '%s\n' "Codex auth cache present; skipping auth finalizer"
     return 0
 fi
 

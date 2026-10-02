@@ -319,11 +319,11 @@ _row "shell/97_ytptube_secrets.yaml" shellenv "$RENDER_STATE/zsh/97_ytptube_secr
 # /etc is needed.
 _row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_WEDRIFID_TOKEN' "$STATE_HOME/caddy/env" 600 pluto ''
 
-# Codex CLI's OpenAI credential for service context: OPENAI_API_KEY renders to
-# the shell env only, which the paseo daemon's workers never see (401 at
-# api.openai.com, 2026-09-29). Selected single-key dotenv; the agents lane owns
-# consumption. Gate = agents checkout, honouring AGENTS_DIR.
-_row "shell/90_secrets.yaml" 'dotenv-select:OPENAI_API_KEY' "$STATE_HOME/codex/env" 600 agents ''
+# RETIRED 2026-10-02: the Codex API-key row ($STATE_HOME/codex/env, selected
+# from OPENAI_API_KEY). Codex authenticates with ChatGPT OAuth (auth_mode
+# chatgpt in ~/.codex/auth.json), and the key was removed from 90_secrets.yaml
+# as invalid (secrets 5f5b007). The selector fails when its key is absent, so
+# keeping the row failed every render on every agents host.
 
 # Services. openclaw is ceres-only (server-side config for a bridge that runs
 # on exactly one box); the immich rows are gated on the deploy dir already

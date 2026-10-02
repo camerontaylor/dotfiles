@@ -126,6 +126,17 @@ class AgentsAuthFinalizer(unittest.TestCase):
                 self.run_fragment(shell)
                 self.assertEqual(self.log(), [])
 
+    def test_auth_cache_without_env_skips(self):
+        # ChatGPT OAuth host (2026-10-02): auth.json present, no rendered
+        # codex/env. Must not re-render or dispatch on every deploy.
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                self.reset_sandbox()
+                self.make_env_and_auth()
+                (self.state / "codex/env").unlink()
+                self.run_fragment(shell)
+                self.assertEqual(self.log(), [])
+
     def test_warm_dangling_owner_symlink_skips(self):
         for shell in SHELLS:
             with self.subTest(shell=shell):

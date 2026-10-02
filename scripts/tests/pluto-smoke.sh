@@ -54,7 +54,6 @@ check 'agents reserved env slot' test -L "$dotfiles_root/zsh/env.d/96_agents.zsh
 check 'secrets render readiness marker' test -s "$state_root/secrets-render-ok"
 check 'secrets marker matches deployed checkouts' bash -c 'grep -Fxq "dotfiles_head=$(git -C "$1" rev-parse HEAD)" "$3" && grep -Fxq "secrets_head=$(git -C "$2" rev-parse HEAD)" "$3"' smoke "$dotfiles_root" "$secrets_root" "$state_root/secrets-render-ok"
 check 'Caddy environment is private' bash -c 'file=$1; [[ -s $file && $(stat -c %a "$file") == 600 ]]' smoke "$state_root/caddy/env"
-check 'Codex selected credential is private' bash -c 'file=$1; [[ -s $file && $(stat -L -c %a "$file") == 600 ]]' smoke "$state_root/codex/env"
 check 'Codex auth cache is private' bash -c 'file=$1; [[ -s $file && $(stat -L -c %a "$file") == 600 ]]' smoke "${CODEX_HOME:-$HOME/.codex}/auth.json"
 check 'rendered secrets are private' bash -c 'file=$1; [[ -s $file && $(stat -c %a "$file") == 600 ]]' smoke "$state_root/secrets/zsh/90_secrets.zsh"
 
