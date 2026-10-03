@@ -390,6 +390,10 @@ _row services/arr/slskd-env.yaml          dotenv "$HOME/repos/deploy/arr/.slskd-
 # state dir, NOT into ~/.local/infra — that repo's rule is "no secrets ever",
 # gitignored or not.
 _row services/router/admin-env.yaml       dotenv "$STATE_HOME/router/admin-env"        600 infra  ''
+# Rented-GPU provider API keys (added 2026-10-03, owner instruction). Read as a
+# key FILE by infra bin/jasna-cloud-watch and the plan-003 pod launches. The key
+# never goes to a pod, a template or a report. Gated `infra` like the router row.
+_row services/cloud-gpu/runpod-api-key.enc blob  "$STATE_HOME/cloud-gpu/runpod-api-key"     600 infra  ''
 # AdGuard Home's web-UI admin login (fleet DNS resolver on makemake, added
 # 2026-09-18). Agent-generated credential, so it lands here rather than in the
 # deploy tree -- the deploy dir is not a git repo and is backed up by nothing.
