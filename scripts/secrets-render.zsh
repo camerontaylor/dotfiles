@@ -394,6 +394,7 @@ _row services/router/admin-env.yaml       dotenv "$STATE_HOME/router/admin-env" 
 # key FILE by infra bin/jasna-cloud-watch and the plan-003 pod launches. The key
 # never goes to a pod, a template or a report. Gated `infra` like the router row.
 _row services/cloud-gpu/runpod-api-key.enc blob  "$STATE_HOME/cloud-gpu/runpod-api-key"     600 infra  ''
+_row services/cloud-gpu/vast-api-key.enc   blob  "$STATE_HOME/cloud-gpu/vast-api-key"       600 infra  ''
 # AdGuard Home's web-UI admin login (fleet DNS resolver on makemake, added
 # 2026-09-18). Agent-generated credential, so it lands here rather than in the
 # deploy tree -- the deploy dir is not a git repo and is backed up by nothing.
