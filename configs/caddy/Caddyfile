@@ -96,10 +96,10 @@ immich.wedrifid.dev {
 	import wedrifid_tailnet
 
 	# Backend moved to makemake 2026-09-08 (M5). Wired office LAN first
-	# (10.77.0.2 — same switch, line rate), makemake's tailnet IP as
+	# (makemake.local.wedrifid.dev -> 10.77.0.2 via AdGuard, line rate), makemake's tailnet IP as
 	# fallback if the cable is out. lb_policy first sends all traffic to
 	# the wired upstream; fail_duration marks it down for 30s on failure.
-	reverse_proxy 10.77.0.2:2283 100.87.185.24:2283 {
+	reverse_proxy makemake.local.wedrifid.dev:2283 100.87.185.24:2283 {
 		lb_policy first
 		fail_duration 30s
 	}
@@ -195,7 +195,7 @@ appreciation.wedrifid.dev {
 plex.wedrifid.dev {
 	import wedrifid_tailnet
 
-	# Wired office LAN first (10.77.0.2 — same switch, line rate),
+	# Wired office LAN first (makemake.local.wedrifid.dev -> 10.77.0.2),
 	# makemake's tailnet IP as fallback if the cable is out. Identical
 	# upstream pair and policy to immich above.
 	# Bare / is an authenticated PMS API endpoint (401), not the web app, so a
@@ -206,7 +206,7 @@ plex.wedrifid.dev {
 	# fragment is what pins the app to THIS server. Without it the web app
 	# loads with no server selected and shows Plex's own catalog instead.
 	redir / /web 302
-	reverse_proxy 10.77.0.2:32400 100.87.185.24:32400 {
+	reverse_proxy makemake.local.wedrifid.dev:32400 100.87.185.24:32400 {
 		lb_policy first
 		fail_duration 30s
 		# Plex builds redirect URLs from the scheme it sees. Caddy
@@ -234,7 +234,9 @@ plex.wedrifid.dev {
 # via this vhost (immich/plex keep a fallback; ABS deliberately does not).
 abs.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 10.77.0.2:13378 {
+	reverse_proxy makemake.local.wedrifid.dev:13378 100.87.185.24:13378 {
+		lb_policy first
+		fail_duration 30s
 		# ABS keeps the web UI live over a long-lived WebSocket (library
 		# scans, playback progress) and serves audiobook files as long
 		# streaming responses; disable response buffering so both arrive
@@ -310,43 +312,67 @@ fleet.wedrifid.dev {
 
 seerr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:5055
+	reverse_proxy makemake.local.wedrifid.dev:5055 100.87.185.24:5055 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 sonarr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8989
+	reverse_proxy makemake.local.wedrifid.dev:8989 100.87.185.24:8989 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 radarr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:7878
+	reverse_proxy makemake.local.wedrifid.dev:7878 100.87.185.24:7878 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 whisparr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:6969
+	reverse_proxy makemake.local.wedrifid.dev:6969 100.87.185.24:6969 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 lidarr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8686
+	reverse_proxy makemake.local.wedrifid.dev:8686 100.87.185.24:8686 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # Host port 6768 -> container 6767: this host's Paseo Daemon already owns 6767.
 bazarr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:6768
+	reverse_proxy makemake.local.wedrifid.dev:6768 100.87.185.24:6768 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 prowlarr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:9696
+	reverse_proxy makemake.local.wedrifid.dev:9696 100.87.185.24:9696 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 bindery.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8787
+	reverse_proxy makemake.local.wedrifid.dev:8787 100.87.185.24:8787 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # ── libraries ──────────────────────────────────────────────────────────────
@@ -356,10 +382,16 @@ stash.wedrifid.dev {
 	route {
 		abort @external
 		handle_path /ai-overhaul/* {
-			reverse_proxy 100.87.185.24:4153
+			reverse_proxy makemake.local.wedrifid.dev:4153 100.87.185.24:4153 {
+				lb_policy first
+				fail_duration 30s
+			}
 		}
 		handle {
-			reverse_proxy 100.87.185.24:9999
+			reverse_proxy makemake.local.wedrifid.dev:9999 100.87.185.24:9999 {
+				lb_policy first
+				fail_duration 30s
+			}
 		}
 	}
 }
@@ -370,7 +402,10 @@ stash.wedrifid.dev {
 # raising one — it is not a thing to copy here.)
 books.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8083
+	reverse_proxy makemake.local.wedrifid.dev:8083 100.87.185.24:8083 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # ── downloaders ────────────────────────────────────────────────────────────
@@ -391,7 +426,9 @@ books.wedrifid.dev {
 # container recreate. Fixing it at the ingress keeps the blast radius here.
 qbit.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8080 {
+	reverse_proxy makemake.local.wedrifid.dev:8080 100.87.185.24:8080 {
+		lb_policy first
+		fail_duration 30s
 		header_up Host {upstream_hostport}
 		header_up -Origin
 		header_up -Referer
@@ -400,7 +437,10 @@ qbit.wedrifid.dev {
 
 qui.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:7476
+	reverse_proxy makemake.local.wedrifid.dev:7476 100.87.185.24:7476 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # slskd's UI is driven by SignalR and shows live transfer progress; where that
@@ -408,27 +448,36 @@ qui.wedrifid.dev {
 # progress arrive in lumps.
 slskd.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:5030 {
+	reverse_proxy makemake.local.wedrifid.dev:5030 100.87.185.24:5030 {
+		lb_policy first
+		fail_duration 30s
 		flush_interval -1
 	}
 }
 
 soularr.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8265 {
+	reverse_proxy makemake.local.wedrifid.dev:8265 100.87.185.24:8265 {
+		lb_policy first
+		fail_duration 30s
 		flush_interval -1
 	}
 }
 
 pyload.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8000
+	reverse_proxy makemake.local.wedrifid.dev:8000 100.87.185.24:8000 {
+		lb_policy first
+		fail_duration 30s
+	}
 }
 
 # YTPTube streams download progress to the page as it happens.
 ytptube.wedrifid.dev {
 	import wedrifid_tailnet
-	reverse_proxy 100.87.185.24:8081 {
+	reverse_proxy makemake.local.wedrifid.dev:8081 100.87.185.24:8081 {
+		lb_policy first
+		fail_duration 30s
 		flush_interval -1
 	}
 }
