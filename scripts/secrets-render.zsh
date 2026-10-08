@@ -395,6 +395,7 @@ _row services/router/admin-env.yaml       dotenv "$STATE_HOME/router/admin-env" 
 # never goes to a pod, a template or a report. Gated `infra` like the router row.
 _row services/cloud-gpu/runpod-api-key.enc blob  "$STATE_HOME/cloud-gpu/runpod-api-key"     600 infra  ''
 _row services/cloud-gpu/vast-api-key.enc   blob  "$STATE_HOME/cloud-gpu/vast-api-key"       600 infra  ''
+_row services/cloud-gpu/cloudflare-workers-api-token.enc blob "$STATE_HOME/cloud-gpu/cloudflare-workers-api-token" 600 infra ''
 # B2 staging key: media goes here first, pods pull via time-limited download auth.
 _row services/cloud-gpu/b2-scratch-env.yaml dotenv "$STATE_HOME/cloud-gpu/b2-scratch-env"   600 infra  ''
 # AdGuard Home's web-UI admin login (fleet DNS resolver on makemake, added
