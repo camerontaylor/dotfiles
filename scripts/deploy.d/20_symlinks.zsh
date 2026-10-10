@@ -2,6 +2,9 @@
 
 printf '%s\n' "Linking config files..."
 deploy_ln -sfn $SCRIPT_DIR/configs/bat/config $XDG_CONFIG_HOME/bat/config
+deploy_mkdir -p $XDG_CONFIG_HOME/lsd
+deploy_ln -sfn $SCRIPT_DIR/configs/lsd/config.yaml $XDG_CONFIG_HOME/lsd/config.yaml
+deploy_ln -sfn $SCRIPT_DIR/configs/lsd/colors.yaml $XDG_CONFIG_HOME/lsd/colors.yaml
 deploy_ln -sfn $SCRIPT_DIR/nvim/init.lua $XDG_CONFIG_HOME/nvim/init.lua
 deploy_ln -sfn $SCRIPT_DIR/nvim/init $XDG_CONFIG_HOME/nvim/plugin/init
 deploy_ln -sfn $SCRIPT_DIR/nvim/lsp $XDG_CONFIG_HOME/nvim/after/lsp

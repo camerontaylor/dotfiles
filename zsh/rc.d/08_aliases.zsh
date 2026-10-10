@@ -58,16 +58,23 @@ gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 (( ${+commands[tmux]} )) && alias stmux="tmux new-session 'sudo --login'"
 (( ${+commands[wget]} )) && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
 (( ${+commands[gh]} )) && alias gh-pr="$DOTFILES/scripts/gh-pr.sh"
-# Prefer eza over ls when available
-if (( ${+commands[eza]} )); then
-    alias ls="eza --group-directories-first --color=auto --hyperlink"
-    alias ll="eza -l --git --almost-all --group-directories-first"
-    alias lln="eza -l --git --almost-all --group-directories-first -snew"
-    alias tree="eza --tree --git-ignore"
+# Listing defaults live in configs/lsd/config.yaml and also apply to direct lsd.
+if (( ${+commands[lsd]} )); then
+    alias ls="lsd"
+    alias ll="lsd -l --git"
+    alias la="lsd -lA --git"
+    alias lln="lsd -lAtr --git" # include hidden entries; newest last per group
+    alias lt="lsd --tree --depth 2"
+    alias lS="lsd -lS --total-size" # opt-in recursive sizes; slow on large trees
 else
-    alias ls="ls --group-directories-first --color=auto --hyperlink=auto --classify"
-    alias ll="LC_COLLATE=C ls -l -v --almost-all --human-readable"
-    alias lln="ls -l -t -r --almost-all --human-readable"
+    if [[ $OSTYPE == darwin* ]] && (( ! ${+commands[gls]} )); then
+        alias ls="ls -G"
+    else
+        gnu_alias ls --color=auto
+    fi
+    alias ll="ls -lh"
+    alias la="ls -lhA"
+    alias lln="ls -lhAtr"
 fi
 gnu_alias diff --color=auto --new-file --text --recursive --unified
 

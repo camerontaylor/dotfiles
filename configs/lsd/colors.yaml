@@ -1,0 +1,39 @@
+# Solarized Dark metadata; filenames also use the shell's Solarized LS_COLORS.
+user: '#839496'
+group: '#93a1a1'
+permission:
+  read: '#859900'
+  write: '#b58900'
+  exec: '#dc322f'
+  exec-sticky: '#d33682'
+  no-access: '#586e75'
+  octal: '#2aa198'
+  acl: '#2aa198'
+  context: '#268bd2'
+date:
+  hour-old: '#859900'
+  day-old: '#2aa198'
+  older: '#839496'
+size:
+  none: '#586e75'
+  small: '#839496'
+  medium: '#b58900'
+  large: '#cb4b16'
+inode:
+  valid: '#6c71c4'
+  invalid: '#586e75'
+links:
+  valid: '#6c71c4'
+  invalid: '#586e75'
+tree-edge: '#586e75'
+git-status:
+  default: '#586e75'
+  unmodified: '#586e75'
+  ignored: '#586e75'
+  new-in-index: '#859900'
+  new-in-workdir: '#859900'
+  typechange: '#b58900'
+  deleted: '#dc322f'
+  renamed: '#2aa198'
+  modified: '#b58900'
+  conflicted: '#dc322f'

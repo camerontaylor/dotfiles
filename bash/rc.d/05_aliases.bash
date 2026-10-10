@@ -38,12 +38,24 @@ _gnu_alias grep --color=auto --binary-files=without-match --devices=skip
 _gnu_alias diff --color=auto --new-file --text --recursive --unified
 _gnu_alias rm -I --preserve-root=all
 
-command -v eza >/dev/null 2>&1 && {
-    alias ls="eza --group-directories-first --color=auto --hyperlink"
-    alias ll="eza -l --git --almost-all --group-directories-first"
-    alias lln="eza -l --git --almost-all --group-directories-first -snew"
-    alias tree="eza --tree --git-ignore"
-}
+# Listing defaults live in configs/lsd/config.yaml and also apply to direct lsd.
+if command -v lsd >/dev/null 2>&1; then
+    alias ls="lsd"
+    alias ll="lsd -l --git"
+    alias la="lsd -lA --git"
+    alias lln="lsd -lAtr --git" # include hidden entries; newest last per group
+    alias lt="lsd --tree --depth 2"
+    alias lS="lsd -lS --total-size" # opt-in recursive sizes; slow on large trees
+else
+    if [[ $OSTYPE == darwin* ]] && ! command -v gls >/dev/null 2>&1; then
+        alias ls="ls -G"
+    else
+        _gnu_alias ls --color=auto
+    fi
+    alias ll="ls -lh"
+    alias la="ls -lhA"
+    alias lln="ls -lhAtr"
+fi
 command -v wget >/dev/null 2>&1 && alias wget="wget --hsts-file=$XDG_CACHE_HOME/wget-hsts"
 command -v quilt >/dev/null 2>&1 && alias quilt="quilt --quiltrc $DOTFILES/configs/quiltrc"
 command -v tmux >/dev/null 2>&1 && alias stmux="tmux new-session 'sudo --login'"

@@ -1,0 +1,14 @@
+# Shared defaults for ls, listing shortcuts, and direct lsd calls.
+sorting:
+  dir-grouping: first
+date: '+%Y-%m-%d %H:%M'
+size: short
+hyperlink: auto
+indicators: true
+truncate-owner:
+  after: 8
+icons:
+  when: auto
+color:
+  when: auto
+  theme: custom

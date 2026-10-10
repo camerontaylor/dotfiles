@@ -64,7 +64,7 @@ find $mise_fastbin -type l ! -exec test -e {} \; -exec rm -f {} \; 2>/dev/null |
 # belongs on the shims, not here.
 mise_fastbin_linked=0
 for mise_fastbin_tool in \
-    rg fd bat eza delta sd yq fzf zoxide \
+    rg fd bat eza lsd delta sd yq fzf zoxide \
     gh glab sops age nvim tree-sitter ast-grep
 do
     mise_fastbin_target=$(mise which $mise_fastbin_tool 2>/dev/null) || mise_fastbin_target=

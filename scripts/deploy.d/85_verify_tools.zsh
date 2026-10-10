@@ -15,6 +15,7 @@ hash -r
 # Listed roughly in order of "user-visible breakage if missing".
 tool_checks=(
     zoxide:zoxide
+    lsd:lsd
     eza:eza
     bat:bat
     fd:fd

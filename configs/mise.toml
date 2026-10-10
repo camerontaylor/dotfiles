@@ -53,6 +53,7 @@ rust = "1"
 "aqua:dandavison/delta" = "{% if os() == 'macos' and arch() == 'x64' %}0.18.2{% else %}0{% endif %}"
 bat = "0"
 eza = "0"
+lsd = "1.2" # colors.yaml/custom theme support
 fd = "{% if os() == 'macos' and arch() == 'x64' %}10.3.0{% else %}10{% endif %}"
 sd = "1"
 yq = "4"
