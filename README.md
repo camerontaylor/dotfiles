@@ -328,3 +328,14 @@ git update-index --assume-unchanged configs/htoprc   # ...and --no-assume-unchan
 [`AGENTS.md`](AGENTS.md) and [`CLAUDE.md`](CLAUDE.md) document the deploy
 architecture, where to add tools, file-numbering conventions, and the strict
 shell-script portability rules (the bootstrap layer must stay BSD-clean).
+
+### Uranus cloud development host
+
+`uranus` is an Ubuntu cloud development machine, with login user `ctaylor`.
+The secrets-owned SSH config provides `ssh uranus` at `169.58.35.176` and
+`ssh uranus-ipv6` at `2a02:c207:2365:2346::1`; access does not depend on
+the home network. It uses the standard dotfiles → secrets → infra → agents
+deploy chain, with development runtimes and harnesses installed by mise/npm.
+Its dedicated encrypted rebuild identity lives in the secrets repo under
+`hosts/uranus/`. Live configuration and probe evidence belong in infra's
+`manifests/uranus.toml`; Paseo config and fleet helpers belong in agents.
