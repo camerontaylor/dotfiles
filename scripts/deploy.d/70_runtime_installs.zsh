@@ -36,6 +36,69 @@ if [[ -L $HOME/.local/bin/claude ]]; then
 fi
 unset _claude_target
 
+# jcode (github.com/1jehuang/jcode) — Rust coding-agent harness; the consumer
+# is the agents repo's paseo `jcode` provider (scripts/paseo-providers.py
+# drops that provider while this binary is missing). No mise backend works:
+# no aqua-registry entry, and the release tarballs ship a platform-named
+# binary plus an LD_LIBRARY_PATH wrapper script instead of bin/jcode — mise's
+# github backend installs those files but can never expose a `jcode` bin
+# (verified in a scratch MISE_DATA_DIR, 2026-10-10). The official installer is
+# unpinned AND appends a PATH line to shell rc files this repo owns. So:
+# hand-rolled release-tarball install per this fragment's charter,
+# SHA256SUMS-verified, installing the real ELF (the .bin runs standalone; the
+# wrapper only exists for Termux-style LD_LIBRARY_PATH hosts) as
+# ~/.local/bin/jcode. Bump _jcode_version explicitly; a local copy at or above
+# the pin is left alone, never downgraded. Failure is a loud notice, not
+# deploy-fatal.
+_jcode_version=0.93.0
+autoload -Uz is-at-least
+_jcode_installed=$(command -v jcode >/dev/null 2>&1 && jcode --version 2>/dev/null | awk 'NR==1 {print $2}')
+if [[ -n $_jcode_installed ]] && is-at-least $_jcode_version ${_jcode_installed#v}; then
+    : # at or above the pin — leave it alone
+else
+    _jcode_platform=
+    case "$(uname -s)/$(uname -m)" in
+        Linux/x86_64)  _jcode_platform=linux-x86_64 ;;
+        Linux/aarch64) _jcode_platform=linux-aarch64 ;;
+        Darwin/arm64)  _jcode_platform=macos-aarch64 ;;
+        Darwin/x86_64) _jcode_platform=macos-x86_64 ;;
+    esac
+    _jcode_sum=$(command -v sha256sum || command -v shasum)
+    if [[ -z $_jcode_platform ]]; then
+        printf '%s\n' "  ...jcode: no release asset for $(uname -s)/$(uname -m), skipping"
+    elif [[ -z $_jcode_sum ]]; then
+        printf '%s\n' "  ...jcode: no sha256sum/shasum for checksum verification, skipping"
+    elif ! have curl; then
+        printf '%s\n' "  ...jcode: no curl, skipping"
+    else
+        _jcode_tmp=$(mktemp -d)
+        _jcode_base="https://github.com/1jehuang/jcode/releases/download/v$_jcode_version"
+        _jcode_ok=false
+        if curl -fsSL -o "$_jcode_tmp/jcode.tar.gz" "$_jcode_base/jcode-$_jcode_platform.tar.gz" \
+            && curl -fsSL -o "$_jcode_tmp/SHA256SUMS" "$_jcode_base/SHA256SUMS"; then
+            if [[ $_jcode_sum == */sha256sum ]]; then
+                _jcode_hash=$($_jcode_sum "$_jcode_tmp/jcode.tar.gz")
+            else
+                _jcode_hash=$($_jcode_sum -a 256 "$_jcode_tmp/jcode.tar.gz")
+            fi
+            _jcode_hash=${_jcode_hash%% *}
+            if grep -Eq "^${_jcode_hash}[[:space:]]+jcode-${_jcode_platform}\.tar\.gz$" "$_jcode_tmp/SHA256SUMS" \
+                && tar -xzf "$_jcode_tmp/jcode.tar.gz" -C "$_jcode_tmp" "jcode-$_jcode_platform.bin"; then
+                mkdir -p $HOME/.local/bin
+                install -m 0755 "$_jcode_tmp/jcode-$_jcode_platform.bin" $HOME/.local/bin/jcode
+                hash -r
+                printf '%s\n' "Installed jcode v$_jcode_version -> $HOME/.local/bin/jcode"
+                _jcode_ok=true
+            fi
+        fi
+        if [[ $_jcode_ok != true ]]; then
+            printf '%s\n' "  ...jcode v$_jcode_version download/checksum failed, skipping (paseo jcode provider will drop)"
+        fi
+        rm -rf "$_jcode_tmp"
+    fi
+fi
+unset _jcode_version _jcode_installed _jcode_platform _jcode_sum _jcode_tmp _jcode_base _jcode_ok _jcode_hash
+
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
 # npm filters an optional platform dependency (t3's @t3code/t3-linux-x64, …)
