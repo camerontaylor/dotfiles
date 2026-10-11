@@ -440,6 +440,9 @@ _row ssh/id_ed25519.enc     blob "$DOTFILES_DIR/ssh/id_ed25519"       600 all ss
 _row ssh/id_ed25519.pub     copy "$DOTFILES_DIR/ssh/id_ed25519.pub"   644 all sshlink
 _row ssh/webfront_claw.enc  blob "$DOTFILES_DIR/ssh/webfront_claw"    600 webfront sshlink
 _row ssh/webfront_claw.pub  copy "$DOTFILES_DIR/ssh/webfront_claw.pub" 644 webfront sshlink
+# Fleet host public keys: the second UserKnownHostsFile in ssh/config, so
+# strict host-key checking (agents-fleet-deploy) needs no first-use prompt.
+_row ssh/known_hosts_fleet  copy "$DOTFILES_DIR/ssh/known_hosts_fleet" 644 all sshlink
 
 # portless local CA + server cert, behind the ~/.portless symlink.
 _row portless/ca.pem              copy "$DOTFILES_DIR/configs/portless/ca.pem"         644 all ''
