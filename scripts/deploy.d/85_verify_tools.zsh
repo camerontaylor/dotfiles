@@ -54,7 +54,9 @@ tool_checks=(
 # Linux-only monitoring tier (42_monitoring.zsh). Appended rather than listed
 # above because none of these exist on macOS, where they would be permanent
 # false failures. `iotop-c` installs a binary named `iotop`.
-if [[ $DOTFILES_OS == Linux ]]; then
+if [[ $DOTFILES_OS == Darwin ]]; then
+    tool_checks+=(blueutil:blueutil)
+elif [[ $DOTFILES_OS == Linux ]]; then
     tool_checks+=(
         atop:atop
         iotop:iotop

@@ -26,6 +26,7 @@ XDG-compliant zsh/neovim/tmux dotfiles. External code is vendored as pinned plug
 | Binary via curl/download | new fragment in `scripts/deploy.d/`, or extend an existing one |
 | Editor/plugin/shell plugin (vendored) | add a `<sha> <path> <clone-url>` row to `plugins.lock` (fetch by `scripts/deploy.d/30_plugins.zsh`) |
 | Homebrew formula/cask (macOS-only) | `scripts/deploy.d/75_brew_setup.zsh` |
+| Bluetooth CLI (macOS, CLT source build) | `scripts/deploy.d/74_blueutil.zsh` — pinned blueutil release + SHA256 |
 | brew fallback for mise-installed tool | `scripts/deploy.d/50_mise.zsh` → fallback loop |
 | zsh function | `zsh/fpath/` → create file, autoload in `rc.d/04_autoload.zsh` |
 | cross-shell CLI wrapper (bash+zsh) | `bin/` → executable; link in `scripts/deploy.d/21_bash_symlinks.zsh` (~/.local/bin) |
