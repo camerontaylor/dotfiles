@@ -45,9 +45,11 @@ unset _claude_target
 # (verified in a scratch MISE_DATA_DIR, 2026-10-10). The official installer is
 # unpinned AND appends a PATH line to shell rc files this repo owns. So:
 # hand-rolled release-tarball install per this fragment's charter,
-# SHA256SUMS-verified, installing the real ELF (the .bin runs standalone; the
-# wrapper only exists for Termux-style LD_LIBRARY_PATH hosts) as
-# ~/.local/bin/jcode. Bump _jcode_version explicitly; a local copy at or above
+# SHA256SUMS-verified, installing the real binary as ~/.local/bin/jcode. The
+# Linux tarballs hold jcode-<platform>.bin (the real ELF; runs standalone —
+# the wrapper only exists for Termux-style LD_LIBRARY_PATH hosts); the macOS
+# tarballs hold just a bare jcode-<platform> Mach-O (verified v0.93.0,
+# 2026-10-11 — the .bin name failed every Mac install). Bump _jcode_version explicitly; a local copy at or above
 # the pin is left alone, never downgraded. Failure is a loud notice, not
 # deploy-fatal.
 _jcode_version=0.93.0
@@ -56,12 +58,12 @@ _jcode_installed=$(command -v jcode >/dev/null 2>&1 && jcode --version 2>/dev/nu
 if [[ -n $_jcode_installed ]] && is-at-least $_jcode_version ${_jcode_installed#v}; then
     : # at or above the pin — leave it alone
 else
-    _jcode_platform=
+    _jcode_platform= _jcode_member=
     case "$(uname -s)/$(uname -m)" in
-        Linux/x86_64)  _jcode_platform=linux-x86_64 ;;
-        Linux/aarch64) _jcode_platform=linux-aarch64 ;;
-        Darwin/arm64)  _jcode_platform=macos-aarch64 ;;
-        Darwin/x86_64) _jcode_platform=macos-x86_64 ;;
+        Linux/x86_64)  _jcode_platform=linux-x86_64 _jcode_member=jcode-linux-x86_64.bin ;;
+        Linux/aarch64) _jcode_platform=linux-aarch64 _jcode_member=jcode-linux-aarch64.bin ;;
+        Darwin/arm64)  _jcode_platform=macos-aarch64 _jcode_member=jcode-macos-aarch64 ;;
+        Darwin/x86_64) _jcode_platform=macos-x86_64 _jcode_member=jcode-macos-x86_64 ;;
     esac
     _jcode_sum=$(command -v sha256sum || command -v shasum)
     if [[ -z $_jcode_platform ]]; then
@@ -83,9 +85,9 @@ else
             fi
             _jcode_hash=${_jcode_hash%% *}
             if grep -Eq "^${_jcode_hash}[[:space:]]+jcode-${_jcode_platform}\.tar\.gz$" "$_jcode_tmp/SHA256SUMS" \
-                && tar -xzf "$_jcode_tmp/jcode.tar.gz" -C "$_jcode_tmp" "jcode-$_jcode_platform.bin"; then
+                && tar -xzf "$_jcode_tmp/jcode.tar.gz" -C "$_jcode_tmp" "$_jcode_member"; then
                 mkdir -p $HOME/.local/bin
-                install -m 0755 "$_jcode_tmp/jcode-$_jcode_platform.bin" $HOME/.local/bin/jcode
+                install -m 0755 "$_jcode_tmp/$_jcode_member" $HOME/.local/bin/jcode
                 hash -r
                 printf '%s\n' "Installed jcode v$_jcode_version -> $HOME/.local/bin/jcode"
                 _jcode_ok=true
@@ -97,7 +99,7 @@ else
         rm -rf "$_jcode_tmp"
     fi
 fi
-unset _jcode_version _jcode_installed _jcode_platform _jcode_sum _jcode_tmp _jcode_base _jcode_ok _jcode_hash
+unset _jcode_version _jcode_installed _jcode_platform _jcode_member _jcode_sum _jcode_tmp _jcode_base _jcode_ok _jcode_hash
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
