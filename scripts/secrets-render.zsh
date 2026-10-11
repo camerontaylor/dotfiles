@@ -264,7 +264,7 @@ setopt pipefail
 #   field 2  kind  shellenv | dotenv | dotenv-select:KEYS | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | pluto | uranus | agents | immich | libris | ollie-notes | infra | arr | adguard | webfront
+#   field 5  gate  all | ceres | pluto | ceres-or-uranus | agents | immich | libris | ollie-notes | infra | arr | adguard | webfront
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -291,10 +291,9 @@ for _shell_file in 90_secrets 91_cloudflare_secrets 92_telemetry_secrets \
     _row "shell/${_shell_file}.yaml" shellenv "$RENDER_STATE/zsh/${_shell_file}.zsh" 600 all ''
 done
 
-# Uranus's system-managed Paseo daemon must pass the client password to its
-# agents. Select only that key from the shared ciphertext; the systemd drop-in
-# in agents/configs/paseo/uranus-messaging.conf reads this file at next start.
-_row "shell/90_secrets.yaml" 'dotenv-select:PASEO_PASSWORD' "$STATE_HOME/paseo/env" 600 uranus ''
+# Ceres CRQ user units and Uranus's Paseo system daemon need the client
+# password. Select only that key; their drop-ins read the file at next start.
+_row "shell/90_secrets.yaml" 'dotenv-select:PASEO_PASSWORD' "$STATE_HOME/paseo/env" 600 ceres-or-uranus ''
 
 # Audiobookshelf client API key (arr stack on makemake). The consumers are
 # shell/agent tooling that talk TO the server, which lives where the infra
@@ -545,7 +544,9 @@ _gate_open() {
         all)    return 0 ;;
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         pluto)  [[ $(hostname -s 2>/dev/null) == pluto ]] ;;
-        uranus) [[ $(hostname -s 2>/dev/null) == uranus ]] ;;
+        ceres-or-uranus)
+            case $(hostname -s 2>/dev/null) in ceres|uranus) return 0 ;; *) return 1 ;; esac
+            ;;
         agents) [[ -d ${AGENTS_DIR:-$HOME/.local/agents} ]] ;;
         immich) [[ -d $HOME/repos/deploy/immich ]] ;;
         libris) [[ -d $HOME/repos/deploy/libris ]] ;;
