@@ -472,6 +472,14 @@ pyload.wedrifid.dev {
 	}
 }
 
+nzbget.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy makemake.local.wedrifid.dev:9090 100.87.185.24:9090 {
+		lb_policy first
+		fail_duration 30s
+	}
+}
+
 # YTPTube streams download progress to the page as it happens.
 ytptube.wedrifid.dev {
 	import wedrifid_tailnet
