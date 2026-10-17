@@ -53,9 +53,8 @@ unset _claude_target
 # the pin is left alone, never downgraded. Failure is a loud notice, not
 # deploy-fatal.
 _jcode_version=0.93.0
-autoload -Uz is-at-least
 _jcode_installed=$(command -v jcode >/dev/null 2>&1 && jcode --version 2>/dev/null | awk 'NR==1 {print $2}')
-if [[ -n $_jcode_installed ]] && is-at-least $_jcode_version ${_jcode_installed#v}; then
+if [[ -n $_jcode_installed ]] && version_ge "${_jcode_installed#v}" "$_jcode_version"; then
     : # at or above the pin — leave it alone
 else
     _jcode_platform= _jcode_member=
