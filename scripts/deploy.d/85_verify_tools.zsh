@@ -9,6 +9,18 @@
 printf '%s\n' "Verifying deployed CLI tools respond..."
 
 ensure_homebrew_path 2>/dev/null || true
+
+# Check against the PATH a fresh login gets. On a FIRST deploy this process
+# started before zsh/env.d/08_mise.zsh existed, so tools 50_mise just installed
+# were invisible here and every one read "not on PATH" (triton, 2026-10-17).
+# Same dirs and order as 08_mise.zsh: fastbin ahead of shims.
+_vt_mise_data=${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}
+for _vt_dir in "$_vt_mise_data/shims" "$_vt_mise_data/fastbin"; do
+    [[ -d $_vt_dir ]] || continue
+    case ":$PATH:" in *":$_vt_dir:"*) ;; *) PATH="$_vt_dir:$PATH" ;; esac
+done
+export PATH
+unset _vt_mise_data _vt_dir
 hash -r
 
 # Pairs: <display name> <binary on PATH>
