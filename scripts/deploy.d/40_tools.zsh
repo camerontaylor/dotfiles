@@ -16,7 +16,9 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 # manager. The package layout differs per platform:
 #   macOS            : brew    — git-extras, git-tools, testssl
 #                                (git-tools provides git-restore-mtime)
-#   Debian/Ubuntu    : apt     — git-extras, git-restore-mtime, testssl.sh
+#   Debian/Ubuntu    : apt     — git-extras, git-restore-mtime, testssl.sh,
+#                                plus htop and postgresql-client (psql), which
+#                                macOS/Arch get from 75_brew_setup.zsh
 #   Arch-family      : testssl.sh from the official repo (pacman); git-extras and
 #                      git-tools are AUR-only, so they need an AUR helper
 #                      (paru/yay) — pacman can't fetch them.
@@ -62,6 +64,8 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 recipes+=( "git-extras|sudo apt-get install -y git-extras" )
                 recipes+=( "git-restore-mtime|sudo apt-get install -y git-restore-mtime" )
                 recipes+=( "testssl testssl.sh|sudo apt-get install -y testssl.sh" )
+                recipes+=( "htop|sudo apt-get install -y htop" )
+                recipes+=( "psql|sudo apt-get install -y postgresql-client" )
             fi
             ;;
         *" arch "*)
@@ -122,6 +126,16 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 printf '%s\n' "  hint: $label not installed — run: $cmd"
             fi
         done
+    fi
+
+    # Debian/Ubuntu's git-restore-mtime package installs ONLY a git subcommand
+    # (/usr/lib/git-core/git-restore-mtime): `git restore-mtime` works, a bare
+    # `git-restore-mtime` is not on PATH. Without this link the probe above
+    # never sees it, every deploy re-runs the apt install, and 85_verify_tools
+    # reports it missing (triton 2026-10-17; uranus had a one-off root link).
+    if ! have git-restore-mtime && [[ -x /usr/lib/git-core/git-restore-mtime ]]; then
+        deploy_ln -sfn /usr/lib/git-core/git-restore-mtime $HOME/.local/bin/git-restore-mtime
+        hash -r
     fi
 fi
 
