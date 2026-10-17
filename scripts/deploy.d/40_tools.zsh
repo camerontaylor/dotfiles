@@ -18,9 +18,11 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 #                                (git-tools provides git-restore-mtime)
 #   Debian/Ubuntu    : apt     — git-extras, git-restore-mtime, testssl.sh,
 #                                plus htop and postgresql-client (psql), which
-#                                macOS/Arch get from 75_brew_setup.zsh
-#   Arch-family      : testssl.sh from the official repo (pacman); git-extras and
-#                      git-tools are AUR-only, so they need an AUR helper
+#                                macOS/Arch get from 75_brew_setup.zsh, and
+#                                trash-cli (`trash`, which the agents' safety
+#                                rule prefers over rm; macOS ships /usr/bin/trash)
+#   Arch-family      : testssl.sh and trash-cli from the official repo (pacman);
+#                      git-extras and git-tools are AUR-only, so they need an AUR helper
 #                      (paru/yay) — pacman can't fetch them.
 #                      (29_testssl.zsh aliases testssl=testssl.sh.)
 # sudo / AUR helpers can prompt for a password; the post-merge/post-checkout git
@@ -66,6 +68,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 recipes+=( "testssl testssl.sh|sudo apt-get install -y testssl.sh" )
                 recipes+=( "htop|sudo apt-get install -y htop" )
                 recipes+=( "psql|sudo apt-get install -y postgresql-client" )
+                recipes+=( "trash trash-put|sudo apt-get install -y trash-cli" )
             fi
             ;;
         *" arch "*)
@@ -74,6 +77,8 @@ elif [[ $DOTFILES_OS == Linux ]]; then
             # the partial-upgrade caveat of -Sy without -u.
             have pacman \
                 && recipes+=( "testssl testssl.sh|sudo pacman -Sy --needed --noconfirm testssl.sh" )
+            have pacman \
+                && recipes+=( "trash trash-put|sudo pacman -Sy --needed --noconfirm trash-cli" )
             # git-extras: AUR -> first available helper (run WITHOUT a sudo prefix;
             # helpers call sudo internally and refuse to run as root).
             aur=""
