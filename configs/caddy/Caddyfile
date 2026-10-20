@@ -266,6 +266,8 @@ abs.wedrifid.dev {
 # Static files, served straight off disk by this same Caddy — no application,
 # no container, no database. It therefore has no failure mode of its own: if
 # this page is down, the thing that serves every other name here is also down.
+# The one live part is /api/* (below), and the page degrades to read-only
+# without it.
 #
 # /var/www/fleet rather than anywhere under /home/ctaylor, which is 0700 and
 # unreadable to User=caddy — the same constraint that makes /etc/caddy/Caddyfile
@@ -300,6 +302,18 @@ fleet.wedrifid.dev {
 		header Cache-Control "no-store"
 		root * /var/www/fleet-status
 		file_server
+	}
+
+	# The control API behind the page's buttons (encoding suspend/wake/pause):
+	# infra bin/fleet-control on makemake :8095. That server refuses every
+	# peer but this Caddy and any POST that is not application/json from this
+	# origin, and answers no-store itself. Wired first, tailnet second, like
+	# the other makemake upstreams.
+	handle /api/* {
+		reverse_proxy makemake.local.wedrifid.dev:8095 100.87.185.24:8095 {
+			lb_policy first
+			fail_duration 30s
+		}
 	}
 }
 

@@ -18,7 +18,7 @@ deploy_ln -sfn $SCRIPT_DIR/bash/.bashrc $HOME/.bashrc
 # both shells — ~/.local/bin is already on PATH via zsh/env.d/03_paths.zsh,
 # so linking here adds NO new PATH entry and cannot change PATH order).
 # Agent-routing wrappers are linked by the agents sibling deploy.
-for _bash_wrapper in lspath bag fgb fgd fgl psg; do
+for _bash_wrapper in lspath bag fgb fgd fgl psg encoding; do
     deploy_ln -sfn $SCRIPT_DIR/bin/$_bash_wrapper $HOME/.local/bin/$_bash_wrapper
 done
 unset _bash_wrapper
