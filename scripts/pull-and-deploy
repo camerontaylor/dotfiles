@@ -36,8 +36,12 @@ git_bin=${DOTFILES_PULL_GIT:-git}
 before=$("$git_bin" rev-parse HEAD 2>/dev/null) || before=
 # --ff-only: the deploy checkout carries no local commits, so a divergence is
 # a fault to surface, not something to paper over with a scheduler-authored
-# merge commit.
-if ! "$git_bin" pull --ff-only; then
+# merge commit. pull.rebase=false because the fleet gitconfig sets
+# pull.rebase=true, and in rebase mode git refuses to pull over ANY unstaged
+# edit; a true fast-forward merge carries a host's uncommitted local tweaks
+# along (quaoar's laptop-only hypridle/niri/waybar edits) and stops only when
+# upstream touches the same file.
+if ! "$git_bin" -c pull.rebase=false pull --ff-only; then
     printf '%s\n' "pull-and-deploy: git pull --ff-only failed in $repo_root; not deploying" >&2
     exit 1
 fi

@@ -363,7 +363,7 @@ else:
         self.fake("git", 'printf "git %s\\n" "$*" >> "$CALLS"\n'
                   'case "$*" in\n'
                   '  "rev-parse HEAD") cat "$FAKE_HEAD"; exit 0;;\n'
-                  '  "pull --ff-only") [ "${FAKE_ADVANCE:-1}" = 1 ] && printf "%s\\n" "$(( $(cat "$FAKE_HEAD") + 1 ))" > "$FAKE_HEAD";;\n'
+                  '  "-c pull.rebase=false pull --ff-only") [ "${FAKE_ADVANCE:-1}" = 1 ] && printf "%s\\n" "$(( $(cat "$FAKE_HEAD") + 1 ))" > "$FAKE_HEAD";;\n'
                   'esac\n'
                   'exit "$PULL_RC"')
         self.env["DEPLOY_DRY_RUN"] = "0"
@@ -391,7 +391,7 @@ else:
                 result = subprocess.run(argv, env=unit_env, cwd=self.repo,
                                         text=True, capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("git pull --ff-only", self.log())
+                self.assertIn("git -c pull.rebase=false pull --ff-only", self.log())
                 self.assertIn("render dry=0", self.log())
                 self.assertIn("infra  ", self.log())
                 self.assertIn("agents  ", self.log())
@@ -401,7 +401,7 @@ else:
                 result = subprocess.run(argv, env=unit_env, cwd=self.repo,
                                         text=True, capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("git pull --ff-only", self.log())
+                self.assertIn("git -c pull.rebase=false pull --ff-only", self.log())
                 self.assertNotIn("render dry=0", self.log())
                 self.assertIn("nothing to deploy", result.stdout)
 
