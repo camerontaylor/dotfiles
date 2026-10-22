@@ -189,6 +189,7 @@ class Gate:
                 if path.suffix in (".zsh", ".sh", ".bash") or rel in (
                     "scripts/pre-commit",
                     "scripts/post-merge",
+                    "scripts/pull-and-deploy",
                 ):
                     out.append(rel)
         for extra in ("deploy.zsh", "deploy.bash"):

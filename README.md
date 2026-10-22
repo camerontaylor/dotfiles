@@ -159,7 +159,7 @@ command -v brew >/dev/null 2>&1 && chsh -s "$(brew --prefix)/bin/zsh"  # macOS/H
 
 Deploy pins brew's zsh as the login shell on macOS. To keep a different
 one, run `DOTFILES_SHELL=/bin/bash "$HOME/.local/dotfiles/deploy.zsh"` (or
-`export DOTFILES_SHELL=…` before the post-merge hook's auto-deploys): with
+`export DOTFILES_SHELL=…` in the environment the scheduled deploy runs in): with
 the knob set, `chsh` only ever targets that path and only when it exists on
 disk and is listed in `/etc/shells`. Unset — the default — behaves exactly
 as before (opt-in knob, not a silent switch). A bash twin of the driver,
@@ -174,11 +174,17 @@ warn-not-fail when absent). It dispatches into [`scripts/deploy.d/NN_*.zsh`](scr
 fragments (sourced in numeric order), each handling one install concern; shared
 helpers live in
 [`scripts/deploy.d/lib/helpers.zsh`](scripts/deploy.d/lib/helpers.zsh). The
-[`scripts/post-merge`](scripts/post-merge) hook auto-re-runs deploy after every
-`git pull` (it prefers `deploy.zsh` under zsh, falls back to `deploy.bash`
-under bash — syntax-checked before running — wraps the deploy in a 300s
-`timeout`, and fails loud when neither driver is runnable; opt out per-pull
-with `DOTFILES_SKIP_POSTMERGE=1`).
+daily periodic task (`99_periodic.zsh`: systemd timer, launchd LaunchAgent,
+or cron) runs [`scripts/pull-and-deploy`](scripts/pull-and-deploy): `git pull
+--ff-only`, then deploy explicitly only when HEAD moved (it prefers
+`deploy.zsh` under zsh, falls back to `deploy.bash` under bash —
+syntax-checked before running — caps the deploy at a generous 1h `timeout`,
+and fails loud when neither driver is runnable). A hand `git pull` deploys
+nothing; run `./deploy.zsh` yourself. (Deploy used to ride on a `post-merge`
+hook; `60_git_hooks.zsh` now removes that hook from checkouts that still
+have it. `scripts/post-merge` survives only as a transitional shim so a host
+still on the old pull-only unit deploys once more and migrates; delete it once
+no host has the hook.)
 
 `deploy.zsh` accepts:
 

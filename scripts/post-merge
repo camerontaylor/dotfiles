@@ -1,7 +1,17 @@
 #!/bin/sh
+# TRANSITIONAL — delete once every host has deployed past the commit that
+# retired the post-merge auto-deploy (check: no host still has
+# .git/hooks/post-merge -> ../../scripts/post-merge in ~/.local/dotfiles).
+#
+# Deploy no longer rides on `git pull`; the scheduled scripts/pull-and-deploy
+# job runs it explicitly. But a host still on the OLD pull-dotfiles unit only
+# runs `git pull`, so the pull that lands this change must deploy one last
+# time: that deploy rewrites the unit to call pull-and-deploy (99_periodic)
+# and removes this hook from .git/hooks (60_git_hooks). Without this shim the
+# old hook symlink would dangle, the pull would deploy nothing, and the host
+# would pull forever without deploying. No deploy fragment installs it now.
 
-# Run deploy only for git pull initiated merges. Plain `git merge` and checkout
-# conflict-resolution operations should not trigger a full dotfiles deploy.
+# Only for pull-initiated merges, as before.
 case "${GIT_REFLOG_ACTION:-}" in
     pull|pull\ *) ;;
     *)
@@ -13,15 +23,6 @@ case "${GIT_REFLOG_ACTION:-}" in
         ;;
 esac
 
-# Opt-out for users mid-debugging; set DOTFILES_SKIP_POSTMERGE=1 to skip.
-if [ "${DOTFILES_SKIP_POSTMERGE:-0}" = 1 ]; then
-    printf '%s\n' "post-merge: DOTFILES_SKIP_POSTMERGE=1, skipping deploy." >&2
-    exit 0
-fi
-
-# Hand-rolled symlink walk (the repo's canonical pattern, see
-# deploy.bash) — zsh's ${0:A:h:h} has no POSIX spelling. The
-# hook reaches this file through the .git/hooks/post-merge symlink.
 _self=$0
 while [ -L "$_self" ]; do
     _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
@@ -31,39 +32,19 @@ while [ -L "$_self" ]; do
         *) _self=$_self_dir/$_self ;;
     esac
 done
-SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
-repo_root=$(cd -P -- "$SCRIPT_DIR/.." && pwd)
+repo_root=$(cd -P -- "$(dirname -- "$_self")/.." && pwd)
 
-# Pick a driver: prefer the zsh one (regression baseline), fall back to the
-# bash twin, and fail LOUD when neither can run (docs/bash-compatibility.md
-# §D — the old "skipping" + exit 0 made `git pull` look green while the box
-# drifted forever). A syntax-broken preferred driver falls through to the
-# twin instead of silently skipping; only an unusable pair aborts.
-driver= runner=
 if command -v zsh >/dev/null 2>&1 && zsh -n "$repo_root/deploy.zsh" 2>/dev/null; then
-    runner=zsh
-    driver=$repo_root/deploy.zsh
+    set -- zsh "$repo_root/deploy.zsh"
 elif command -v bash >/dev/null 2>&1 && bash -n "$repo_root/deploy.bash" 2>/dev/null; then
-    runner=bash
-    driver=$repo_root/deploy.bash
+    set -- bash "$repo_root/deploy.bash"
 else
-    printf '%s\n' "post-merge: no runnable deploy driver in $repo_root (need zsh + deploy.zsh or bash + deploy.bash)" >&2
+    printf '%s\n' "post-merge: no runnable deploy driver in $repo_root" >&2
     exit 1
 fi
-
-# Run with a wall-clock cap so a hung deploy can't hang every `git pull`.
-# 900, not 300: a real npm-globals install (the full .default-npm-packages
-# list, cold cache) legitimately runs 8-10 min, and the 300 cap killed the
-# 2026-10-02 00:00 makemake deploy mid-npm-reify — npm had already unlinked
-# the old bins, so every npm global died through the mise shims until the
-# repair. --kill-after upgrades the SIGTERM to a SIGKILL so the cap is
-# actually a cap. `timeout` is GNU coreutils (Linux stock, macOS via brew).
-# Fall back to direct exec if the binary is missing.
-#
-# Do NOT forward "$@": git invokes post-merge with a single squash-flag arg (0
-# or 1) that the drivers' fail-closed parser would reject as "unknown argument".
+# Same generous backstop as pull-and-deploy (the old 300s cap killed npm
+# reifies mid-flight).
 if command -v timeout >/dev/null 2>&1; then
-    exec timeout 300 "$runner" "$driver"
-else
-    exec "$runner" "$driver"
+    exec timeout --kill-after=60 3600 "$@"
 fi
+exec "$@"

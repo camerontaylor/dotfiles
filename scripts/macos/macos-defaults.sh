@@ -8,7 +8,7 @@
 #
 # Safe to re-run: each setting is applied only when it differs from the current
 # value, and Finder is relaunched ONLY when a pref or association actually
-# changed — so running this on every `git pull` deploy is a quiet no-op once
+# changed — so running this on every deploy is a quiet no-op once
 # settings are in place. Everything here is reversible (flip the booleans /
 # delete the NSUserKeyEquivalents keys / run a rollback file).
 #
@@ -113,7 +113,7 @@ duti_set_ext() {
   # `duti -x` prints THREE lines: app name, app PATH, bundle id. Take line 3.
   # This read line 2 until 2026-09-04, comparing a path against a bundle id —
   # they never matched, so the skip below never fired and every extension was
-  # rewritten (and Finder relaunched) on every deploy, i.e. on every git pull.
+  # rewritten (and Finder relaunched) on every deploy.
   curid="$(duti -x "${ext#.}" 2>/dev/null | sed -n '3p')"
   [[ "$(lc "$curid")" == "$(lc "$id")" ]] && return 0
   if [[ "$DRY_RUN" == 1 ]]; then
@@ -327,8 +327,8 @@ fi
 # 'Open in ForkLift' command (raycast/open-in-forklift.sh) for that instead.
 
 # Relaunch Finder once if a pref or file association actually changed, so the new
-# state shows immediately. (Skipped in dry-run and when nothing changed, so the
-# post-merge auto-deploy never relaunches Finder on a no-op pull.)
+# state shows immediately. (Skipped in dry-run and when nothing changed, so a
+# routine deploy never relaunches Finder when nothing changed.)
 if [[ "$DRY_RUN" == 1 ]]; then
   echo "Dry run: nothing applied."
 elif (( pref_changes + duti_changes > 0 )); then

@@ -301,18 +301,48 @@ else:
         crontab.chmod(0o755)
         legacy = (f"0 0 * * * cd {self.repo} && {self.home}/.nix-profile/bin/git "
                   "-c user.name=cron.update -c user.email=cron@localhost pull --force\n")
+        # The quoted bare-pull spelling relied on the retired post-merge hook.
+        quoted = (f"0 0 * * * cd '{self.repo}' && '{self.home}/.nix-profile/bin/git' "
+                  "-c user.name=cron.update -c user.email=cron@localhost pull --force\n")
         unrelated = "15 3 * * * echo unrelated-job\n"
         code = '. "$1"; have() { case "$1" in systemctl|launchctl) return 1;; *) command -v "$1" >/dev/null 2>&1;; esac; }; . "$2"'
         for shell in SHELLS:
             with self.subTest(shell=shell):
-                store.write_text(unrelated + legacy)
+                store.write_text(unrelated + legacy + quoted)
                 self.run_shell(shell, code, helpers, fragment)
                 first = store.read_text()
                 self.assertIn(unrelated, first)
-                self.assertEqual(first.count("pull --force"), 1)
-                self.assertNotIn(legacy, first)
+                self.assertEqual(first.count("pull --force"), 0)
+                self.assertEqual(first.count("scripts/pull-and-deploy"), 1)
+                self.assertIn(f"DOTFILES_PULL_GIT='{self.home}/.nix-profile/bin/git'", first)
                 self.run_shell(shell, code, helpers, fragment)
                 self.assertEqual(store.read_text(), first)
+
+    def test_git_hooks_retire_only_our_post_merge_hook(self):
+        helpers = self.copy("scripts/deploy.d/lib/helpers.zsh")
+        fragment = self.copy("scripts/deploy.d/60_git_hooks.zsh")
+        hooks = self.repo / ".git/hooks"
+        hooks.mkdir(parents=True)
+        self.env["DEPLOY_DRY_RUN"] = "0"
+        code = 'cd "$SCRIPT_DIR" && . "$1"; . "$2"'
+        ours = {
+            "symlink": lambda h: h.symlink_to("../../scripts/post-merge"),
+            "copy": lambda h: h.write_text("#!/bin/sh\n[ \"${DOTFILES_SKIP_POSTMERGE:-0}\" = 1 ]\n"),
+        }
+        for shell in SHELLS:
+            for kind, place in ours.items():
+                with self.subTest(shell=shell, hook=kind):
+                    hook = hooks / "post-merge"
+                    place(hook)
+                    self.run_shell(shell, code, helpers, fragment)
+                    self.assertFalse(hook.is_symlink() or hook.exists())
+                    self.assertEqual(os.readlink(hooks / "pre-commit"), "../../scripts/pre-commit")
+            with self.subTest(shell=shell, hook="foreign"):
+                hook = hooks / "post-merge"
+                hook.write_text("#!/bin/sh\necho someone-elses-hook\n")
+                self.run_shell(shell, code, helpers, fragment)
+                self.assertEqual(hook.read_text(), "#!/bin/sh\necho someone-elses-hook\n")
+                hook.unlink()
 
     @unittest.skipIf(os.geteuid() == 0, "real fragment chooses /etc for root; HOME isolation requires non-root")
     def test_periodic_unit_executes_git_from_non_fhs_path(self):
@@ -321,16 +351,22 @@ else:
         self.fixture_siblings()
         helpers = self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragment = self.copy("scripts/deploy.d/99_periodic.zsh")
-        hook = self.copy("scripts/post-merge")
+        self.copy("scripts/pull-and-deploy")
         for name in ("deploy.bash", "deploy.zsh"):
             self.copy(name)
         for name in ("65_secrets", "66_infra", "67_agents"):
             self.copy(f"scripts/deploy.d/{name}.zsh")
+        # rev-parse HEAD reads a fake ref that `pull` advances, so the job
+        # sees HEAD move and must run deploy itself (no hook does it now).
+        head = self.base / "fake-head"
+        self.env["FAKE_HEAD"] = str(head)
         self.fake("git", 'printf "git %s\\n" "$*" >> "$CALLS"\n'
-                  'case "$*" in -c*pull*) GIT_REFLOG_ACTION=pull /bin/sh "$FAKE_PULL_HOOK";; esac\n'
+                  'case "$*" in\n'
+                  '  "rev-parse HEAD") cat "$FAKE_HEAD"; exit 0;;\n'
+                  '  "pull --ff-only") [ "${FAKE_ADVANCE:-1}" = 1 ] && printf "%s\\n" "$(( $(cat "$FAKE_HEAD") + 1 ))" > "$FAKE_HEAD";;\n'
+                  'esac\n'
                   'exit "$PULL_RC"')
         self.env["DEPLOY_DRY_RUN"] = "0"
-        self.env["FAKE_PULL_HOOK"] = str(hook)
         self.fake("systemctl", "exit 0")
         for shell in SHELLS:
             with self.subTest(shell=shell):
@@ -342,6 +378,7 @@ else:
                                if line.startswith("ExecStart="))
                 self.assertNotIn("/usr/bin/git", command)
                 self.calls.unlink(missing_ok=True)
+                head.write_text("1\n")
                 argv = shlex.split(command.replace("%h", str(self.home)).replace("%%", "%"))
                 unit_env = self.env.copy()
                 unit_env["PATH"] = str(self.base / "manager-systemd-only")
@@ -354,10 +391,19 @@ else:
                 result = subprocess.run(argv, env=unit_env, cwd=self.repo,
                                         text=True, capture_output=True, timeout=20)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("git ", self.log())
+                self.assertIn("git pull --ff-only", self.log())
                 self.assertIn("render dry=0", self.log())
                 self.assertIn("infra  ", self.log())
                 self.assertIn("agents  ", self.log())
+                # Unchanged HEAD: pull, but no deploy.
+                self.calls.unlink(missing_ok=True)
+                unit_env["FAKE_ADVANCE"] = "0"
+                result = subprocess.run(argv, env=unit_env, cwd=self.repo,
+                                        text=True, capture_output=True, timeout=20)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("git pull --ff-only", self.log())
+                self.assertNotIn("render dry=0", self.log())
+                self.assertIn("nothing to deploy", result.stdout)
 
 
 if __name__ == "__main__":

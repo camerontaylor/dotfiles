@@ -90,7 +90,7 @@ touches ZeroTier. ZeroTier removal is a separate, gated phase at the end.
    (bash-runnable twin: `bash -c '. zsh/env.d/95_tailscale_secrets.zsh; [[ -n $TAILSCALE_AUTHKEY ]] && echo OK'`).
 6. **Deploy** on the host:
    ```sh
-   git -c core.hooksPath=/dev/null pull --ff-only   # get commits w/o full auto-deploy
+   git pull --ff-only                               # a pull no longer deploys by itself
    ./deploy.zsh --only 73_tailscale                 # or a full ./deploy.zsh
    ```
    The fragment installs Tailscale, starts the daemon, and runs

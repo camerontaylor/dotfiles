@@ -218,7 +218,7 @@ if have mise; then
         if (( DEPLOY_DRY_RUN )); then
             printf '%s\n' "  [dry-run] would try-restart openclaw-gateway.service onto the new prefix"
         elif [[ -f $XDG_CONFIG_HOME/systemd/user/openclaw-gateway.service ]] && have systemctl; then
-            # A post-merge hook shell may have no D-Bus session env, so reaching
+            # A scheduled-deploy shell may have no D-Bus session env, so reaching
             # the user bus can legitimately fail. Never fail the deploy for it —
             # report and move on; the 5-min drift detector is the backstop.
             if systemctl --user try-restart openclaw-gateway.service 2>/dev/null; then

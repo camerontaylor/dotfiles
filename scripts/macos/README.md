@@ -38,7 +38,7 @@ DRY_RUN=1 ./macos-defaults.sh   # show what would change, touch nothing
 On macOS, `macos-defaults.sh` also runs automatically during deploy via
 [`scripts/deploy.d/77_macos_defaults.zsh`](../deploy.d/77_macos_defaults.zsh)
 (and respects `./deploy.zsh --dry-run`). Because it's change-aware, re-running on
-every `git pull` is a quiet no-op once your settings are in place.
+every deploy is a quiet no-op once your settings are in place.
 
 ## What these cover vs. what syncs itself
 
@@ -72,7 +72,7 @@ The last character is the key. Example: ⌘⇧. → `@$.`
   `duti -x md`; trim the extension list in the script to taste.
 - **If you add a file type, check it converges**: apply once, then re-run with
   `DRY_RUN=1` and confirm it reports nothing. macOS silently refuses some
-  bindings, and a refused one is retried on every `git pull` (each retry
+  bindings, and a refused one is retried on every deploy (each retry
   relaunching Finder). Three known-unbindable cases are documented in the
   script and deliberately excluded:
   - `.html` — Chrome owns `public.html` as default browser, and VS Code

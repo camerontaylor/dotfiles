@@ -188,7 +188,7 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     brew_formula_install_or_upgrade htop || true
 elif have pacman && ! have htop; then
     # sudo can prompt for a password. In a non-interactive deploy (e.g. the
-    # post-merge git hook) there's no TTY to answer it, so only attempt the
+    # scheduled pull-and-deploy job) there's no TTY to answer it, so only attempt the
     # install when sudo is already passwordless/cached or stdin is a terminal;
     # otherwise leave a copy-paste hint instead of hanging on the prompt.
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
