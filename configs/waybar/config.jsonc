@@ -48,7 +48,8 @@
     "format-wifi": "  {essid}",
     "format-ethernet": "  {ipaddr}",
     "format-disconnected": "  offline",
-    "tooltip-format": "{ifname}: {ipaddr}/{cidr}\n↓ {bandwidthDownBits}   ↑ {bandwidthUpBits}"
+    "tooltip-format": "{ifname}: {ipaddr}/{cidr}\n↓ {bandwidthDownBits}   ↑ {bandwidthUpBits}",
+    "on-click": "nm-connection-editor"
   },
 
   "battery": {
