@@ -1,0 +1,16 @@
+# Keep the ELAN 04f3:0c00 "ELAN:ARM-M4" fingerprint reader powered on.
+#
+# The elanmoc2 driver / 0c00 firmware does not resume from USB autosuspend
+# within fprintd's USB bulk-transfer timeout, so a verify against a suspended
+# sensor fails with "Device reported an error during verify: transfer timed
+# out". The kernel default (power/control=auto, autosuspend_delay_ms=2000)
+# suspended the sensor after 2s idle, making lock-screen fingerprint unlock
+# work only when the sensor happened to be awake — i.e. intermittently.
+#
+# Pinning power/control=on disables runtime autosuspend for THIS device only
+# (negligible power draw for a fingerprint sensor) and makes matching reliable.
+# The 81- prefix matters: udev applies rules in lexical order and last-writer
+# wins, so this must sort AFTER /usr/lib/udev/rules.d/60-autosuspend.rules (which
+# sets power/control="auto") and 71-nvidia.rules. A lower prefix silently loses.
+# Source of truth: dotfiles configs/udev/, installed by deploy.d/80_fingerprint_power.zsh.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="04f3", ATTR{idProduct}=="0c00", TEST=="power/control", ATTR{power/control}="on"
