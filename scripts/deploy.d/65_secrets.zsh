@@ -238,7 +238,7 @@ if have systemctl; then
         printf '%s\n' "  [dry-run] would: systemctl --user daemon-reload"
     else
         # `|| warn`, never a bare call: under the bash driver's errexit a
-        # failed reload (no user bus in a post-merge hook shell) aborts the
+        # failed reload (no user bus in a scheduled-deploy shell) aborts the
         # whole deploy; zsh only tolerated the same failure silently.
         systemctl --user daemon-reload 2>/dev/null \
             || printf '%s\n' "  WARNING: systemctl --user daemon-reload failed (no user bus?); units may need a manual reload" >&2

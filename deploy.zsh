@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
-# Dotfiles deployer. Run by hand or auto-invoked by scripts/post-merge after
-# every `git pull`. The actual install logic lives in scripts/deploy.d/NN_*.zsh
+# Dotfiles deployer. Run by hand, or by the daily scheduled
+# scripts/pull-and-deploy job when a pull moved HEAD (a plain `git pull` no
+# longer deploys). The actual install logic lives in scripts/deploy.d/NN_*.zsh
 # (sourced in numeric order); shared helpers live in scripts/deploy.d/lib/.
 #
 # Usage: ./deploy.zsh [--upgrade|-u] [--dry-run|-n] [--only NAME ...]
@@ -16,7 +17,7 @@
 #   40  tools          — build/install non-mise CLI tools (fzf, diff-so-fancy, …)
 #   50  mise           — bootstrap mise, install all `configs/mise.toml` tools
 #   55  evalcache_prune — purge poisoned 0-byte zsh evalcache files (recovery)
-#   60  git_hooks      — post-merge / pre-commit hooks
+#   60  git_hooks      — pre-commit hook (and retire the old post-merge hook)
 #   65  sops           — age/sops setup, decrypt env secrets
 #   66  infra          — ensure ~/.local/infra sibling (clone/pull + its deploy)
 #   70  runtime_installs — curl-installed CLIs without a mise backend

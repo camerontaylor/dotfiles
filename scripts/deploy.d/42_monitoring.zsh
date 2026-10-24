@@ -79,7 +79,7 @@ for mon_bin in atop iotop bpftrace nvtop; do
 done
 
 if (( mon_missing )); then
-    # sudo can prompt for a password, and the post-merge/post-checkout git hook
+    # sudo can prompt for a password, and the scheduled pull-and-deploy job
     # has no TTY to answer it. Only attempt an install when sudo is already
     # passwordless/cached or stdin is a terminal; otherwise leave a copy-paste
     # hint rather than hanging the hook. Same guard as 75_brew_setup.zsh's htop.

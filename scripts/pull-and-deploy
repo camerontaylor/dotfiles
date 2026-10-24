@@ -1,0 +1,82 @@
+#!/bin/sh
+# Scheduled dotfiles update: fast-forward this checkout, then run deploy
+# explicitly when HEAD moved. Invoked by the periodic task 99_periodic.zsh
+# installs (systemd user/system timer, launchd LaunchAgent, or cron).
+#
+# This replaces the old scripts/post-merge hook, which ran deploy as a side
+# effect of every `git pull`. Deploy is now an explicit step of the scheduled
+# job; a hand `git pull` deploys nothing — run ./deploy.zsh yourself.
+#
+# POSIX sh (docs/bash-compatibility.md §D): the job must run on hosts without
+# zsh, so it picks deploy.zsh under zsh and falls back to the deploy.bash twin.
+#
+# Env:
+#   DOTFILES_PULL_GIT  absolute git the installer resolved (scheduled units
+#                      have no login PATH); defaults to `git` on PATH.
+
+set -u
+
+# Hand-rolled symlink walk (the repo's canonical pattern, see deploy.bash) —
+# zsh's ${0:A:h:h} has no POSIX spelling.
+_self=$0
+while [ -L "$_self" ]; do
+    _self_dir=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+    _self=$(readlink "$_self")
+    case $_self in
+        /*) ;;
+        *) _self=$_self_dir/$_self ;;
+    esac
+done
+SCRIPT_DIR=$(cd -P -- "$(dirname -- "$_self")" && pwd)
+repo_root=$(cd -P -- "$SCRIPT_DIR/.." && pwd)
+cd "$repo_root" || exit 1
+
+git_bin=${DOTFILES_PULL_GIT:-git}
+
+before=$("$git_bin" rev-parse HEAD 2>/dev/null) || before=
+# --ff-only: the deploy checkout carries no local commits, so a divergence is
+# a fault to surface, not something to paper over with a scheduler-authored
+# merge commit. pull.rebase=false because the fleet gitconfig sets
+# pull.rebase=true, and in rebase mode git refuses to pull over ANY unstaged
+# edit; a true fast-forward merge carries a host's uncommitted local tweaks
+# along (quaoar's laptop-only hypridle/niri/waybar edits) and stops only when
+# upstream touches the same file.
+if ! "$git_bin" -c pull.rebase=false pull --ff-only; then
+    printf '%s\n' "pull-and-deploy: git pull --ff-only failed in $repo_root; not deploying" >&2
+    exit 1
+fi
+after=$("$git_bin" rev-parse HEAD 2>/dev/null) || after=
+
+if [ -n "$before" ] && [ "$before" = "$after" ]; then
+    printf '%s\n' "pull-and-deploy: already at $after; nothing to deploy"
+    exit 0
+fi
+
+# Pick a driver: prefer the zsh one (regression baseline), fall back to the
+# bash twin, and fail LOUD when neither can run — a silent skip would leave
+# the box drifting while the job looks green.
+driver= runner=
+if command -v zsh >/dev/null 2>&1 && zsh -n "$repo_root/deploy.zsh" 2>/dev/null; then
+    runner=zsh
+    driver=$repo_root/deploy.zsh
+elif command -v bash >/dev/null 2>&1 && bash -n "$repo_root/deploy.bash" 2>/dev/null; then
+    runner=bash
+    driver=$repo_root/deploy.bash
+else
+    printf '%s\n' "pull-and-deploy: no runnable deploy driver in $repo_root (need zsh + deploy.zsh or bash + deploy.bash)" >&2
+    exit 1
+fi
+
+printf '%s\n' "pull-and-deploy: ${before:-unknown} -> $after; running $runner $driver"
+
+# Generous backstop only. The old hook's `timeout 300` killed a cold
+# npm-globals install mid-reify (2026-10-02 makemake: npm had already unlinked
+# the old bins, so every npm global died through the mise shims). A real full
+# deploy runs 8-10 min cold; an hour catches a genuinely hung deploy without
+# ever cutting a slow-but-healthy one. --kill-after makes the cap a cap.
+# `timeout` is GNU coreutils (Linux stock, macOS via brew); run uncapped
+# where it is missing.
+if command -v timeout >/dev/null 2>&1; then
+    exec timeout --kill-after=60 3600 "$runner" "$driver"
+fi
+exec "$runner" "$driver"

@@ -2,8 +2,8 @@
 #
 # Source of truth: scripts/macos/macos-defaults.sh. That script is change-aware
 # (writes a `defaults` value only when it differs) and relaunches Finder only on
-# an actual change, so running it on every deploy — including the post-merge
-# auto-deploy after each `git pull` — is a quiet no-op once settings are applied.
+# an actual change, so running it on every deploy — including the daily
+# scheduled pull-and-deploy — is a quiet no-op once settings are applied.
 # See scripts/macos/README.md for what it covers vs. what iCloud/Raycast sync.
 
 if [[ $DOTFILES_OS != Darwin ]]; then

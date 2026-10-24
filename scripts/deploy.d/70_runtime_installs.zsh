@@ -213,7 +213,7 @@ elif have mise; then
 
         if (( ${#npm_packages[@]} > 0 )); then
             # Heal interrupted-reify damage BEFORE installing. An install pass
-            # that dies mid-flight (the post-merge hook's `timeout 300` landing
+            # that dies mid-flight (the retired post-merge hook's `timeout 300` landing
             # on a genuinely slow npm night, OOM, Ctrl-C) leaves the packages
             # present but their bin links removed — npm unlinks before
             # relinking — and every one of them then dies through the mise
@@ -591,7 +591,7 @@ fi
 # cargo-of-git install left (documented exception, docs/cli-tools.md).
 #
 # ~/.cargo/bin must be on the deploy shell's PATH BEFORE the probes: cargo
-# drops the binary there, but a post-merge/cron deploy shell carries no
+# drops the binary there, but a scheduled (timer/cron) deploy shell carries no
 # interactive PATH wiring, so `have linear-cli` stayed false forever, the
 # install re-ran every deploy, and the CLI never resolved for the user
 # (pluto audit 2026-09-29, F3).

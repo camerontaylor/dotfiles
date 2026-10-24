@@ -1,4 +1,6 @@
-# Install a periodic-update task that runs `git pull` daily on its own.
+# Install a periodic-update task that runs scripts/pull-and-deploy daily:
+# `git pull --ff-only`, then an explicit deploy when HEAD moved. (Deploy used
+# to ride on a post-merge hook; that trigger is retired — see 60_git_hooks.)
 # Prefers (in order): systemd timer (user or system), macOS launchd LaunchAgent,
 # crontab fallback. Each branch is idempotent — re-running rewrites the unit.
 
@@ -47,7 +49,7 @@ if have systemctl; then
 
     # The timer's service runs a non-interactive session: no login shell, no
     # profile, so the default PATH carries no mise shims and (on NixOS) no
-    # profile bin dir. `git pull` fires the post-merge hook, which needs
+    # profile bin dir. pull-and-deploy runs the deploy driver, which needs
     # zsh/bash/node — build the unit's PATH from dirs that exist here.
     pull_unit_path=
     pull_path_dir=
@@ -58,13 +60,14 @@ if have systemctl; then
 
     service_name=pull-dotfiles.service
     service_content="[Unit]
-Description=Pull dotfiles update
+Description=Pull dotfiles update and deploy it
 After=network-online.target
 
 [Service]
 Type=oneshot
 Environment=PATH=$pull_unit_path
-ExecStart=$pull_git_bin -c user.name=systemd.update -c user.email=systemd@localhost pull --force
+Environment=\"DOTFILES_PULL_GIT=$pull_git_bin\"
+ExecStart=\"$SCRIPT_DIR/scripts/pull-and-deploy\"
 WorkingDirectory=$SCRIPT_DIR"
     printf '%s\n' "$service_content" > "$systemd_unit_dir/$service_name"
 
@@ -109,7 +112,7 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     # second left a raw `&&` in the plist: invalid XML that `plutil -lint`
     # rejects while launchd's own parser happens to accept it, so the breakage
     # was latent rather than loud.
-    launchd_command="cd $(sh_quote "$SCRIPT_DIR") && $(sh_quote "$pull_git_bin") -c user.name=launchd.update -c user.email=launchd@localhost pull --force"
+    launchd_command="DOTFILES_PULL_GIT=$(sh_quote "$pull_git_bin") $(sh_quote "$SCRIPT_DIR/scripts/pull-and-deploy")"
     launchd_content="<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
 <plist version=\"1.0\">
@@ -151,16 +154,18 @@ elif [[ $DOTFILES_OS == Darwin ]] && have launchctl && (( EUID != 0 )); then
     fi
 elif have crontab; then
     printf '%s\n' "  ...cron detected, installing job for periodic updates..."
-    # Remove the pre-quoting spelling as well when migrating existing jobs.
+    # Remove both earlier bare-`git pull` spellings (pre-quoting and quoted;
+    # they relied on the retired post-merge hook to deploy) when migrating.
     cron_legacy_task="cd $SCRIPT_DIR && $pull_git_bin -c user.name=cron.update -c user.email=cron@localhost pull --force"
-    cron_task="cd $(sh_quote "$SCRIPT_DIR") && $(sh_quote "$pull_git_bin") -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    cron_pull_task="cd $(sh_quote "$SCRIPT_DIR") && $(sh_quote "$pull_git_bin") -c user.name=cron.update -c user.email=cron@localhost pull --force"
+    cron_task="DOTFILES_PULL_GIT=$(sh_quote "$pull_git_bin") $(sh_quote "$SCRIPT_DIR/scripts/pull-and-deploy")"
     cron_schedule="0 0 * * * $cron_task"
     if (( DEPLOY_DRY_RUN )); then
         printf '%s\n' "  [dry-run] would: install crontab job: $cron_schedule"
-    elif cat <(grep --ignore-case --invert-match --fixed-strings -e "$cron_task" -e "$cron_legacy_task" <(crontab -l)) <(printf '%s\n' "$cron_schedule") | crontab -; then
+    elif cat <(grep --ignore-case --invert-match --fixed-strings -e "$cron_task" -e "$cron_pull_task" -e "$cron_legacy_task" <(crontab -l)) <(printf '%s\n' "$cron_schedule") | crontab -; then
         printf '%s\n' "  ...done"
     else
-        printf '%s\n' "Please add \`cd $SCRIPT_DIR && git pull\` to your crontab or just ignore this, you can always update dotfiles manually"
+        printf '%s\n' "Please add \`$SCRIPT_DIR/scripts/pull-and-deploy\` to your crontab or just ignore this, you can always update dotfiles manually"
     fi
 else
     printf '%s\n' "  ...no systemd or cron detected, skipping"

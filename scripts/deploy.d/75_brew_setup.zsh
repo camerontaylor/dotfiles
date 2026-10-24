@@ -188,7 +188,7 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     brew_formula_install_or_upgrade htop || true
 elif have pacman && ! have htop; then
     # sudo can prompt for a password. In a non-interactive deploy (e.g. the
-    # post-merge git hook) there's no TTY to answer it, so only attempt the
+    # scheduled pull-and-deploy job) there's no TTY to answer it, so only attempt the
     # install when sudo is already passwordless/cached or stdin is a terminal;
     # otherwise leave a copy-paste hint instead of hanging on the prompt.
     if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
@@ -303,13 +303,26 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
 fi
 
 # PostgreSQL client tools. Homebrew's libpq formula provides psql without
-# installing or starting a local PostgreSQL server.
+# installing or starting a local PostgreSQL server; on Arch-family Linux the
+# client is postgresql-libs (ceres's psql comes from it). Debian/Ubuntu get
+# postgresql-client from 40_tools.zsh.
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     printf '%s\n' "Installing PostgreSQL client tools via brew..."
     brew_formula_install_or_upgrade libpq || true
     if [[ -d $HOMEBREW_PREFIX/opt/libpq/bin ]]; then
         PATH="$HOMEBREW_PREFIX/opt/libpq/bin:$PATH"
         hash -r
+    fi
+elif have pacman && ! have psql; then
+    if sudo -n true 2>/dev/null || [[ -t 0 ]]; then
+        printf '%s\n' "Installing PostgreSQL client tools via pacman..."
+        if sudo pacman -S --needed --noconfirm postgresql-libs > /dev/null 2>&1; then
+            printf '%s\n' "  ...done"
+        else
+            printf '%s\n' "  ...failed to install postgresql-libs via pacman"
+        fi
+    else
+        printf '%s\n' "psql missing; install it with: sudo pacman -S --needed postgresql-libs"
     fi
 fi
 

@@ -1,0 +1,5 @@
+#!/bin/sh
+# encoding — see and quiet the fleet's video encoding from any host
+# (suspend all|noisy|HOST, wake, pause, resume; `encoding --help`).
+# The CLI lives in the infra repo, next to the coordinator it drives.
+exec "${INFRA_DIR:-$HOME/.local/infra}/bin/encoding" "$@"

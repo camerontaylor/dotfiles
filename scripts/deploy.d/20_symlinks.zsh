@@ -34,7 +34,7 @@ deploy_ln -sfn $SCRIPT_DIR/configs/starship.toml $XDG_CONFIG_HOME/starship.toml
 # dangling link takes down every mise-managed binary at once (node, codex —
 # the ceres 2026-09-12..15 outage where the paseo codex probe died for 2 days).
 # Paseo agent worktrees are ephemeral, and a deploy from inside one (agent or
-# its post-merge hook) must not hand this pointer to a tree paseo will delete.
+# hand-run) must not hand this pointer to a tree paseo will delete.
 # Worktree deploys therefore aim the link at the MAIN checkout's mise.toml;
 # from the main checkout this resolves to $SCRIPT_DIR and changes nothing.
 _mise_main=$(git -C "$SCRIPT_DIR" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -1 || true)

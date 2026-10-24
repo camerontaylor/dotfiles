@@ -25,8 +25,8 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 #                      git-extras and git-tools are AUR-only, so they need an AUR helper
 #                      (paru/yay) — pacman can't fetch them.
 #                      (29_testssl.zsh aliases testssl=testssl.sh.)
-# sudo / AUR helpers can prompt for a password; the post-merge/post-checkout git
-# hook has no TTY to answer it, so a Linux install is only attempted when sudo is
+# sudo / AUR helpers can prompt for a password; the scheduled pull-and-deploy
+# job has no TTY to answer it, so a Linux install is only attempted when sudo is
 # already passwordless/cached or stdin is a terminal (interactive `./deploy.zsh`).
 # Otherwise we print a copy-paste hint instead of hanging — same guard as
 # 75_brew_setup.zsh's htop, honouring the no-sudo-in-hook rule.
