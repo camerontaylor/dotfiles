@@ -52,7 +52,7 @@ unset _claude_target
 # 2026-10-11 — the .bin name failed every Mac install). Bump _jcode_version explicitly; a local copy at or above
 # the pin is left alone, never downgraded. Failure is a loud notice, not
 # deploy-fatal.
-_jcode_version=0.93.0
+_jcode_version=0.99.1
 _jcode_installed=$(command -v jcode >/dev/null 2>&1 && jcode --version 2>/dev/null | awk 'NR==1 {print $2}')
 if [[ -n $_jcode_installed ]] && version_ge "${_jcode_installed#v}" "$_jcode_version"; then
     : # at or above the pin — leave it alone
