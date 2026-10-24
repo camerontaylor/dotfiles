@@ -264,7 +264,7 @@ setopt pipefail
 #   field 2  kind  shellenv | dotenv | dotenv-select:KEYS | blob | copy
 #   field 3  dst   absolute target path
 #   field 4  mode  chmod applied to the rendered file
-#   field 5  gate  all | ceres | pluto | ceres-or-uranus | agents | immich | libris | ollie-notes | infra | arr | adguard | webfront
+#   field 5  gate  all | ceres | pluto | triton | ceres-or-uranus | agents | immich | libris | ollie-notes | infra | arr | adguard | webfront
 #   field 6  post  (empty) | sshlink
 
 MAP_ROWS=()
@@ -334,6 +334,10 @@ _row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_WEDRIFID_TOKEN' "$STAT
 # existing so live B2 credentials never land on a box that has no immich.
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
+
+# OpenAI Realtime is a Paseo voice-only credential. Render on the test host as a
+# private key file; do not source it into agent or shell provider environments.
+_row services/paseo/openai-realtime-api-key.enc blob "$STATE_HOME/paseo/voice/openai-realtime-api-key" 600 triton ''
 
 # restic repository password for the config backup (makemake -> pluto). A blob,
 # not a dotenv row: restic takes --password-file directly, which keeps the
@@ -544,6 +548,7 @@ _gate_open() {
         all)    return 0 ;;
         ceres)  [[ $(hostname -s 2>/dev/null) == ceres ]] ;;
         pluto)  [[ $(hostname -s 2>/dev/null) == pluto ]] ;;
+        triton) [[ $(hostname -s 2>/dev/null) == triton ]] ;;
         ceres-or-uranus)
             case $(hostname -s 2>/dev/null) in ceres|uranus) return 0 ;; *) return 1 ;; esac
             ;;
