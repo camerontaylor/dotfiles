@@ -334,6 +334,8 @@ _row "shell/91_cloudflare_secrets.yaml" 'dotenv-select:CF_WEDRIFID_TOKEN' "$STAT
 # existing so live B2 credentials never land on a box that has no immich.
 _row services/portkey/env.yaml            dotenv "$STATE_HOME/portkey/env"                 600 all    ''
 _row services/portkey/local-api-key.enc   blob   "$STATE_HOME/portkey/local-api-key"       600 all    ''
+# Selected-device VPN; the one-off infra installer places the root operational copy.
+_row services/ollie-vpn/proton.conf.enc    blob   "$STATE_HOME/ollie-vpn/proton.conf"       600 ceres  ''
 
 # restic repository password for the config backup (makemake -> pluto). A blob,
 # not a dotenv row: restic takes --password-file directly, which keeps the
