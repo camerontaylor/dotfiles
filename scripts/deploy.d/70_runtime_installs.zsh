@@ -10,7 +10,7 @@
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, coderabbit, rustup, linear-cli, claude + retired-tool drift cleanup)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, python packages, coderabbit, rustup, linear-cli, claude + retired-tool drift cleanup)"
     return 0
 fi
 
@@ -510,6 +510,43 @@ NPM_INVENTORY_PARSER_EOF
         printf '%s\n' "  ...done"
     fi
 fi
+
+# Python packages (.default-python-packages) install into the mise-managed
+# python through its own pip — the python twin of the npm globals block above.
+# mise also installs this list whenever it installs a python version, via the
+# ~/.default-python-packages symlink planted by 20_symlinks.zsh, so a python
+# bump can't silently drop them; this leg covers hosts that already have the
+# interpreter. pip skips satisfied requirements without touching the network;
+# --upgrade refreshes them. Failure is a loud notice, not deploy-fatal.
+py_packages_file="$SCRIPT_DIR/.default-python-packages"
+if have mise && [[ -f $py_packages_file ]]; then
+    py_has_packages=false
+    while IFS= read -r py_line || [[ -n $py_line ]]; do
+        [[ -z $py_line || $py_line == \#* ]] && continue
+        py_has_packages=true
+        break
+    done < $py_packages_file
+
+    if [[ $py_has_packages == true ]]; then
+        if mise exec python -- python -m pip --version > /dev/null 2>&1; then
+            printf '%s\n' "Installing Python packages through mise python's pip..."
+            py_upgrade_flag=
+            if $upgrade_mode; then
+                py_upgrade_flag=--upgrade
+            fi
+            if py_log=$(mise exec python -- python -m pip install --disable-pip-version-check -q ${py_upgrade_flag:-} -r "$py_packages_file" 2>&1); then
+                printf '%s\n' "  ...done"
+            else
+                printf '%s\n' "  ...pip install failed (non-fatal); last lines of output:" >&2
+                printf '%s\n' "$py_log" | tail -n 5 | sed 's/^/    | /' >&2
+            fi
+        else
+            printf '%s\n' "  ...mise python unavailable (mise install python); skipping Python packages"
+        fi
+    fi
+    unset py_has_packages py_line py_upgrade_flag py_log
+fi
+unset py_packages_file
 
 # gjc (gajae-code) — RETIRED 2026-09-18. It used to be installed here as a bun
 # global (a bun-ONLY package: `engines: { bun: ">=1.4.0" }`, bin/gjc.js under

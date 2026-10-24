@@ -1,0 +1,6 @@
+# Python packages installed into the mise-managed python (pip requirement
+# lines) — by scripts/deploy.d/70_runtime_installs.zsh when missing, and by
+# mise itself whenever it installs a python version (this file is symlinked to
+# ~/.default-python-packages, which mise's python backend reads natively).
+# Use deploy --upgrade to refresh them to the newest release.
+jsonschema

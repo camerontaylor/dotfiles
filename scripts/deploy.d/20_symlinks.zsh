@@ -93,6 +93,10 @@ deploy_ln -sfn $SCRIPT_DIR/configs/portless $HOME/.portless
 # reinstalls the listed globals automatically whenever it installs a node
 # version, so a node bump can't silently drop the globals.
 deploy_ln -sfn $SCRIPT_DIR/.default-npm-packages $HOME/.default-npm-packages
+# python packages list: mise's python backend reads ~/.default-python-packages
+# and pip-installs the listed packages whenever it installs a python version
+# (same hook as the npm list above).
+deploy_ln -sfn $SCRIPT_DIR/.default-python-packages $HOME/.default-python-packages
 # wake-peers (Universal Control screen-wake fanout). The sleepwatcher
 # LaunchAgent itself is activated only on macOS peer hosts by
 # scripts/deploy.d/76_wake_peers.zsh; these symlinks are cross-platform
