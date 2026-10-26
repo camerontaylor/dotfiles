@@ -3,7 +3,7 @@
 # tools/vendor/ (httpstat, spark, spectre-meltdown-checker, git-quick-stats).
 # This fragment: (1) symlinks vendored scripts that must live on PATH, (2)
 # best-effort installs tools that need a package manager (git-extras,
-# git-restore-mtime, testssl), then (3) runs the pre-existing wtp /
+# git-restore-mtime, testssl, poppler), then (3) runs the pre-existing wtp /
 # gh-prreview setup.
 
 # git-quick-stats must be on PATH so `git quick-stats` subcommand dispatch finds
@@ -14,14 +14,17 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 # git-extras (80+ git subcommands + completion), git-restore-mtime, and testssl
 # (TLS scanner) have no mise/aqua backend, so they come from the system package
 # manager. The package layout differs per platform:
-#   macOS            : brew    — git-extras, git-tools, testssl
+#   macOS            : brew    — git-extras, git-tools, testssl, poppler
 #                                (git-tools provides git-restore-mtime)
 #   Debian/Ubuntu    : apt     — git-extras, git-restore-mtime, testssl.sh,
 #                                plus htop and postgresql-client (psql), which
 #                                macOS/Arch get from 75_brew_setup.zsh, and
 #                                trash-cli (`trash`, which the agents' safety
-#                                rule prefers over rm; macOS ships /usr/bin/trash)
-#   Arch-family      : testssl.sh and trash-cli from the official repo (pacman);
+#                                rule prefers over rm; macOS ships /usr/bin/trash),
+#                                and poppler-utils (`pdftotext`/`pdfinfo`, so
+#                                agents can read PDFs; the package is `poppler`
+#                                on Arch and brew)
+#   Arch-family      : testssl.sh, trash-cli and poppler from the official repo (pacman);
 #                      git-extras and git-tools are AUR-only, so they need an AUR helper
 #                      (paru/yay) — pacman can't fetch them.
 #                      (29_testssl.zsh aliases testssl=testssl.sh.)
@@ -34,7 +37,7 @@ deploy_ln -sfn $SCRIPT_DIR/tools/vendor/git-quick-stats $HOME/.local/bin/git-qui
 # ensure_homebrew_path doesn't reach this branch — CI needs it here.
 if [[ $DOTFILES_OS == Darwin ]] && have brew && [[ -z ${DOTFILES_SKIP_BREW:-} ]]; then
     brew_tool= formula= bin_name=
-    for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl; do
+    for brew_tool in git-extras:git-extras git-tools:git-restore-mtime testssl:testssl poppler:pdftotext; do
         formula=${brew_tool%%:*}
         bin_name=${brew_tool#*:}
         brew list --formula $formula > /dev/null 2>&1 && continue
@@ -69,6 +72,7 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 recipes+=( "htop|sudo apt-get install -y htop" )
                 recipes+=( "psql|sudo apt-get install -y postgresql-client" )
                 recipes+=( "trash trash-put|sudo apt-get install -y trash-cli" )
+                recipes+=( "pdftotext|sudo apt-get install -y poppler-utils" )
             fi
             ;;
         *" arch "*)
@@ -79,6 +83,8 @@ elif [[ $DOTFILES_OS == Linux ]]; then
                 && recipes+=( "testssl testssl.sh|sudo pacman -Sy --needed --noconfirm testssl.sh" )
             have pacman \
                 && recipes+=( "trash trash-put|sudo pacman -Sy --needed --noconfirm trash-cli" )
+            have pacman \
+                && recipes+=( "pdftotext|sudo pacman -Sy --needed --noconfirm poppler" )
             # git-extras: AUR -> first available helper (run WITHOUT a sudo prefix;
             # helpers call sudo internally and refuse to run as root).
             aur=""

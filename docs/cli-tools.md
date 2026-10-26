@@ -40,6 +40,7 @@ smoke-tests ~24 of these at the end of every deploy.
 | `yq` | mise | YAML/JSON/XML processor (`jq` for YAML). |
 | `moor` | mise | Pager — a friendlier `less`. |
 | `htop` | pkg | Interactive process viewer. Config symlinked from this repo. |
+| `pdftotext`, `pdfinfo` (poppler) | pkg | PDF text extraction (`pdftotext file.pdf -`) and metadata, plus `pdftoppm`, `pdfimages` and friends. The package is `poppler-utils` on Debian/Ubuntu, `poppler` on Arch and brew. |
 | `sponge`, `ts`, `chronic`, `vipe` | brew (moreutils) | Pipeline helpers: in-place rewrite, timestamp lines, silence-unless-failure, edit-mid-pipe. |
 | `flock` | brew | File locking for cron/lock scripts. macOS has none natively. |
 
