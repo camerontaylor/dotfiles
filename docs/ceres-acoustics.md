@@ -114,7 +114,7 @@ maximum turbo — a given cap costs proportionally less than the table shows.
     # temporary, resets at reboot
     sudo sh -c 'echo 25000000 > /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw'
 
-Persistent (applied on ceres 2026-10-20 at 25 W):
+Persistent (applied on ceres 2026-10-20 at 35 W; raised to 40 W 2026-10-26):
 
     scripts/setup-power-cap.sh [WATTS|off]   # default 25
 
