@@ -21,12 +21,12 @@
 # Clients: the Macs auto-mount [home] at login via scripts/smb-mount +
 #   the com.github.ctaylor.smb-mount LaunchAgent (deployed by
 #   scripts/deploy.d/76_smb_mounts.zsh; needs a one-time Keychain entry per
-#   Mac — see that script's header). By hand: smb://10.77.0.3/home in Finder
-#   (Cmd-K) or ForkLift, or mount -t cifs //10.77.0.3/downloads on Linux.
+#   Mac — see that script's header). By hand: smb://192.168.0.3/home in Finder
+#   (Cmd-K) or ForkLift, or mount -t cifs //192.168.0.3/downloads on Linux.
 #
 # NOTE: smbd binds eno2/wlan0 only, NOT tailscale0 — these shares are LAN-only
 # by design, and bare `ceres` resolves to the Tailscale IP via MagicDNS on the
-# Macs. Always address the shares by IP (wired 10.77.0.3 first).
+# Macs. Always address the shares by IP (wired 192.168.0.3 first).
 
 set -eu
 
@@ -67,7 +67,7 @@ fi
 # ceres runs ufw with default-deny INPUT: open 445 to the LAN only, scoped per
 # interface like the existing rules ("Skipping" on re-run — idempotent).
 if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q '^Status: active'; then
-    sudo ufw allow in on eno2 from 10.77.0.0/24 to any port 445 proto tcp comment 'samba office wired'
+    sudo ufw allow in on eno2 from 192.168.0.0/24 to any port 445 proto tcp comment 'samba office wired'
     sudo ufw allow in on wlan0 from 192.168.0.0/24 to any port 445 proto tcp comment 'samba wifi LAN'
 fi
 
