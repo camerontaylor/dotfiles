@@ -105,41 +105,37 @@ immich.wedrifid.dev {
 	}
 }
 
-# CodexBar LLM plan-quota collector — tailnet-only (added 2026-09-04;
-# upstream moved to neptune 2026-09-10). Same shape as immich.wedrifid.dev
-# above: grey-cloud A record at ceres's Tailscale IP, DNS-01 cert (Let's
-# Encrypt cannot reach 100.82.17.115), personal-account token because
-# DNS-01 uses the wedrifid.dev-scoped token.
-# Backend is the com.github.ctaylor.codexbar-serve LaunchAgent on neptune
-# (100.84.239.15, direct LAN peer of ceres), bound to its Tailscale address.
-# The collector lives on a Mac because CodexBar's cookie-based sources are
-# macOS-only — see ~/.local/agents/docs/llm-quota.md.
+# LLM plan quota — tailnet-only (added 2026-09-04 as a proxy to CodexBar;
+# since 2026-10-27 our own static page). Grey-cloud A record at ceres's
+# Tailscale IP, DNS-01 cert, same shape as immich.wedrifid.dev above.
+#
+# Nothing here reaches CodexBar any more. Its /usage carries account emails
+# and dollar spend, and its dashboard snapshot and /cost scan ~2 GB of session
+# logs on neptune per refresh, so browsers get neither. Instead infra
+# bin/fleet-quota-publish on ceres reads /usage every minute and writes an
+# allowlisted /var/www/fleet-status/quota.json (windows, used %, resets, pace).
+# The page is infra web/dist/usage/, installed into /var/www/fleet by
+# install-fleet-page and served at this host's root; it is also reachable as
+# fleet.wedrifid.dev/usage/. CODEXBAR_DASHBOARD_TOKEN in /etc/caddy/env is no
+# longer read by this file.
 usage.wedrifid.dev {
 	import wedrifid_tailnet
+	encode zstd gzip
 
-	# CodexBar rejects any request whose Host is not its own bind address
-	# ({"error":"forbidden host"}) — a DNS-rebinding guard with no allowlist
-	# flag or env var. Rewrite Host to the dial target so it sees a request
-	# for its own bind address. The remote_ip matcher above is unaffected:
-	# it reads the peer address, not this header, so the tailnet boundary
-	# still holds.
-	reverse_proxy 100.84.239.15:8791 {
-		header_up Host {upstream_hostport}
-		# Token-free dashboard for tailnet clients: CodexBar's web UI
-		# prompts for a token only when an endpoint answers 401 (it sends
-		# nothing when the browser has none stored). Injecting the bearer
-		# here means browsers never see or store it. On the non-loopback
-		# bind this token ALSO gates /usage and /cost upstream — CodexBar
-		# only leaves those open on loopback — so this header is now what
-		# authenticates every proxied path, not just the snapshot. The
-		# @external abort above remains the network boundary; the snapshot
-		# is identity-redacted. Value synced from
-		# ~/.local/state/codexbar/dashboard-token into /etc/caddy/env by
-		# setup-caddy-usage-site.sh — that file is now a MIRROR pushed from
-		# neptune, where the collector generates it (dotfiles
-		# 78_codexbar_serve.zsh prints the push command); if absent this
-		# becomes "Bearer " and endpoints answer 401, so it fails closed.
-		header_up Authorization "Bearer {env.CODEXBAR_DASHBOARD_TOKEN}"
+	# The sidecar dir fleet.wedrifid.dev serves /status.json from; no-store so
+	# the page is never older than the file.
+	handle /quota.json {
+		header Cache-Control "no-store"
+		root * /var/www/fleet-status
+		file_server
+	}
+
+	# The page and its assets (/quota.js, /icons/) come from the fleet tree.
+	handle {
+		root * /var/www/fleet
+		header / Cache-Control "no-cache"
+		rewrite / /usage/
+		file_server
 	}
 }
 
@@ -299,6 +295,15 @@ fleet.wedrifid.dev {
 	# applying: the snapshot must be no-store so a tile is never older than
 	# the file it was rendered from. caddy reads it through the setgid bit.
 	handle /status.json {
+		header Cache-Control "no-store"
+		root * /var/www/fleet-status
+		file_server
+	}
+
+	# The live LLM quota feed for the strip tile and /status/#quota, written
+	# every minute on ceres by infra bin/fleet-quota-publish into the same
+	# sidecar. Same no-store rule as the snapshot.
+	handle /quota.json {
 		header Cache-Control "no-store"
 		root * /var/www/fleet-status
 		file_server

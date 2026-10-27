@@ -63,11 +63,17 @@ fi
 # Neptune's Codex scan took 48s on 2026-10-01; a 30s request budget marked
 # working providers as failed. Cold background usage plus cost collection also
 # exhausted a 120s budget; allow five minutes for the sequential initial build.
-# Subsequent requests use the 180s cache and stale-while-revalidate responses.
+#
+# Since 2026-10-27 nothing asks for the dashboard or /cost: usage.wedrifid.dev
+# is infra's own page over a sanitised quota.json that ceres's
+# fleet-quota-publish builds from /usage every minute. A /usage refresh costs
+# ~1 s CPU (the cost scans were ~10-14 s), so the TTL sits just under that
+# 60 s cadence: every tick finds the cache expired, triggers a refresh, and
+# the publisher's 20 s re-read collects it. That keeps quota ~20 s old.
 exec /usr/local/bin/codexbar serve \
     --host "$ts_ip" \
     --port 8791 \
-    --refresh-interval 180 \
+    --refresh-interval 50 \
     --request-timeout 300 \
     --identity redacted \
     --allow-plain-http
