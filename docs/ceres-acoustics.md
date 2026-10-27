@@ -114,9 +114,13 @@ maximum turbo — a given cap costs proportionally less than the table shows.
     # temporary, resets at reboot
     sudo sh -c 'echo 25000000 > /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw'
 
-For persistence this wants a small systemd unit re-applying it at boot — a
-host-specific quirk, so a host-scoped fragment plus a manifest entry per the
-repo's placement rules. Not yet written.
+Persistent (applied on ceres 2026-10-20 at 35 W; raised to 40 W 2026-10-26):
+
+    scripts/setup-power-cap.sh [WATTS|off]   # default 25
+
+It installs `/etc/udev/rules.d/71-rapl-pl1-cap.rules`, which writes the cap
+whenever the `intel-rapl:0` device appears — so it survives reboots and
+`intel_rapl_msr` reloads without racing the module load. PL2 is untouched.
 
 ## What was ruled out
 
