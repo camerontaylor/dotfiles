@@ -1,7 +1,10 @@
 [tools]
 # Language runtimes — pin to channels/major lines so a surprise major release
 # doesn't land on shell startup. Bump explicitly with `mise upgrade <tool>`.
-bun = "1"
+# bun: exact pin, because a "1" prefix is satisfied by whatever 1.x was first
+# installed and never moves (froze at 1.4.2 while omp 18.14 needs >= 1.4.4,
+# 2026-10-31). Bump explicitly.
+bun = "1.4.4"
 python = "3"
 uv = "0.11.16"
 # node is mise-managed: the ONE node on every PATH — interactive shells and
@@ -102,21 +105,17 @@ btop = { version = "1.4.7", os = ["linux"] }
 "github:imsnif/bandwhich" = "0.23.1"
 "github:mstange/samply" = "samply-v0.13.1"
 # AI/dev tools intentionally tracking leading edge (move fast, want updates).
-# opencode is installed as an npm global (opencode-ai) via .default-npm-packages,
-# NOT through mise: the aqua:anomalyco/opencode backend lags upstream releases
-# and warns on every shell startup when a new version isn't yet published there.
-# Claude Code (was: claude.ai/install.sh curl in 70_runtime_installs.zsh) —
-# the aqua backend ships the same native binaries the official installer
-# does. The CLI's built-in auto-updater is disabled via [env] below so mise
-# stays the only writer; 70_runtime_installs.zsh drift-corrects away the
-# old native install (~/.local/bin/claude symlink + ~/.local/share/claude).
+# Agent harnesses (Claude Code, Codex, OpenCode, Pi, omp, dsh, jcode) are NOT
+# installed here: the agents repo owns them (manifests/harnesses.conf,
+# scripts/harness-update.py) and floats each to its latest release on every
+# agents deploy. Claude Code uses Anthropic's native installer with its own
+# auto-updater on; the aqua backend lagged it (2.1.312 vs 2.1.314,
+# 2026-10-31) and a "2" prefix never moved without `mise upgrade`.
 # NB: "0" is NOT mise's track-latest — it's a semver prefix that only
 # tracks the leading edge for major-0 tools (neovim et al below). For
-# claude-code/moor/wtp (major 2) an "0" row 404s at install time
-# (`.../claude-code-releases/0/linux-x64/...`) and wtp even resolved a
-# stale 0.4.0; majors are pinned per the CLAUDE.md rule instead. Caught
-# 2026-09-08 when the fleet-m234 deploy reached makemake.
-"aqua:anthropics/claude-code" = "2"
+# major-2 tools (moor/wtp) an "0" row 404s at install time and wtp even
+# resolved a stale 0.4.0; majors are pinned per the CLAUDE.md rule instead.
+# Caught 2026-09-08 when the fleet-m234 deploy reached makemake.
 # HISTORICAL, kept because scripts/setup-swap.sh cites it as the evidence for
 # this fleet's swap sizing: a single cargo source build here (codewhale-tui,
 # since retired) peaked at 11.9 GB RSS and was kernel-OOM-killed on makemake
@@ -157,14 +156,6 @@ btop = { version = "1.4.7", os = ["linux"] }
 # base. Do NOT loosen this to a floating range: `mise upgrade` would walk
 # the CLI ahead of the pinned daemon unattended.
 "npm:@getpaseo/cli" = { version = "0.10.1", os = ["linux"] }
-
-[env]
-# Claude Code's built-in auto-updater would rewrite its install out from
-# under mise's pin (it recreates ~/.local/bin/claude pointing into
-# ~/.local/share/claude). Disable it in every mise-activated context so
-# `mise upgrade` is the only upgrade path; the drift-corrector in
-# 70_runtime_installs.zsh removes whatever the updater left behind.
-DISABLE_AUTOUPDATER = "1"
 
 [settings]
 # Respect version files: .node-version, .tool-versions

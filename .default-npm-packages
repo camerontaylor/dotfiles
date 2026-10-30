@@ -3,21 +3,11 @@
 # whenever it installs a node version (this file is symlinked to
 # ~/.default-npm-packages, which mise's node backend reads natively).
 # Use deploy --upgrade to refresh installed @latest packages; exact pins stay pinned.
+# Agent harnesses (codex, opencode, pi, omp, dsh) are NOT listed here: the
+# agents repo installs them and floats them to latest on every deploy
+# (manifests/harnesses.conf). npm's allow-scripts gate still applies to dsh.
 happy@latest
 happy-dom@latest
-@openai/codex@latest
-opencode-ai@latest
-# DeepSeek Harness -- `dsh`, DeepSeek's own agent harness. Tracks latest like
-# the other agent CLIs above, which today means a DEVELOPER-PREVIEW rc
-# (0.1.5-rc.2): upstream states there will be compatibility-breaking changes,
-# so a dsh that stops booting after a deploy is expected breakage, not drift.
-# Its model catalog and ACP defaults are pinned by the agents repo
-# (configs/ai/dsh/cordis.patch.yml -> ~/.dsh/cordis.patch.yml).
-# npm's allow-scripts gate (~/.config/npm/config) blocks three of its optional
-# native postinstalls (node-pty, koffi, dsh-subprocess-local's spawn helper).
-# Deliberately NOT allowlisted: verified 2026-09-18 that the agent loop, the
-# bash tool and the ACP profile all work without them.
-@deepseek-ai/dsh@latest
 t3@latest
 oh-my-claude-sisyphus@latest
 pnpm@latest
@@ -28,13 +18,6 @@ agent-browser@latest
 @ast-grep/cli@latest
 @ast-grep/napi@latest
 oxlint@latest
-# Base Pi -- the minimal terminal coding harness (earendil-works/pi), binary
-# `pi`. Distinct from oh-my-pi above: that package's binary is `omp`, a
-# separate fork with its own ~/.omp config tree. `pi`'s config/extensions
-# (the pi-opencode provider) are pinned by the agents repo
-# (configs/ai/pi/settings.json -> ~/.pi/agent/settings.json).
-@earendil-works/pi-coding-agent@latest
-@oh-my-pi/pi-coding-agent@latest
 @aoagents/ao@latest
 grab@latest
 continues@latest
