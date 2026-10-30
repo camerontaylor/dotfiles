@@ -1,7 +1,7 @@
 # curl/cargo installs for CLIs without a mise backend (rustup/cargo,
 # linear-cli, CodeRabbit) and npm globals through the mise-managed node (pinned
-# in configs/mise.toml, installed by 50_mise.zsh). Claude Code / moor /
-# wtp-Linux moved to mise backends (configs/mise.toml) — the drift-correctors
+# in configs/mise.toml, installed by 50_mise.zsh). moor / wtp-Linux
+# moved to mise backends (configs/mise.toml) — the drift-correctors
 # below retire what this fragment used to install by hand.
 #
 # Dry-run contract (AGENTS.md): same story as 50_mise.zsh — the npm
@@ -10,95 +10,15 @@
 # nothing looked wrong until a fresh HOME (CI) got a real rust toolchain
 # mid-"dry-run". The fragment is 100% mutation, so preview at fragment scope.
 if (( DEPLOY_DRY_RUN )); then
-    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, python packages, coderabbit, rustup, linear-cli, claude + retired-tool drift cleanup)"
+    printf '%s\n' "Runtime installs skipped in dry-run (would: npm globals, python packages, coderabbit, rustup, linear-cli + retired-tool drift cleanup)"
     return 0
 fi
 
-# Claude Code is mise-managed (aqua:anthropics/claude-code). Drift-correct
-# hosts that still carry the native installer's layout (claude.ai/install.sh
-# era): a ~/.local/bin/claude symlink into ~/.local/share/claude plus its
-# versions dir. mise shims precede ~/.local/bin on PATH, so the drift never
-# wins interactively — this is hygiene plus reclaiming the duplicate bytes.
-# Only remove the symlink when it really points into the native install,
-# never a real binary someone put there; ~/.claude (config) is a different
-# tree and untouched.
-if [[ -L $HOME/.local/bin/claude ]]; then
-    _claude_target=$(readlink $HOME/.local/bin/claude)
-    case $_claude_target in
-        "$HOME"/.local/share/claude/*)
-            printf '%s\n' "Removing native-install Claude Code (mise owns claude now)..."
-            rm -f $HOME/.local/bin/claude
-            rm -rf $HOME/.local/share/claude
-            hash -r
-            printf '%s\n' "  ...done"
-            ;;
-    esac
-fi
-unset _claude_target
 
-# jcode (github.com/1jehuang/jcode) — Rust coding-agent harness; the consumer
-# is the agents repo's paseo `jcode` provider (scripts/paseo-providers.py
-# drops that provider while this binary is missing). No mise backend works:
-# no aqua-registry entry, and the release tarballs ship a platform-named
-# binary plus an LD_LIBRARY_PATH wrapper script instead of bin/jcode — mise's
-# github backend installs those files but can never expose a `jcode` bin
-# (verified in a scratch MISE_DATA_DIR, 2026-10-10). The official installer is
-# unpinned AND appends a PATH line to shell rc files this repo owns. So:
-# hand-rolled release-tarball install per this fragment's charter,
-# SHA256SUMS-verified, installing the real binary as ~/.local/bin/jcode. The
-# Linux tarballs hold jcode-<platform>.bin (the real ELF; runs standalone —
-# the wrapper only exists for Termux-style LD_LIBRARY_PATH hosts); the macOS
-# tarballs hold just a bare jcode-<platform> Mach-O (verified v0.93.0,
-# 2026-10-11 — the .bin name failed every Mac install). Bump _jcode_version explicitly; a local copy at or above
-# the pin is left alone, never downgraded. Failure is a loud notice, not
-# deploy-fatal.
-_jcode_version=0.99.1
-_jcode_installed=$(command -v jcode >/dev/null 2>&1 && jcode --version 2>/dev/null | awk 'NR==1 {print $2}')
-if [[ -n $_jcode_installed ]] && version_ge "${_jcode_installed#v}" "$_jcode_version"; then
-    : # at or above the pin — leave it alone
-else
-    _jcode_platform= _jcode_member=
-    case "$(uname -s)/$(uname -m)" in
-        Linux/x86_64)  _jcode_platform=linux-x86_64 _jcode_member=jcode-linux-x86_64.bin ;;
-        Linux/aarch64) _jcode_platform=linux-aarch64 _jcode_member=jcode-linux-aarch64.bin ;;
-        Darwin/arm64)  _jcode_platform=macos-aarch64 _jcode_member=jcode-macos-aarch64 ;;
-        Darwin/x86_64) _jcode_platform=macos-x86_64 _jcode_member=jcode-macos-x86_64 ;;
-    esac
-    _jcode_sum=$(command -v sha256sum || command -v shasum)
-    if [[ -z $_jcode_platform ]]; then
-        printf '%s\n' "  ...jcode: no release asset for $(uname -s)/$(uname -m), skipping"
-    elif [[ -z $_jcode_sum ]]; then
-        printf '%s\n' "  ...jcode: no sha256sum/shasum for checksum verification, skipping"
-    elif ! have curl; then
-        printf '%s\n' "  ...jcode: no curl, skipping"
-    else
-        _jcode_tmp=$(mktemp -d)
-        _jcode_base="https://github.com/1jehuang/jcode/releases/download/v$_jcode_version"
-        _jcode_ok=false
-        if curl -fsSL -o "$_jcode_tmp/jcode.tar.gz" "$_jcode_base/jcode-$_jcode_platform.tar.gz" \
-            && curl -fsSL -o "$_jcode_tmp/SHA256SUMS" "$_jcode_base/SHA256SUMS"; then
-            if [[ $_jcode_sum == */sha256sum ]]; then
-                _jcode_hash=$($_jcode_sum "$_jcode_tmp/jcode.tar.gz")
-            else
-                _jcode_hash=$($_jcode_sum -a 256 "$_jcode_tmp/jcode.tar.gz")
-            fi
-            _jcode_hash=${_jcode_hash%% *}
-            if grep -Eq "^${_jcode_hash}[[:space:]]+jcode-${_jcode_platform}\.tar\.gz$" "$_jcode_tmp/SHA256SUMS" \
-                && tar -xzf "$_jcode_tmp/jcode.tar.gz" -C "$_jcode_tmp" "$_jcode_member"; then
-                mkdir -p $HOME/.local/bin
-                install -m 0755 "$_jcode_tmp/$_jcode_member" $HOME/.local/bin/jcode
-                hash -r
-                printf '%s\n' "Installed jcode v$_jcode_version -> $HOME/.local/bin/jcode"
-                _jcode_ok=true
-            fi
-        fi
-        if [[ $_jcode_ok != true ]]; then
-            printf '%s\n' "  ...jcode v$_jcode_version download/checksum failed, skipping (paseo jcode provider will drop)"
-        fi
-        rm -rf "$_jcode_tmp"
-    fi
-fi
-unset _jcode_version _jcode_installed _jcode_platform _jcode_member _jcode_sum _jcode_tmp _jcode_base _jcode_ok _jcode_hash
+# Agent harness binaries (claude, codex, opencode, pi, omp, dsh, jcode) are
+# owned by the agents repo: manifests/harnesses.conf, installed and floated
+# to latest by its scripts/harness-update.py on every agents deploy
+# (fragment 67, before this one).
 
 npm_packages_file="$SCRIPT_DIR/.default-npm-packages"
 
@@ -146,6 +66,8 @@ elif have mise; then
         npm:@code-yeongyu/comment-checker
         github:usewhale/DeepSeek-COde-Whale
         github:usewhale/DeepSeek-Code-Whale
+        # Claude Code moved to the native installer, owned by agents.
+        aqua:anthropics/claude-code
     )
 
     printf '%s\n' "Removing stale mise installs..."
