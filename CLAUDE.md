@@ -21,6 +21,7 @@ eighteenth installer.
   re-attribute and hang, and volume-resident binaries never load
   (see docs/offload-home.md, "The launchd / TCC wall")
 - agent CLI/skill/provider config → the agents repo (`~/.local/agents`)
+- encoding, enhancement and cloud GPU tools → the encoding repo (`~/.local/encoding`); host setup stays in infra
 - host-specific quirk → host-scoped fragment + manifest entry
 
 ## Shell-script portability (strict)

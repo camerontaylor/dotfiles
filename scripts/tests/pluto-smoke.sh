@@ -24,12 +24,14 @@ fi
 dotfiles_root=${DOTFILES_DIR:-${DOTFILES:-$HOME/.local/dotfiles}}
 agents_root=${AGENTS_DIR:-$HOME/.local/agents}
 infra_root=${INFRA_DIR:-$HOME/.local/infra}
+encoding_root=${ENCODING_DIR:-$HOME/.local/encoding}
 secrets_root=${SECRETS_DIR:-$HOME/.local/secrets}
 state_root=${XDG_STATE_HOME:-$HOME/.local/state}
 
 check 'dotfiles checkout' test -f "$dotfiles_root/deploy.bash"
 check 'agents checkout' test -f "$agents_root/deploy"
 check 'infra checkout' test -f "$infra_root/deploy"
+check 'encoding checkout' test -f "$encoding_root/deploy"
 check 'secrets checkout' test -e "$secrets_root/.git"
 
 for tool in bash zsh git mise node python uv sops age nvim claude codex paseo t3 pi linear-cli htop mosh git-extras git-restore-mtime psql iotop bpftrace nvtop coderabbit cc make pkg-config; do

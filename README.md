@@ -345,3 +345,7 @@ deploy chain, with development runtimes and harnesses installed by mise/npm.
 Its dedicated encrypted rebuild identity lives in the secrets repo under
 `hosts/uranus/`. Live configuration and probe evidence belong in infra's
 `manifests/uranus.toml`; Paseo config and fleet helpers belong in agents.
+
+Encoding tools live in `camerontaylor/encoding`, cloned to
+`${ENCODING_DIR:-$HOME/.local/encoding}` by `scripts/deploy.d/68_encoding.zsh`
+after secrets, infra and agents. Infra owns host setup and service placement.

@@ -159,16 +159,17 @@ exit 0''')
 
     def test_sibling_env_overrides_and_worktree_git_file(self):
         self.copy("scripts/deploy.d/lib/helpers.zsh")
-        for name in ("65_secrets", "66_infra", "67_agents"):
+        for name in ("65_secrets", "66_infra", "67_agents", "68_encoding"):
             self.copy(f"scripts/deploy.d/{name}.zsh")
         # Siblings at overridden paths, each a WORKTREE (`.git` is a file).
         secrets = self.base / "over rides/secrets"
         infra = self.base / "over rides/infra"
         agents = self.base / "over rides/agents"
-        for sibling in (secrets, infra, agents):
+        encoding = self.base / "over rides/encoding"
+        for sibling in (secrets, infra, agents, encoding):
             sibling.mkdir(parents=True)
             (sibling / ".git").write_text("gitdir: /main/repo/.git/worktrees/x\n")
-        for name, sibling in (("infra", infra), ("agents", agents)):
+        for name, sibling in (("infra", infra), ("agents", agents), ("encoding", encoding)):
             deploy = sibling / "deploy"
             deploy.write_text('#!/bin/sh\n'
                               f'printf "{name} %s DOTFILES_DIR=%s\\n" "$*" '
@@ -181,7 +182,7 @@ exit 0''')
         renderer = self.repo / "scripts/secrets-render.zsh"
         renderer.write_text('printf "render dry=%s\\n" "$DEPLOY_DRY_RUN" >> "$CALLS"\n')
         self.env.update(SECRETS_DIR=str(secrets), INFRA_DIR=str(infra),
-                        AGENTS_DIR=str(agents))
+                        AGENTS_DIR=str(agents), ENCODING_DIR=str(encoding))
         for shell in SHELLS:
             with self.subTest(shell=shell):
                 self.calls.unlink(missing_ok=True)
@@ -198,7 +199,8 @@ exit 0''')
                                self.repo / "scripts/deploy.d/lib/helpers.zsh",
                                self.repo / "scripts/deploy.d/65_secrets.zsh",
                                self.repo / "scripts/deploy.d/66_infra.zsh",
-                               self.repo / "scripts/deploy.d/67_agents.zsh")
+                               self.repo / "scripts/deploy.d/67_agents.zsh",
+                               self.repo / "scripts/deploy.d/68_encoding.zsh")
                 calls = self.log()
                 self.assertIn("render dry=0", calls)
                 self.assertIn(f"git -C {secrets} pull --ff-only", calls)
@@ -210,11 +212,12 @@ exit 0''')
                                 "post-merge hook must land in the --git-path hooks dir")
                 self.assertIn("infra ", calls)
                 self.assertIn("agents ", calls)
+                self.assertIn("encoding ", calls)
                 self.assertIn("systemctl --user daemon-reload", calls)
 
     def test_siblings_dry_run_still_zero_mutation(self):
         self.copy("scripts/deploy.d/lib/helpers.zsh")
-        for name in ("65_secrets", "66_infra", "67_agents"):
+        for name in ("65_secrets", "66_infra", "67_agents", "68_encoding"):
             self.copy(f"scripts/deploy.d/{name}.zsh")
         self.env["DEPLOY_DRY_RUN"] = "1"
         for shell in SHELLS:
@@ -224,7 +227,8 @@ exit 0''')
                                self.repo / "scripts/deploy.d/lib/helpers.zsh",
                                self.repo / "scripts/deploy.d/65_secrets.zsh",
                                self.repo / "scripts/deploy.d/66_infra.zsh",
-                               self.repo / "scripts/deploy.d/67_agents.zsh")
+                               self.repo / "scripts/deploy.d/67_agents.zsh",
+                               self.repo / "scripts/deploy.d/68_encoding.zsh")
                 self.assertEqual(self.log(), "",
                                  "dry-run chain must invoke no fake tool at all")
 

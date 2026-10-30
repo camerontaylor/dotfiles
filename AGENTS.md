@@ -171,3 +171,7 @@ Remaining candidates: `configs/caddy/` + `scripts/setup-caddy.sh` +
 `docs/caddy-ingress.md`; `scripts/setup-t3.sh`, `scripts/setup-ceres-share.sh`,
 `scripts/setup-office-lan.sh`; `configs/samba/`, `configs/portless/`. New
 deployed services go straight to the infra repo, not here.
+
+Encoding tools live in `camerontaylor/encoding`, cloned to
+`${ENCODING_DIR:-$HOME/.local/encoding}` by `scripts/deploy.d/68_encoding.zsh`
+after secrets, infra and agents. Infra owns host setup and service placement.

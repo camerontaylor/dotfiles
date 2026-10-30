@@ -788,3 +788,5 @@ if (( ! _dry )); then
 fi
 
 exit 0
+
+# Encoding consumers live in the encoding sibling; cloud-gpu keeps its infra gate.

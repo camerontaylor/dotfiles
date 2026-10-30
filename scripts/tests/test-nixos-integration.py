@@ -94,7 +94,7 @@ class NixosIntegration(unittest.TestCase):
                 for path in self.home.rglob("*")}
 
     def fixture_siblings(self, existing=True):
-        for name in ("secrets", "infra", "agents"):
+        for name in ("secrets", "infra", "agents", "encoding"):
             sibling = self.home / ".local" / name
             if not existing:
                 continue
@@ -115,7 +115,7 @@ class NixosIntegration(unittest.TestCase):
     def chain(self, shell):
         helpers = self.copy("scripts/deploy.d/lib/helpers.zsh")
         fragments = [self.copy(f"scripts/deploy.d/{name}.zsh") for name in
-                     ("65_secrets", "66_infra", "67_agents")]
+                     ("65_secrets", "66_infra", "67_agents", "68_encoding")]
         return self.run_shell(shell, '. "$1"; shift; for fragment in "$@"; '
                               'do . "$fragment" || exit; done', helpers, *fragments)
 
@@ -127,7 +127,8 @@ class NixosIntegration(unittest.TestCase):
                 self.chain(shell)
                 self.assertEqual(self.log().splitlines(), ["render dry=1",
                     "infra --dry-run DOTFILES_DIR=",
-                    f"agents --dry-run DOTFILES_DIR={self.repo}"])
+                    f"agents --dry-run DOTFILES_DIR={self.repo}",
+                    "encoding --dry-run DOTFILES_DIR="])
 
     def test_missing_siblings_dry_run_never_contacts_network(self):
         self.fixture_siblings(existing=False)
@@ -150,12 +151,13 @@ class NixosIntegration(unittest.TestCase):
                 self.assertIn("pull --ff-only", calls)
                 self.assertLess(calls.index("render dry=0"), calls.index("infra  "))
                 self.assertLess(calls.index("infra  "), calls.index("agents  "))
+                self.assertLess(calls.index("agents  "), calls.index("encoding  "))
                 self.assertIn("WARNING", output)
 
     def test_worktree_overrides_are_used_without_cloning(self):
         self.fixture_siblings()
         overrides = {}
-        for name in ("secrets", "infra", "agents"):
+        for name in ("secrets", "infra", "agents", "encoding"):
             source = self.home / ".local" / name
             target = self.base / "worktrees" / name
             target.parent.mkdir(exist_ok=True)
@@ -255,7 +257,7 @@ class NixosIntegration(unittest.TestCase):
     def test_real_drivers_dispatch_chain_with_non_fhs_path(self):
         self.fixture_siblings()
         self.copy("scripts/deploy.d/lib/helpers.zsh")
-        for name in ("65_secrets", "66_infra", "67_agents"):
+        for name in ("65_secrets", "66_infra", "67_agents", "68_encoding"):
             self.copy(f"scripts/deploy.d/{name}.zsh")
         for shell, driver in zip(SHELLS, ("deploy.bash", "deploy.zsh")):
             with self.subTest(driver=driver):
@@ -267,7 +269,8 @@ class NixosIntegration(unittest.TestCase):
                 self.assertEqual(before, self.snapshot_home(), "driver dry-run changed HOME")
                 self.assertEqual(self.log().splitlines(), ["render dry=1",
                     "infra --dry-run DOTFILES_DIR=",
-                    f"agents --dry-run DOTFILES_DIR={self.repo}"])
+                    f"agents --dry-run DOTFILES_DIR={self.repo}",
+                    "encoding --dry-run DOTFILES_DIR="])
 
     def test_real_drivers_honor_explicit_xdg_state_home(self):
         self.copy("scripts/deploy.d/lib/helpers.zsh")
@@ -354,7 +357,7 @@ else:
         self.copy("scripts/pull-and-deploy")
         for name in ("deploy.bash", "deploy.zsh"):
             self.copy(name)
-        for name in ("65_secrets", "66_infra", "67_agents"):
+        for name in ("65_secrets", "66_infra", "67_agents", "68_encoding"):
             self.copy(f"scripts/deploy.d/{name}.zsh")
         # rev-parse HEAD reads a fake ref that `pull` advances, so the job
         # sees HEAD move and must run deploy itself (no hook does it now).
