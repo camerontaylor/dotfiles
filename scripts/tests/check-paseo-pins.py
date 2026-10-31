@@ -5,7 +5,9 @@ Usage: check-paseo-pins.py --dotfiles REPO --infra REPO
 Defaults: ~/.local/dotfiles and ~/.local/infra. Run --self-test for disposable
 synthetic fixtures. Agents' setup beta channel is deliberately not a pin.
 The stock @getpaseo/cli must use a stable version; the daemon must use
-@camerontaylor/paseo-cli at that exact base plus -fork.POSITIVEINTEGER.
+@camerontaylor/paseo-cli at that exact base plus a fork suffix: legacy
+-fork.POSITIVEINTEGER, or the shared build stamp -fork.YYMMDD-HHMM.gSHA12
+(paseo fork/build-versions.md; UTC commit date + 12-char lowercase SHA).
 The daemon command must use `paseo daemon run`, without --foreground.
 --print-daemon-tool prints only the validated npm selector for installers.
 Only declaration files are read; no shell, Nix, mise or network is invoked.
@@ -25,7 +27,8 @@ import unittest
 
 STABLE_BASE = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 VERSION = re.compile(STABLE_BASE)
-FORK_VERSION = re.compile(r"(" + STABLE_BASE + r")-fork\.[1-9][0-9]*")
+FORK_SUFFIX = r"-fork\.(?:[1-9][0-9]*|[0-9]{6}-[0-9]{4}\.g[0-9a-f]{12})"
+FORK_VERSION = re.compile(r"(" + STABLE_BASE + r")" + FORK_SUFFIX)
 CLI_TOOL = "npm:@getpaseo/cli"
 DAEMON_TOOL = "npm:@camerontaylor/paseo-cli"
 NIX_STRING = r'"(?:\\.|[^"\\])*"'
@@ -94,7 +97,7 @@ def daemon_pin(path: Path) -> str:
         raise ValueError(f"{path}: daemon role requires {DAEMON_TOOL}")
     pin = selectors[0][len(DAEMON_TOOL) + 1:]
     if not FORK_VERSION.fullmatch(pin):
-        raise ValueError(f"{path}: daemon pin requires stable base plus -fork.POSITIVEINTEGER")
+        raise ValueError(f"{path}: daemon pin requires stable base plus -fork.POSITIVEINTEGER or -fork.YYMMDD-HHMM.gSHA12")
     return pin
 
 
@@ -130,6 +133,11 @@ systemd.services.paseo-daemon = {
 
     def test_matching_split_daemon_command(self) -> None:
         self.assertEqual(check(self.root, self.root), ("0.9.1", "0.9.1-fork.1"))
+
+    def test_accepts_shared_build_stamp(self):
+        stamp = "0.9.1-fork.261030-0840.g64487f6805ee"
+        self.daemon.write_text(self.daemon.read_text().replace("0.9.1-fork.1", stamp))
+        self.assertEqual(check(self.root, self.root), ("0.9.1", stamp))
 
     def test_mismatch(self) -> None:
         self.daemon.write_text(self.daemon.read_text().replace("0.9.1-fork.1", "0.9.2-fork.1"))
@@ -190,7 +198,10 @@ systemd.services.paseo-daemon = {
         original = self.daemon.read_text()
         for pin in ("0.9.1", "0.9.1-fork.0", "0.9.1-fork.-1", "0.9.1-fork.01",
                     "0.9.1-fork.x", "0.9.1-fork.1.extra", "0.9.1-beta.1-fork.1",
-                    "0.9.1-fork.1+build", "${VERSION}-fork.1"):
+                    "0.9.1-fork.1+build", "${VERSION}-fork.1",
+                    "0.9.1-fork.261030-0840.g64487f6805e", "0.9.1-fork.261030-0840.G64487F6805EE",
+                    "0.9.1-fork.261030.g64487f6805ee", "0.9.1-fork.2610300840.g64487f6805ee",
+                    "0.9.1-fork.261030-0840.64487f6805ee", "0.9.1-fork.261030-0840.g64487f6805ee.1"):
             with self.subTest(pin=pin):
                 self.daemon.write_text(original.replace("0.9.1-fork.1", pin))
                 with self.assertRaisesRegex(ValueError, "POSITIVEINTEGER"):
