@@ -2,6 +2,16 @@
   "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
   "schemaVersion": 1,
 
+  // Larger text everywhere for the low-DPI 1080p external. One knob scales
+  // terminals, tab titles, sidebars, settings and chrome (50-200, step 10);
+  // browser page content is excluded, hence the separate zoom below.
+  "app" : {
+    "globalFontMagnification" : 120
+  },
+  "browser" : {
+    "defaultZoomLevel" : 1.2
+  }
+
   // This file uses JSON with comments (JSONC).
   // Uncomment and edit any setting to make it file-managed.
   // Remove a setting to fall back to the value saved in Settings.
