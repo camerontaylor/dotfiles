@@ -453,8 +453,9 @@ if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     fi
 fi
 
-# OrbStack cask — neptune ONLY. Runs triton, the Ubuntu machine coding agents
-# are dispatched to (infra docs/neptune-agent-vm-plan.md): macOS spawn,
+# OrbStack cask — neptune and saturn ONLY. neptune runs triton, the Ubuntu
+# machine coding agents are dispatched to (infra docs/neptune-agent-vm-plan.md);
+# saturn runs atlas, the arm64 Ubuntu machine for jcode development. macOS spawn,
 # Gatekeeper and TCC overhead made agent test runs 35-45x slower on the host
 # than in a Linux guest on the same box. Replaced colima (fixed memory
 # reservation; launchd-exec'd binary reading the offload volume).
@@ -466,7 +467,7 @@ fi
 # through. neptune's copy was therefore installed from the Intel DMG, so it has
 # /Applications/OrbStack.app but no Caskroom receipt.
 _orb_host=$(scutil --get LocalHostName 2>/dev/null) || _orb_host=$(hostname -s 2>/dev/null) || _orb_host=""
-if [[ $DOTFILES_OS == Darwin && $_orb_host == neptune ]] && have brew; then
+if [[ $DOTFILES_OS == Darwin && ( $_orb_host == neptune || $_orb_host == saturn ) ]] && have brew; then
     if [[ ! -d /Applications/OrbStack.app ]] && ! brew list --cask orbstack > /dev/null 2>&1; then
         printf '%s\n' "Installing OrbStack (first launch needs a person: onboarding)..."
         brew_cask_install_or_upgrade orbstack || true
