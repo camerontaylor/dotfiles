@@ -1,5 +1,10 @@
 theme = iTerm2 Solarized Dark
 palette-generate = false
+# Tried 2026-11-01 on a 1080p VGA external: helps small text, bloats large
+# text at the default strength (255). Size is boosted via cmux
+# globalFontMagnification instead. font-thicken-strength (0-255) is the
+# middle ground if revisited.
+font-thicken = false
 shell-integration = none
 shell-integration-features = cursor,path,title,sudo,ssh-env,no-ssh-terminfo
 confirm-close-surface = false
