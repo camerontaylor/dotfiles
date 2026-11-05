@@ -162,7 +162,17 @@ names (`gsed`, `gawk`, `gfind`, `gxargs`, `gtar`, `ggrep`, `gdiff`, `grm`, `gdu`
 via the gnubin PATH prepend.
 
 `coreutils` · `grep` · `diffutils` · `gnu-sed` · `gnu-tar` · `gawk` ·
-`findutils` · `gnu-getopt` (keg-only, symlinked separately) · `ncurses`
+`findutils` · `make` (macOS ships 3.81) · `gnu-which` · `gpatch` · `gnu-time` ·
+`gnu-units` · `gnu-indent` · `ed` · `gzip` · `less` · `ncurses`, plus keg-only
+`gnu-getopt`, `m4` and `bc`, whose `bin/` dirs are prepended by hand. Two names
+are shadowed by the shell itself: zsh's `which` is a builtin (GNU `which` only
+applies in bash or as `command which`), and `time` is a keyword in both shells
+(use `command time -f …` or `gtime`; it isn't aliased because the keyword can
+time pipelines and functions, which the binary can't).
+
+Deliberately skipped, because shadowing the macOS tool breaks things: `binutils`
+(Mach-O-unaware `ar`/`nm`/`ld`), `libtool` (Xcode calls Apple's, a different
+tool of the same name) and `inetutils` (GNU `ping`/`ifconfig` misbehave on macOS).
 
 > Scripts in the bootstrap layer must **not** rely on these — see the BSD-vs-GNU
 > table in [`CLAUDE.md`](../CLAUDE.md).
