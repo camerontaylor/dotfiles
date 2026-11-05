@@ -8,6 +8,13 @@ if [[ $OSTYPE != darwin* ]] || [[ -z $HOMEBREW_PREFIX ]]; then
     return 0
 fi
 
+# A nested bash inherits _DOTFILES_BASH_ENV, so env.sh returns early and never
+# defines path_prepend (functions aren't exported, but ZDOTDIR is). Load it
+# here, or every prepend below fails and plain names fall back to BSD.
+if ! declare -F path_prepend > /dev/null; then
+    . "$ZDOTDIR/env.d/00_path_prepend.zsh"
+fi
+
 # Keep in sync with the gnu_formulae list in scripts/deploy.d/75_brew_setup.zsh
 # (diffutils, gzip, less are linked unprefixed into $HOMEBREW_PREFIX/bin,
 # which already precedes /usr/bin, so they need no entry here).
