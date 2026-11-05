@@ -262,22 +262,43 @@ elif have pacman && ! have mosh; then
     fi
 fi
 
-# GNU userland on macOS. The g-prefixed binaries (grm, gdf, gdu, ggrep, gdiff,
-# gsed, gtar, gawk, gfind, gxargs) are referenced directly by the gnu_alias
-# helper in zsh/rc.d/08_aliases.zsh; the un-prefixed names are picked up via
-# the gnubin PATH prepend in zsh/env.d/03_paths.zsh. gnu-getopt is keg-only
-# (would shadow /usr/bin/getopt), so it's symlinked through a dedicated
-# branch in 03_paths.zsh rather than the gnubin loop.
+# GNU userland on macOS — every formula here replaces a macOS tool that
+# exists but behaves differently from its Linux namesake. The g-prefixed
+# binaries (grm, gdf, gdu, ggrep, gdiff, gsed, gtar, gawk, gfind, gxargs) are
+# referenced directly by the gnu_alias helper in zsh/rc.d/08_aliases.zsh; the
+# un-prefixed names are picked up by the interactive PATH prepends in
+# zsh/rc.d/02b_gnubin_path.zsh and bash/rc.d/03_gnubin.bash (gnubin dirs, plus
+# the keg-only bin dirs wired by hand). The two lists must stay in sync.
+#
+#   make        macOS ships GNU make 3.81 (2006): no .ONESHELL, no grouped
+#               targets, no `file` function
+#   gnu-which   BSD which has no --all/--read-alias/--skip-functions
+#   gpatch      BSD patch differs on fuzz, --merge and reject output
+#   gnu-time    /usr/bin/time has no -f/--format, -v or -o
+#   gnu-units   BSD units has a different, much smaller unit database
+#   gnu-indent  BSD indent takes different flags
+#   gzip        Apple's (FreeBSD-derived) gzip lacks --rsyncable, --synchronous
+#   less        macOS's less is years behind (no --mouse, OSC 8, etc.)
+#   ed          BSD ed; keg-only but ships a gnubin
+#   m4, bc      keg-only (macOS ships GNU m4 1.4.6 and a non-GNU bc)
+#
+# Deliberately NOT installed, because shadowing the macOS tool breaks things:
+#   binutils   GNU ar/nm/ld/strip don't understand Mach-O; Xcode builds break
+#   libtool    Apple's /usr/bin/libtool is a static-lib archiver, not GNU
+#              libtool; Xcode invokes it by name
+#   inetutils  GNU ping/ifconfig/traceroute/hostname lack macOS routing-socket
+#              support and misreport interfaces
 if [[ $DOTFILES_OS == Darwin ]] && have brew; then
     printf '%s\n' "Installing GNU userland via brew..."
-    brew_formula_install_or_upgrade coreutils || true
-    brew_formula_install_or_upgrade grep || true
-    brew_formula_install_or_upgrade diffutils || true
-    brew_formula_install_or_upgrade gnu-sed || true
-    brew_formula_install_or_upgrade gnu-tar || true
-    brew_formula_install_or_upgrade gawk || true
-    brew_formula_install_or_upgrade findutils || true
-    brew_formula_install_or_upgrade gnu-getopt || true
+    gnu_formulae=(
+        coreutils grep diffutils gnu-sed gnu-tar gawk findutils gnu-getopt
+        make gnu-which gpatch gnu-time gnu-units gnu-indent gzip less
+        ed m4 bc
+    )
+    for gnu_formula in "${gnu_formulae[@]}"; do
+        brew_formula_install_or_upgrade "$gnu_formula" || true
+    done
+    unset gnu_formulae gnu_formula
 fi
 
 # Linux-script compat helpers that aren't part of GNU coreutils but ship as
