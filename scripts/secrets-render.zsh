@@ -341,6 +341,13 @@ _row services/ollie-vpn/proton.conf.enc    blob   "$STATE_HOME/ollie-vpn/proton.
 # private key file; do not source it into agent or shell provider environments.
 _row services/paseo/openai-realtime-api-key.enc blob "$STATE_HOME/paseo/voice/openai-realtime-api-key" 600 triton ''
 
+# cq-review GitHub App (id 5653513): reviewer agents post their verdict comment
+# as cq-review[bot] via the agents repo's cq-review-post, which reads this dir.
+# Agent hosts only. The App can write PR comments and nothing else; the
+# metadata file is not secret.
+_row services/cq-review/app-key.pem.enc blob "$STATE_HOME/cq-review/cq-review.pem"  600 agents ''
+_row services/cq-review/app.json        copy "$STATE_HOME/cq-review/cq-review.json" 644 agents ''
+
 # restic repository password for the config backup (makemake -> pluto). A blob,
 # not a dotenv row: restic takes --password-file directly, which keeps the
 # passphrase out of the process environment and out of `ps`.
