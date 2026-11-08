@@ -34,6 +34,13 @@ gh = "2"
 # have none — cq-toolkit's workflow-template tests exec the real jq and fail
 # 21 tests without it (pluto, 2026-10-02).
 jq = "1"
+# gitleaks: exact pin, the version cq-toolkit's required denylist check runs.
+# The local-first review snapshot scanner (agents bin/cq-snapshot-scan) and
+# the queue worker on ceres both run it. Without a global version the mise
+# shim fails with "No version is set for shim: gitleaks", and the ceres queue
+# forced command (PATH starts with the mise shims) refuses every unpublished
+# snapshot (2026-11-09).
+gitleaks = "8.30.1"
 glab = "1"
 # Needed so the global `cargo`/`rustc`/etc. mise shims actually resolve.
 # scripts/deploy.d/70_runtime_installs.zsh installs rust via rustup (not
