@@ -295,6 +295,9 @@ done
 # password. Select only that key; their drop-ins read the file at next start.
 _row "shell/90_secrets.yaml" 'dotenv-select:PASEO_PASSWORD' "$STATE_HOME/paseo/env" 600 ceres-or-uranus ''
 
+# CRQ repair provider credentials, derived from the private secrets repo.
+_row "services/cq-toolkit/repair-env.yaml" dotenv "$CONFIG_HOME/crq/repair.env" 600 ceres ''
+
 # Audiobookshelf client API key (arr stack on makemake). The consumers are
 # shell/agent tooling that talk TO the server, which lives where the infra
 # repo is worked on — so the row sits outside the loop above, gated on the
