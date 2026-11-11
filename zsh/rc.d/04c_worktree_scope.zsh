@@ -114,5 +114,5 @@ _agents_worktree_scope_inner() {
 
   exec systemd-run --user --scope --slice=agents.slice --unit="$unit" \
     --property=MemoryMax=${mem_max} --property=MemorySwapMax=0 \
-    --property=CPUQuota=200% --same-dir --quiet --collect -- "$SHELL" -i
+    --property=CPUQuota=200% --same-dir --quiet --collect -- "${commands[zsh]}" -i
 }

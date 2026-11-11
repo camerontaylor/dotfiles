@@ -88,5 +88,6 @@ fi
 
 # Join the slice by re-execing zsh inside a transient scope under agents.slice.
 # --quiet suppresses systemd-run's "Running as unit:" chatter.
-# Exec into $SHELL preserves interactive login semantics.
-exec systemd-run --user --scope --slice=agents.slice --same-dir --quiet --collect -- "$SHELL" -i
+# SHELL is the login preference and can still be bash after launching zsh.
+# Keep the current shell's zsh configuration across the scope handoff.
+exec systemd-run --user --scope --slice=agents.slice --same-dir --quiet --collect -- "${commands[zsh]}" -i
