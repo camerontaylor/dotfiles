@@ -433,8 +433,11 @@ books.wedrifid.dev {
 # responses. No request_body cap, so chunked epub/audio uploads pass.
 # lb_try_duration: Caddy does not retry by default, so without it the first
 # request after the wired path drops fails instead of reaching the tailnet
-# upstream, and again each time the 30s failure mark expires. Only requests
-# that never reached a backend are retried, so it cannot replay an upload.
+# upstream, and again each time the 30s failure mark expires. What gets
+# retried: any request whose connection to the upstream failed (nothing was
+# sent), and, by Caddy's default lb_retry_match, a GET whose round trip
+# failed after connecting. A POST or PUT that reached a backend is never
+# retried, so an upload cannot be replayed.
 storyteller.wedrifid.dev {
 	import wedrifid_tailnet
 	reverse_proxy makemake.local.wedrifid.dev:8001 100.87.185.24:8001 {
