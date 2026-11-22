@@ -431,10 +431,15 @@ books.wedrifid.dev {
 # take this name as their server URL. flush_interval -1 for the same reason
 # as abs above: readaloud downloads and in-browser audio are long streamed
 # responses. No request_body cap, so chunked epub/audio uploads pass.
+# lb_try_duration: Caddy does not retry by default, so without it the first
+# request after the wired path drops fails instead of reaching the tailnet
+# upstream, and again each time the 30s failure mark expires. Only requests
+# that never reached a backend are retried, so it cannot replay an upload.
 storyteller.wedrifid.dev {
 	import wedrifid_tailnet
 	reverse_proxy makemake.local.wedrifid.dev:8001 100.87.185.24:8001 {
 		lb_policy first
+		lb_try_duration 5s
 		fail_duration 30s
 		flush_interval -1
 	}
