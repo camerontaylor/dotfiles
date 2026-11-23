@@ -396,6 +396,12 @@ fi
 if [[ -d $HOME/repos/deploy/syncthing ]]; then
     _row services/syncthing/compose-env.yaml dotenv "$HOME/repos/deploy/syncthing/.env"    600 all ''
 fi
+# BookOrbit trial on makemake (2026-11-23): agent-generated DB password, JWT
+# secret and setup token. Its own file, read by compose env_file; the stack's
+# .env stays hand-provisioned (paths only).
+if [[ -d $HOME/repos/deploy/bookorbit ]]; then
+    _row services/bookorbit/compose-env.yaml dotenv "$HOME/repos/deploy/bookorbit/bookorbit.env" 600 all ''
+fi
 # slskd's Soulseek credentials + primary API key (music lane of the arr stack
 # on makemake, added 2026-09-17). A SEPARATE dotenv from the stack's own .env
 # rather than folding into it: these credentials are consumed by env_file,
@@ -509,7 +515,7 @@ LEGACY_PLAINTEXTS=(
 # Conditional mapping sources are intentional gate-outs when their deploy
 # directory is absent, not unmapped files.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml services/bookorbit/compose-env.yaml)
 
 # Metadata mode: emit the mapping table and exit BEFORE any preflight, so it
 # works on a box with no sops, no age key and no secrets clone yet — the test

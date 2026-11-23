@@ -448,6 +448,23 @@ storyteller.wedrifid.dev {
 	}
 }
 
+# BookOrbit (added 2026-11-23, trial replacement for abs + storyteller):
+# ebooks, audiobooks and read-alongs in one library. Same upstream shape and
+# reasons as storyteller above: streamed audio and book downloads
+# (flush_interval -1), no request_body cap for uploads, and a short retry
+# window so a dropped wired path falls through to the tailnet bind.
+# BookOrbit's socket gateways accept exactly one browser origin (its
+# CLIENT_URL, set to this name), so live updates work only through here.
+bookorbit.wedrifid.dev {
+	import wedrifid_tailnet
+	reverse_proxy makemake.local.wedrifid.dev:3000 100.87.185.24:3000 {
+		lb_policy first
+		lb_try_duration 5s
+		fail_duration 30s
+		flush_interval -1
+	}
+}
+
 # ── downloaders ────────────────────────────────────────────────────────────
 
 # qBittorrent needs THREE header changes, and two of them are easy to miss:
