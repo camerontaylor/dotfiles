@@ -401,6 +401,12 @@ fi
 # .env stays hand-provisioned (paths only).
 if [[ -d $HOME/repos/deploy/bookorbit ]]; then
     _row services/bookorbit/compose-env.yaml dotenv "$HOME/repos/deploy/bookorbit/bookorbit.env" 600 all ''
+    _row services/bookorbit/read-aloud-worker-env.yaml dotenv "$HOME/repos/deploy/bookorbit/read-aloud-worker.env" 600 all ''
+fi
+# The same token for BookOrbit's native read-aloud worker on saturn (added
+# 2026-11-23). Only the token goes there, not the stack's DB credentials.
+if [[ $(hostname -s 2>/dev/null) == saturn ]]; then
+    _row services/bookorbit/read-aloud-worker-env.yaml dotenv "$HOME/.config/bookorbit/read-aloud-worker.env" 600 all ''
 fi
 # slskd's Soulseek credentials + primary API key (music lane of the arr stack
 # on makemake, added 2026-09-17). A SEPARATE dotenv from the stack's own .env
@@ -515,7 +521,7 @@ LEGACY_PLAINTEXTS=(
 # Conditional mapping sources are intentional gate-outs when their deploy
 # directory is absent, not unmapped files.
 UNMAPPED_ALLOW=()
-UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml services/bookorbit/compose-env.yaml)
+UNMAPPED_ALLOW=(README.md .sops.yaml .gitattributes .gitignore services/arr/rutracker-env.yaml services/arr/usenet-accounts.yaml services/arr/deploy-env.yaml services/arr/bindery-env.yaml services/rss/compose-env.yaml services/syncthing/compose-env.yaml services/bookorbit/compose-env.yaml services/bookorbit/read-aloud-worker-env.yaml)
 
 # Metadata mode: emit the mapping table and exit BEFORE any preflight, so it
 # works on a box with no sops, no age key and no secrets clone yet — the test
