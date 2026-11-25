@@ -403,11 +403,6 @@ if [[ -d $HOME/repos/deploy/bookorbit ]]; then
     _row services/bookorbit/compose-env.yaml dotenv "$HOME/repos/deploy/bookorbit/bookorbit.env" 600 all ''
     _row services/bookorbit/read-aloud-worker-env.yaml dotenv "$HOME/repos/deploy/bookorbit/read-aloud-worker.env" 600 all ''
 fi
-# The same token for BookOrbit's native read-aloud worker on saturn (added
-# 2026-11-23). Only the token goes there, not the stack's DB credentials.
-if [[ $(hostname -s 2>/dev/null) == saturn ]]; then
-    _row services/bookorbit/read-aloud-worker-env.yaml dotenv "$HOME/.config/bookorbit/read-aloud-worker.env" 600 all ''
-fi
 # slskd's Soulseek credentials + primary API key (music lane of the arr stack
 # on makemake, added 2026-09-17). A SEPARATE dotenv from the stack's own .env
 # rather than folding into it: these credentials are consumed by env_file,
